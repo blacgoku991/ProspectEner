@@ -131,7 +131,7 @@ export function LocationField({
                   onClick={() => onChange({ postalCode: input, communeInsee: c.insee, communeName: c.name })}
                   className={cn(
                     "rounded-full border-2 px-4 py-2 text-sm font-medium transition",
-                    selected ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-white text-ink-700 hover:border-pine-300",
+                    selected ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-surface text-ink-700 hover:border-pine-300",
                   )}
                 >
                   {c.name}

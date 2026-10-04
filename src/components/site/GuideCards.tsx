@@ -16,7 +16,7 @@ const WORK_ICONS = {
 
 const KIND_STYLE = {
   Subvention: "bg-pine-100 text-pine-800",
-  Prime: "bg-[#fff1df] text-ember-600",
+  Prime: "bg-ember-500/10 text-ember-600",
   Prêt: "bg-sky-soft text-ink-800",
 } as const;
 
@@ -31,7 +31,7 @@ export function WorkGuideCards({ rules, headingLevel: Heading = "h3" }: { rules:
           <li key={g.slug}>
             <Link
               href={`/travaux/${g.slug}`}
-              className="group flex h-full items-start gap-4 rounded-2xl border border-ink-900/[0.07] bg-white p-5 transition hover:-translate-y-0.5 hover:border-pine-500/30 hover:shadow-soft"
+              className="group flex h-full items-start gap-4 rounded-2xl border border-ink-900/[0.07] bg-surface p-5 transition hover:-translate-y-0.5 hover:border-pine-500/30 hover:shadow-soft"
             >
               <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-pine-50 text-pine-700 transition group-hover:bg-pine-600 group-hover:text-white">
                 <Icon className="size-5" aria-hidden />
@@ -59,7 +59,7 @@ export function AidGuideCards({ rules, className }: { rules: RuleSetData; classN
           <li key={g.id}>
             <Link
               href={`/aides/${g.slug}`}
-              className="group flex h-full flex-col rounded-3xl border border-ink-900/[0.07] bg-white p-6 transition hover:-translate-y-0.5 hover:border-pine-500/30 hover:shadow-soft"
+              className="group flex h-full flex-col rounded-3xl border border-ink-900/[0.07] bg-surface p-6 transition hover:-translate-y-0.5 hover:border-pine-500/30 hover:shadow-soft"
             >
               <span className="flex flex-wrap items-center gap-2">
                 <span className={cn("badge", KIND_STYLE[info.kind])}>{info.kind}</span>

@@ -31,7 +31,7 @@ Les références réglementaires ci-dessous ont été vérifiées le 4 octobre 2
 - **Demande explicite et ponctuelle.**
   - Le visiteur valide la phrase « Je demande à être contacté(e) par [entreprise], par [canal], au sujet de mon projet de [travaux] » via une case jamais pré-cochée, décochée si le canal change.
   - Le texte exact, la notice exacte (versionnée, avec empreinte), l'horodatage et des empreintes HMAC de l'IP et des coordonnées sont conservés comme preuve.
-  - La notice précise que la demande ne vaut ni inscription à une newsletter, ni accord pour d'autres sollicitations.
+  - La notice précise que les coordonnées ne sont ni vendues, ni utilisées pour une newsletter ou d'autres sollicitations.
   - Avec la variante « test d'éligibilité seul », l'objet de la demande devient « mon projet de rénovation énergétique ». Le projet précis est découvert lors de l'échange demandé, qui reste limité à cet objet.
 - **Demande proposée seulement aux résultats retenus.** Par défaut, la demande de rappel n'est proposée qu'aux résultats « potentiellement éligible » ou « à vérifier ». Le serveur refuse aussi les autres (`OUTCOME_NOT_ACCEPTED`) : aucune fiche n'est créée pour une personne à qui l'on ne proposera rien. Le paramètre est réglable dans Paramètres.
 - **Rappel rapide sans test désactivé par défaut** (`QUICK_CALLBACK_CLOSED` côté serveur). Il produit des demandes non qualifiées, et la page `/rappel` renvoie alors vers le test.
@@ -50,7 +50,7 @@ Les références réglementaires ci-dessous ont été vérifiées le 4 octobre 2
   - Rappel de l'**objet strict de l'appel** sur la fiche.
 - **Aucun démarchage intégré.**
   - Aucune liste d'appels, aucune campagne d'e-mails ou de SMS sortants, aucune newsletter.
-  - Les paramètres de campagne (utm) servent seulement à qualifier l'origine des visites. Les campagnes autorisées sont déclarées dans l'administration ; une campagne inconnue est marquée « à contrôler ».
+  - Les paramètres de campagne (utm) servent seulement à qualifier l'origine des visites, et ne sont conservés qu'avec l'accord du visiteur (bandeau cookies). Les campagnes autorisées sont déclarées dans l'administration ; une campagne inconnue est marquée « à contrôler ».
 - **Opposition** :
   - par le visiteur lors de l'annulation, ou saisie par l'équipe ;
   - liste d'empreintes non réversibles conservée au moins 3 ans ;
@@ -82,7 +82,11 @@ C'est pourquoi le canal téléphonique est **désactivé par défaut**. Son acti
 
 Mesures implémentées :
 
-- **Information avant l'envoi.** Notice complète affichée dans le formulaire (responsable, finalité, base légale, destinataires, durées, droits, CNIL) et politique de confidentialité générée à partir des paramètres.
+- **Information avant l'envoi, en deux niveaux** (présentation recommandée par la CNIL).
+  - Sous le formulaire, un texte court : l'entreprise qui utilise les données, la finalité, l'entreprise des travaux en cas de mise en relation, l'absence de vente et d'autres sollicitations, la durée maximale de conservation, les droits et la réclamation auprès de la CNIL, avec un lien vers la politique de confidentialité.
+  - La politique de confidentialité, générée à partir des paramètres, donne le détail : responsable et coordonnées, base légale, destinataires, durées, droits.
+  - Le texte exact affiché est conservé avec chaque demande (version et empreinte).
+  - L'adresse et l'identité légale de l'entreprise figurent dans les mentions légales et le pied de page, pas dans le formulaire.
 - **Minimisation.**
   - Questions conditionnelles et réponses devenues inutiles **supprimées** avant l'enregistrement.
   - Aucune donnée fiscale, pièce d'identité, coordonnée bancaire ni identifiant FranceConnect.
@@ -97,6 +101,11 @@ Mesures implémentées :
   - Anonymisation et suppression manuelles par un administrateur.
   - Gestion des oppositions.
 - **Aucun traceur tiers par défaut.**
+  - **Bandeau de choix au premier passage** : « Refuser » et « Accepter » au même niveau, sans bloquer la navigation, avec un lien « Personnaliser » vers la page Cookies et préférences, où le choix se modifie à tout moment.
+    - Le bandeau est placé en haut de page, dans le flux : il ne recouvre jamais la mention France Rénov' ni le contenu. Le serveur sait si un choix existe : la page arrive directement avec ou sans bandeau.
+    - Le choix est conservé 6 mois dans un cookie propre au site, sans identifiant (`pe-consent`, exempté d'accord puisqu'il ne sert qu'à mémoriser ce choix), puis redemandé.
+    - Seul traceur soumis à accord : l'origine de la visite (`pe-acq`, stockage de session : paramètres utm, page d'arrivée, site d'origine). Elle n'est lue et conservée qu'après accord ; un refus l'efface.
+    - Les éléments nécessaires au service (réponses en cours, session d'administration) ne demandent pas d'accord et sont décrits sur la page Cookies et préférences.
   - Statistiques internes agrégées sans cookie ni identifiant.
   - Polices auto-hébergées.
   - Aucune réponse au questionnaire transmise à une plateforme publicitaire.

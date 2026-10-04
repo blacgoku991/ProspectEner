@@ -12,10 +12,10 @@ import { INDICATIVE_NOTICE } from "@/lib/legal/texts";
 import { visitorVerdict } from "@/lib/requests/shared";
 
 const OUTCOME_STYLE: Record<OverallOutcome, { icon: typeof SearchCheck; ring: string; bg: string; iconBg: string }> = {
-  POTENTIALLY_ELIGIBLE: { icon: SearchCheck, ring: "ring-pine-500/30", bg: "from-pine-50 to-white", iconBg: "bg-pine-600" },
-  NEEDS_REVIEW: { icon: CircleHelp, ring: "ring-amber-500/30", bg: "from-amber-50 to-white", iconBg: "bg-amber-500" },
-  NOT_ELIGIBLE: { icon: SearchX, ring: "ring-ink-900/10", bg: "from-sand-100 to-white", iconBg: "bg-ink-600" },
-  OUT_OF_SCOPE: { icon: Compass, ring: "ring-sky-600/20", bg: "from-[#eef7fb] to-white", iconBg: "bg-sky-700" },
+  POTENTIALLY_ELIGIBLE: { icon: SearchCheck, ring: "ring-pine-500/30", bg: "from-pine-50 to-surface", iconBg: "bg-pine-600" },
+  NEEDS_REVIEW: { icon: CircleHelp, ring: "ring-amber-500/30", bg: "from-amber-50 to-surface", iconBg: "bg-amber-500" },
+  NOT_ELIGIBLE: { icon: SearchX, ring: "ring-ink-900/10", bg: "from-sand-100 to-surface", iconBg: "bg-[#3c5a54]" },
+  OUT_OF_SCOPE: { icon: Compass, ring: "ring-sky-600/20", bg: "from-sky-soft/40 to-surface", iconBg: "bg-sky-700" },
 };
 
 /** Pourquoi aucun rendez-vous n'est proposé (résultat non retenu dans les paramètres). */
@@ -124,13 +124,6 @@ export function ResultView({
           <div className="mt-5 space-y-2 text-[15px] leading-relaxed text-ink-700">
             {lead && <p className="font-semibold text-ink-900">{lead}</p>}
             <p>{evaluation.headline}</p>
-            {(outcome === "POTENTIALLY_ELIGIBLE" || outcome === "NEEDS_REVIEW") && !notAccepted && (
-              <p>
-                {profile
-                  ? "Un conseiller vous rappelle pour faire le point sur vos travaux, vous présenter les aides adaptées et vérifier les conditions avec vous."
-                  : "Un conseiller vous présente le détail des aides adaptées à votre projet et vérifie les conditions avec vous."}
-              </p>
-            )}
             {blocking.length > 0 && (
               <div className="mt-1 rounded-2xl bg-amber-100 px-4 py-3 text-amber-950 ring-1 ring-inset ring-amber-500/30">
                 <p className="font-semibold">Votre projet ne remplit pas les conditions des aides évaluées.</p>
@@ -166,7 +159,7 @@ export function ResultView({
                 <ArrowRight className="size-5" aria-hidden />
               </button>
             ) : notAccepted ? (
-              <div className="flex gap-3 rounded-2xl bg-white/70 px-4 py-3 text-sm text-ink-700 ring-1 ring-inset ring-ink-900/10">
+              <div className="flex gap-3 rounded-2xl bg-surface/70 px-4 py-3 text-sm text-ink-700 ring-1 ring-inset ring-ink-900/10">
                 <Info className="mt-0.5 size-4 shrink-0 text-ink-500" aria-hidden />
                 <p>
                   <strong className="text-ink-900">Nous ne pouvons pas vous proposer de rendez-vous. </strong>

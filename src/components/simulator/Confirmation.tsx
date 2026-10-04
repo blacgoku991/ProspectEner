@@ -101,7 +101,7 @@ export function Confirmation({
             </p>
           </div>
           {visual && (
-            <div className="relative hidden min-h-72 bg-gradient-to-br from-pine-50 via-sand-100 to-[#fff3e2] md:block" aria-hidden>
+            <div className="relative hidden min-h-72 bg-gradient-to-br from-pine-50 via-sand-100 to-sand-200 md:block" aria-hidden>
               {visual}
             </div>
           )}
@@ -117,9 +117,9 @@ export function Confirmation({
             {capitalize(project.works)}
           </h3>
           <div className="mt-5 grid gap-5 md:grid-cols-[1fr_1.2fr]">
-            <div className="rounded-2xl bg-ink-950 p-5 text-white">
+            <div className="rounded-2xl bg-pine-950 p-5 text-white">
               <p className="text-sm font-semibold text-amber-300">Votre éligibilité</p>
-              <p className="mt-3 rounded-xl bg-white px-4 py-3 text-ink-950">
+              <p className="mt-3 rounded-xl bg-surface px-4 py-3 text-ink-950">
                 <span className="block text-xs text-ink-500">Résultat du test</span>
                 <span className="text-lg font-bold">{PROJECT_STATUS[project.outcome]}</span>
               </p>

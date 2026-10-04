@@ -1,6 +1,8 @@
 /** Paramètres de l'environnement de test de bout en bout (valeurs factices, jamais utilisées en production). */
 export const E2E_PORT = Number(process.env.E2E_PORT ?? 3100);
 export const E2E_BASE_URL = `http://localhost:${E2E_PORT}`;
+/** Choix sur les cookies préenregistré pour les parcours (généré par la configuration globale). */
+export const CONSENT_STATE_PATH = "tests/e2e/.state/consent.json";
 export const E2E_ENV = {
   DATABASE_URL:
     process.env.E2E_DATABASE_URL ?? "postgresql://prospectener:prospectener_dev@127.0.0.1:5432/prospectener_e2e?schema=public",

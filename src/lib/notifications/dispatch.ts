@@ -6,6 +6,7 @@ import { errorCode, logger } from "../logger";
 import { getSettings, notificationTransports } from "../settings";
 import type { SiteSettings } from "../settings-schema";
 import { notificationTransport } from "./transports";
+import { webhookBody } from "./webhook-format";
 
 export type NotificationEvent = "NEW_REQUEST" | "REQUEST_CANCELLED";
 
@@ -77,18 +78,27 @@ export async function dispatchNotification(id: string): Promise<"SENT" | "FAILED
       await t.sendEmail({ to: settings.notifications.emailRecipients, subject, text: lines.join("\n") });
     } else {
       if (!settings.notifications.webhookUrl) throw new Error("WEBHOOK_URL_MISSING");
+      // Texte lisible sur une messagerie (Discord, Slack, Telegram) : référence, échéance et lien, sans donnée personnelle.
+      const text =
+        n.event === "NEW_REQUEST"
+          ? `Nouvelle demande ${req.reference} (${channelLabel})${req.callbackDeadline ? `, à traiter avant le ${frDate(req.callbackDeadline)}` : ""} : ${link}`
+          : `Demande ${req.reference} annulée par le visiteur : ne pas le contacter. ${link}`;
       await t.postWebhook({
         url: settings.notifications.webhookUrl,
-        body: {
-          event: n.event === "NEW_REQUEST" ? "request.created" : "request.cancelled",
-          reference: req.reference,
-          requestId: req.id,
-          kind: req.kind,
-          channel: req.channel,
-          createdAt: req.createdAt.toISOString(),
-          callbackDeadline: req.callbackDeadline?.toISOString() ?? null,
-          url: link,
-        },
+        body: webhookBody(
+          settings.notifications.webhookUrl,
+          {
+            event: n.event === "NEW_REQUEST" ? "request.created" : "request.cancelled",
+            reference: req.reference,
+            requestId: req.id,
+            kind: req.kind,
+            channel: req.channel,
+            createdAt: req.createdAt.toISOString(),
+            callbackDeadline: req.callbackDeadline?.toISOString() ?? null,
+            url: link,
+          },
+          text,
+        ),
       });
     }
     await prisma.notification.update({ where: { id }, data: { status: "SENT", sentAt: new Date(), attempts: { increment: 1 }, lastError: null } });

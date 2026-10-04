@@ -348,7 +348,7 @@ export default function Simulator({
                   key={s.id}
                   className={cn(
                     "flex-1 rounded-lg px-2 py-1 text-center text-xs font-medium",
-                    me < idx ? "bg-pine-50 text-pine-800" : me === idx ? "bg-ink-900 text-white" : "bg-ink-900/[0.04] text-ink-500",
+                    me < idx ? "bg-pine-50 text-pine-800" : me === idx ? "bg-ink-900 text-sand-50" : "bg-ink-900/[0.04] text-ink-500",
                   )}
                   aria-current={me === idx ? "step" : undefined}
                 >
@@ -417,7 +417,7 @@ export default function Simulator({
 
       <aside className="hidden lg:block" aria-hidden>
         <div className="sticky top-32 space-y-4">
-          <div className="relative h-[380px] overflow-hidden rounded-[2rem] bg-gradient-to-br from-pine-50 via-sand-100 to-[#fff3e2] shadow-soft">
+          <div className="relative h-[380px] overflow-hidden rounded-[2rem] bg-gradient-to-br from-pine-50 via-sand-100 to-sand-200 shadow-soft">
             <HouseHero focus={focusFor(answers, currentVisible)} className="absolute inset-0 aspect-auto" />
           </div>
           <div className="card p-5 text-sm text-ink-600">

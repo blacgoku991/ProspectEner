@@ -20,6 +20,12 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
 
 ### Site public
 
+- **Design sombre et épuré** sur tout le site public (l'administration reste en clair) : peu de texte par écran, un seul appel à l'action, les informations légales regroupées dans le pied de page et les pages dédiées.
+- **Bandeau cookies au premier passage**, conforme aux recommandations de la CNIL :
+  - en haut de page, dans le flux : il ne recouvre jamais le contenu ni la mention France Rénov' ;
+  - « Refuser » et « Accepter » au même niveau, sans bloquer la navigation, avec un lien « Personnaliser » vers la page Cookies et préférences, où le choix se modifie à tout moment ;
+  - seul traceur facultatif : l'origine de la visite (paramètres de campagne, page d'arrivée, site d'origine), lue et conservée pour la session **uniquement après accord** ;
+  - choix conservé 6 mois dans un cookie propre au site, sans identifiant, puis redemandé ; le serveur le lit, donc la page arrive directement avec ou sans bandeau. Aucun pixel publicitaire, aucun cookie tiers.
 - **Page d'accueil épurée** : maison 3D procédurale (React Three Fiber, aucun fichier externe), un seul appel à l'action, positionnement transparent, mention obligatoire France Rénov' (art. L122-26 du Code de la consommation), trois étapes, types de travaux, aides évaluées et questions fréquentes.
 - **Guide des aides** (`/aides`), une page par aide (`/aides/…`) et par type de travaux (`/travaux/…`), avec l'explorateur 3D « travaux → dispositifs ». Tout leur contenu est **généré à partir du barème publié** : bénéficiaires, travaux couverts ou non (avec la raison), démarches, bonifications datées, sources officielles. Rien n'est écrit en dur ; si le barème change, les pages suivent.
 - **Référencement** :
@@ -50,7 +56,7 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - aides repérées dans la liste des demandes et dans l'export CSV.
 - **Demande de contact explicite**.
   - Phrase générée « Je demande à être contacté(e) par [entreprise], par [canal], au sujet de mon projet de [travaux] », avec une case jamais pré-cochée, décochée si le canal change.
-  - Notice d'information RGPD affichée avant l'envoi.
+  - Information RGPD courte sous le formulaire (qui utilise les données, pourquoi, durée maximale, droits), avec un lien vers la politique de confidentialité. L'identité complète de l'entreprise figure dans les mentions légales et le pied de page, pas dans le formulaire.
   - Pas de newsletter ni de partenaires.
 - **Parcours « rappel rapide »** sans questionnaire : **désactivé par défaut**, puisqu'il produit des demandes non qualifiées. `/rappel` renvoie alors vers le test, et le serveur refuse ce type de demande (`QUICK_CALLBACK_CLOSED`).
 - **Confirmation** « Merci, vous allez être recontacté(e) », avec le délai de rappel. Elle précise qu'aucun dossier n'est déposé et fournit une référence et un lien d'annulation personnel.
@@ -129,7 +135,9 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - paramètres (identité, mentions, activité et entreprises partenaires, canaux, type de test, résultats qui ouvrent un rendez-vous, rappel rapide, notifications, conservation, sécurité) ;
   - journal d'audit ;
   - compte personnel.
-- **Notifications internes** par e-mail ou webhook signé, via une file d'envoi. Elles contiennent une référence et un lien, **sans données personnelles**. Leur échec n'empêche jamais l'enregistrement et elles sont relancées automatiquement.
+- **Notifications internes** par e-mail ou webhook signé, via une file d'envoi. Elles contiennent une référence, l'échéance de rappel et un lien, **sans données personnelles**. Leur échec n'empêche jamais l'enregistrement et elles sont relancées automatiquement.
+  - Une adresse de webhook Discord, Slack ou Telegram reçoit directement un message lisible (« Nouvelle demande PE-… (téléphone), à traiter avant le … : lien ») ; tout autre service reçoit le JSON signé (en-têtes `x-prospectener-timestamp` et `x-prospectener-signature`).
+  - Le webhook nécessite la variable d'environnement `NOTIFY_WEBHOOK_SECRET`.
 
 ## Architecture
 
@@ -188,7 +196,7 @@ Ensuite, dans **Administration → Paramètres** :
 1. Renseigner l'identité et les mentions légales. Le formulaire public reste fermé tant que la dénomination, le siège et le contact « données personnelles » manquent.
 2. Décrire l'activité réelle : accompagnement, travaux et/ou mise en relation. Pour confier les rendez-vous à une entreprise de travaux, cocher « Mise en relation avec des professionnels » et lister les entreprises partenaires : la notice d'information l'annonce alors aux visiteurs.
 3. Choisir les canaux de réponse. Le rappel téléphonique ne s'active qu'après confirmation de l'avertissement juridique. Dans le même encadré, « Qualification des demandes » règle le type de test, les résultats qui ouvrent une demande de rendez-vous et le rappel rapide.
-4. Configurer les notifications (SMTP ou webhook) et tester l'envoi.
+4. Configurer les notifications et tester l'envoi. Le plus simple : créer un webhook Discord (Paramètres du salon → Intégrations → Webhooks → Copier l'URL), le coller dans Paramètres → Notifications internes (« URL du webhook »), enregistrer, puis « Envoyer un test ».
 5. Traiter la check-list de mise en ligne.
 
 ## Tests

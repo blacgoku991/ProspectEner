@@ -1,7 +1,9 @@
+import { readConsent } from "@/lib/consent";
+
 /**
  * Paramètres de campagne (utm_source / utm_medium / utm_campaign) mémorisés pour la session,
- * uniquement s'ils ne contiennent aucune donnée personnelle. Aucun cookie, aucun identifiant publicitaire
- * (gclid, fbclid… sont ignorés).
+ * uniquement après accord de l'internaute et s'ils ne contiennent aucune donnée personnelle.
+ * Aucun cookie, aucun identifiant publicitaire (gclid, fbclid… sont ignorés).
  */
 const KEY = "pe-acq";
 const SAFE = /^[\w.\-+]{1,64}$/;
@@ -17,6 +19,7 @@ export interface Acquisition {
 
 export function captureAcquisition(): void {
   try {
+    if (!readConsent()?.acquisition) return; // origine de la visite seulement avec l'accord de l'internaute
     if (sessionStorage.getItem(KEY)) return; // premier contact de la session conservé
     const params = new URLSearchParams(window.location.search);
     const pick = (name: string) => {
@@ -41,6 +44,7 @@ export function captureAcquisition(): void {
 
 export function readAcquisition(): Acquisition | undefined {
   try {
+    if (!readConsent()?.acquisition) return undefined;
     const raw = sessionStorage.getItem(KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw) as Acquisition;

@@ -317,7 +317,7 @@ function ConstructionInput({
               }}
               className={cn(
                 "rounded-full border-2 px-4 py-2.5 text-sm font-medium transition",
-                selectedPeriod === p.id ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-white text-ink-700 hover:border-pine-300",
+                selectedPeriod === p.id ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-surface text-ink-700 hover:border-pine-300",
               )}
             >
               {p.label}
@@ -332,7 +332,7 @@ function ConstructionInput({
             }}
             className={cn(
               "rounded-full border-2 px-4 py-2.5 text-sm font-medium transition",
-              value?.kind === "UNKNOWN" ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-white text-ink-700 hover:border-pine-300",
+              value?.kind === "UNKNOWN" ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-surface text-ink-700 hover:border-pine-300",
             )}
           >
             Je ne sais pas
@@ -352,7 +352,7 @@ function HouseholdInput({ value, onChange }: { value: number | undefined; onChan
         onClick={() => onChange(Math.max(1, n - 1))}
         disabled={n <= 1}
         aria-label="Une personne de moins"
-        className="grid size-14 place-items-center rounded-2xl border-2 border-ink-900/10 bg-white text-ink-800 transition hover:border-pine-300 disabled:opacity-40"
+        className="grid size-14 place-items-center rounded-2xl border-2 border-ink-900/10 bg-surface text-ink-800 transition hover:border-pine-300 disabled:opacity-40"
       >
         <Minus className="size-5" aria-hidden />
       </button>
@@ -365,7 +365,7 @@ function HouseholdInput({ value, onChange }: { value: number | undefined; onChan
         onClick={() => onChange(Math.min(MAX_HOUSEHOLD_SIZE, n + 1))}
         disabled={n >= MAX_HOUSEHOLD_SIZE}
         aria-label="Une personne de plus"
-        className="grid size-14 place-items-center rounded-2xl border-2 border-ink-900/10 bg-white text-ink-800 transition hover:border-pine-300 disabled:opacity-40"
+        className="grid size-14 place-items-center rounded-2xl border-2 border-ink-900/10 bg-surface text-ink-800 transition hover:border-pine-300 disabled:opacity-40"
       >
         <Plus className="size-5" aria-hidden />
       </button>
@@ -409,7 +409,7 @@ function DpeInput({ value, onSelect }: { value: Answers["dpe"]; onSelect: (v: No
         onClick={() => onSelect("INCONNU")}
         className={cn(
           "mt-2 rounded-full border-2 px-5 py-2.5 text-sm font-semibold transition",
-          value === "INCONNU" ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-white text-ink-700 hover:border-pine-300",
+          value === "INCONNU" ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-surface text-ink-700 hover:border-pine-300",
         )}
       >
         Je ne sais pas

@@ -62,11 +62,11 @@ export function SourceList({ sources }: { sources: readonly SourceRef[] }) {
 export async function TestCta({ title = "Votre projet peut-il être aidé ?", text = "Répondez à quelques questions : le résultat s'affiche immédiatement, sans inscription." }: { title?: string; text?: string }) {
   const { config } = await getPublicConfig();
   return (
-    <aside className="rounded-3xl bg-ink-900 px-6 py-8 text-white sm:px-10">
+    <aside className="rounded-3xl bg-pine-950 px-6 py-8 text-white sm:px-10">
       <p className="text-2xl font-bold">{title}</p>
       <p className="mt-2 max-w-xl text-white/75">{text}</p>
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-        <Link href="/simulation" className="btn bg-white px-6 py-3.5 text-base text-ink-900 hover:bg-sand-100">
+        <Link href="/simulation" className="btn bg-white px-6 py-3.5 text-base text-pine-950 hover:bg-white/90">
           Tester mon éligibilité
           <ArrowRight className="size-5" aria-hidden />
         </Link>

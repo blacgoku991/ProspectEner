@@ -29,7 +29,7 @@ function LinkColumn({ title, links }: { title: string; links: FooterLink[] }) {
 export function Footer({ config, aidLinks, workLinks }: { config: PublicConfig; aidLinks: FooterLink[]; workLinks: FooterLink[] }) {
   const year = new Date().getFullYear();
   return (
-    <footer className="mt-24 bg-ink-950 text-white/75">
+    <footer className="mt-24 border-t border-white/5 bg-night text-white/75">
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div className="space-y-4 sm:col-span-2 lg:col-span-1">
           <p className="font-display text-xl font-bold text-white">{config.brandName}</p>

@@ -47,7 +47,7 @@ export function StickyCta({ triggerId, mobileOnly = false, children }: { trigger
       aria-hidden={!visible}
       inert={!visible}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-ink-900/10 bg-white/95 shadow-[0_-8px_30px_rgba(10,20,15,0.08)] backdrop-blur transition duration-300",
+        "fixed inset-x-0 bottom-0 z-40 border-t border-ink-900/10 bg-surface/95 shadow-[0_-8px_30px_rgba(10,20,15,0.08)] backdrop-blur transition duration-300",
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-full opacity-0",
         mobileOnly && "sm:hidden",
       )}

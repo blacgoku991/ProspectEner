@@ -43,6 +43,11 @@
 
   --color-sky-soft: #cfe8f3;
 
+  /* Surfaces sémantiques : cartes et champs, blocs toujours sombres, survol du bouton principal. */
+  --color-surface: #ffffff;
+  --color-night: #07110f;
+  --color-btn-hover: #136253;
+
   --radius-xl2: 1.25rem;
   --radius-3xl2: 1.75rem;
 
@@ -87,6 +92,9 @@
   :root {
     color-scheme: light;
     --page-bg: var(--color-sand-50);
+  }
+  :root:not(:has(.theme-light)) {
+    color-scheme: dark;
   }
 
   html {
@@ -137,13 +145,13 @@
   @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all duration-200 select-none disabled:cursor-not-allowed disabled:opacity-60;
 }
 @utility btn-primary {
-  @apply btn bg-pine-600 text-white shadow-[0_10px_30px_-10px_rgb(20_122_101/0.7)] hover:bg-pine-700 hover:shadow-[0_14px_36px_-10px_rgb(20_122_101/0.8)] active:scale-[0.98];
+  @apply btn bg-pine-600 text-white shadow-[0_10px_30px_-10px_rgb(20_122_101/0.7)] hover:bg-btn-hover hover:shadow-[0_14px_36px_-10px_rgb(20_122_101/0.8)] active:scale-[0.98];
 }
 @utility btn-warm {
   @apply btn bg-ember-500 text-white shadow-[0_10px_30px_-10px_rgb(249_122_43/0.7)] hover:bg-ember-600 active:scale-[0.98];
 }
 @utility btn-ghost {
-  @apply btn border border-ink-900/10 bg-white/70 text-ink-800 backdrop-blur hover:border-ink-900/20 hover:bg-white;
+  @apply btn border border-ink-900/10 bg-surface/70 text-ink-800 backdrop-blur hover:border-ink-900/20 hover:bg-surface;
 }
 @utility btn-dark {
   @apply btn bg-ink-900 text-white hover:bg-ink-800 active:scale-[0.98];
@@ -154,17 +162,17 @@
 
 @layer components {
   .card {
-    @apply rounded-3xl border border-ink-900/[0.06] bg-white shadow-soft;
+    @apply rounded-3xl border border-ink-900/[0.06] bg-surface shadow-soft;
   }
   .glass {
-    @apply border border-white/50 bg-white/60 backdrop-blur-xl;
+    @apply border border-white/50 bg-surface/60 backdrop-blur-xl;
   }
 
   .field-label {
     @apply mb-1.5 block text-sm font-medium text-ink-800;
   }
   .field-input {
-    @apply w-full rounded-xl border border-ink-900/15 bg-white px-4 py-3 text-base text-ink-900 shadow-sm transition outline-none placeholder:text-ink-400 focus:border-pine-500 focus:ring-4 focus:ring-pine-500/15 aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-red-500/10;
+    @apply w-full rounded-xl border border-ink-900/15 bg-surface px-4 py-3 text-base text-ink-900 shadow-sm transition outline-none placeholder:text-ink-400 focus:border-pine-500 focus:ring-4 focus:ring-pine-500/15 aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-red-500/10;
   }
   .field-help {
     @apply mt-1.5 text-sm text-ink-500;
@@ -209,4 +217,47 @@
   .grain {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
+}
+
+/*
+ * Site public en mode sombre : les teintes sont réaffectées, les composants gardent leurs classes.
+ * L'administration reste claire (conteneur .theme-light).
+ */
+:root:not(:has(.theme-light)) {
+  --color-surface: #111b18;
+  --color-night: #060c0a;
+  --color-btn-hover: #1b8f74;
+
+  --color-sand-50: #0b1311;
+  --color-sand-100: #101a17;
+  --color-sand-200: #16231f;
+  --color-sand-300: #213029;
+
+  --color-ink-950: #f2f6f4;
+  --color-ink-900: #e4ece8;
+  --color-ink-800: #cfdad5;
+  --color-ink-700: #b3c3bc;
+  --color-ink-600: #97aaa3;
+  --color-ink-500: #7f948c;
+  --color-ink-400: #647870;
+  --color-ink-300: #4a5c55;
+
+  --color-pine-50: #0e2822;
+  --color-pine-100: #12382f;
+  --color-pine-200: #1a4c40;
+  --color-pine-700: #5ccaa9;
+  --color-pine-800: #84d9bf;
+  --color-pine-900: #b6eadb;
+
+  --color-sky-soft: #173b4a;
+  --color-amber-50: #261c08;
+  --color-amber-100: #36270b;
+  --color-amber-700: #f7b955;
+  --color-amber-900: #fde3a7;
+  --color-amber-950: #fff1cc;
+  --color-red-50: #2a1212;
+  --color-red-700: #fca5a5;
+
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.35), 0 12px 32px -14px rgb(0 0 0 / 0.65);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.35), 0 24px 48px -16px rgb(0 0 0 / 0.75);
 }

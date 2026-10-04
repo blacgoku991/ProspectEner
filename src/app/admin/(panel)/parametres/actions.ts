@@ -11,6 +11,7 @@ import { requestContext } from "@/lib/request-context";
 import { applyRetention } from "@/lib/retention";
 import { saveSettings, notificationTransports } from "@/lib/settings";
 import { ACTIVITY_KINDS, type SiteSettings, siteSettingsSchema } from "@/lib/settings-schema";
+import { webhookBody } from "@/lib/notifications/webhook-format";
 
 export interface SettingsState {
   error?: string;
@@ -170,7 +171,14 @@ export async function testNotificationAction(_prev: SettingsState): Promise<Sett
   }
   if (n.webhookUrl && transports.webhook) {
     try {
-      await t.postWebhook({ url: n.webhookUrl, body: { event: "test", sentAt: new Date().toISOString() } });
+      await t.postWebhook({
+        url: n.webhookUrl,
+        body: webhookBody(
+          n.webhookUrl,
+          { event: "test", sentAt: new Date().toISOString() },
+          "Test de notification : les nouvelles demandes arriveront ici (référence et lien, sans donnée personnelle).",
+        ),
+      });
       results.push("webhook : envoyé");
     } catch (e) {
       results.push(`webhook : échec (${errorCode(e)})`);

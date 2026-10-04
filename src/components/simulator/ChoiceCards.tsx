@@ -36,7 +36,7 @@ export function SingleChoice<T extends string>({ options, value, onSelect, label
             aria-pressed={selected}
             onClick={() => onSelect(o.value)}
             className={cn(
-              "group relative flex w-full items-center gap-3.5 rounded-2xl border-2 bg-white text-left transition-all duration-200",
+              "group relative flex w-full items-center gap-3.5 rounded-2xl border-2 bg-surface text-left transition-all duration-200",
               compact ? "px-4 py-3" : "px-4 py-4 sm:px-5",
               selected
                 ? "border-pine-500 bg-pine-50 shadow-glow"
@@ -102,7 +102,7 @@ export function MultiChoice<T extends string>({ options, values, onChange, label
             aria-checked={selected}
             onClick={() => toggle(o.value)}
             className={cn(
-              "group flex w-full items-center gap-3.5 rounded-2xl border-2 bg-white px-4 py-4 text-left transition-all duration-200 sm:px-5",
+              "group flex w-full items-center gap-3.5 rounded-2xl border-2 bg-surface px-4 py-4 text-left transition-all duration-200 sm:px-5",
               selected ? "border-pine-500 bg-pine-50 shadow-glow" : "border-ink-900/[0.08] hover:-translate-y-0.5 hover:border-pine-300 hover:shadow-soft",
             )}
           >

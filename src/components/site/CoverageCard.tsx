@@ -16,7 +16,7 @@ export function CoverageCard({
   headingLevel?: "h3" | "h4";
 }) {
   return (
-    <div className={cn("rounded-2xl border border-ink-900/[0.07] bg-white p-5", className)}>
+    <div className={cn("rounded-2xl border border-ink-900/[0.07] bg-surface p-5", className)}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Heading className="font-semibold text-ink-900">{c.name}</Heading>
         <span className="badge bg-ink-900/[0.06] text-ink-700">{c.kind}</span>

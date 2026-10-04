@@ -148,7 +148,7 @@ export default async function AidPage({ params }: Props) {
           </div>
         )}
         {works.excluded.length > 0 && (
-          <details className="group rounded-2xl border border-ink-900/[0.07] bg-white px-5 py-4">
+          <details className="group rounded-2xl border border-ink-900/[0.07] bg-surface px-5 py-4">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold text-ink-900">
               <h3>Travaux non couverts ({works.excluded.length})</h3>
               <ChevronDown className="size-4 shrink-0 text-ink-500 transition group-open:rotate-180" aria-hidden />

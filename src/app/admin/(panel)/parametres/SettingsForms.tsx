@@ -175,7 +175,12 @@ export function NotificationsForm({ s, transports }: { s: SiteSettings; transpor
           Destinataires e-mail (séparés par des virgules)
           <input name="emailRecipients" defaultValue={s.notifications.emailRecipients.join(", ")} className="field-input mt-1 py-2.5 text-sm" />
         </label>
-        <Input name="webhookUrl" label="URL du webhook (HTTPS)" value={s.notifications.webhookUrl} help="Requête POST signée (en-tête x-prospectener-signature, HMAC-SHA256)." />
+        <Input
+          name="webhookUrl"
+          label="URL du webhook (HTTPS)"
+          value={s.notifications.webhookUrl}
+          help="Alerte sur téléphone : collez l'URL d'un webhook Discord ou Slack, ou https://api.telegram.org/bot<jeton>/sendMessage?chat_id=<identifiant> pour Telegram. Autre outil : requête POST signée (en-tête x-prospectener-signature, HMAC-SHA256)."
+        />
         <Check name="notifyOnCancellation" label="Notifier aussi les annulations" checked={s.notifications.notifyOnCancellation} />
       </SectionForm>
       <div className="flex flex-wrap items-center gap-3 border-t border-ink-900/[0.06] pt-4">

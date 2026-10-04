@@ -31,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#fbfaf7",
+  themeColor: "#0b1311",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

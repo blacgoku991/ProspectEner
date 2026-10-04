@@ -33,7 +33,7 @@ export function AidExplorer({ tabs, ruleSetLabel }: { tabs: ExplorerTab[]; ruleS
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[1.05fr_1fr]">
-      <div className="relative flex min-h-[360px] flex-col overflow-hidden rounded-[2rem] bg-gradient-to-br from-pine-50 via-sand-100 to-[#fff3e2] shadow-soft sm:h-[480px] lg:sticky lg:top-28 lg:h-[540px]">
+      <div className="relative flex min-h-[360px] flex-col overflow-hidden rounded-[2rem] bg-gradient-to-br from-pine-50 via-sand-100 to-sand-200 shadow-soft sm:h-[480px] lg:sticky lg:top-28 lg:h-[540px]">
         <div className="relative min-h-[240px] flex-1">
           <HouseHero focus={active} lazy className="absolute inset-0 aspect-auto" />
         </div>
@@ -51,7 +51,7 @@ export function AidExplorer({ tabs, ruleSetLabel }: { tabs: ExplorerTab[]; ruleS
                 onClick={() => setActive(t.focus)}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold shadow-sm backdrop-blur transition",
-                  selected ? "bg-ink-900 text-white" : "bg-white/80 text-ink-800 hover:bg-white",
+                  selected ? "bg-ink-900 text-sand-50" : "bg-surface/80 text-ink-800 hover:bg-surface",
                 )}
               >
                 <Icon className="size-4" aria-hidden />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { clearConsent } from "@/lib/consent";
 
 export function ClearLocalData() {
   const [done, setDone] = useState(false);
@@ -16,12 +17,13 @@ export function ClearLocalData() {
           } catch {
             // stockage indisponible
           }
+          clearConsent();
           setDone(true);
         }}
       >
         Effacer les données enregistrées dans ce navigateur
       </button>
-      {done && <span role="status" className="text-sm text-pine-700">Réponses et paramètres de session effacés.</span>}
+      {done && <span role="status" className="text-sm text-pine-700">Réponses, origine de la visite et choix sur les cookies effacés.</span>}
     </div>
   );
 }

@@ -82,7 +82,7 @@ function CancelForm({ initialRef, initialToken }: { initialRef: string; initialT
         Je m&apos;oppose à être recontacté(e) à l&apos;avenir (mon numéro ou mon adresse est ajouté, sous forme d&apos;empreinte non réversible, à la liste d&apos;opposition).
       </label>
       {message && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{message}</p>}
-      <button type="submit" disabled={state === "sending"} className="btn bg-red-600 text-white hover:bg-red-700">
+      <button type="submit" disabled={state === "sending"} className="btn bg-red-600 text-white hover:bg-red-500">
         {state === "sending" && <Loader2 className="size-4 animate-spin" aria-hidden />}
         Annuler ma demande de contact
       </button>

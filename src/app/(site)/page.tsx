@@ -161,7 +161,6 @@ export default async function HomePage() {
                 </li>
               ))}
             </ul>
-            <IndependenceBadge />
           </div>
 
           <div className="relative h-[260px] sm:h-[420px] lg:h-[520px]">
@@ -190,7 +189,7 @@ export default async function HomePage() {
       </section>
 
       {/* ─── Travaux ───────────────────────────────────────────────────────── */}
-      <section id="travaux" className="scroll-mt-28 border-y border-ink-900/[0.06] bg-white/60 py-16 sm:py-24" aria-labelledby="travaux-titre">
+      <section id="travaux" className="scroll-mt-28 border-y border-ink-900/[0.06] bg-surface/60 py-16 sm:py-24" aria-labelledby="travaux-titre">
         <div className="container-page">
           <div className="mb-10 max-w-2xl">
             <h2 id="travaux-titre" className="text-3xl font-bold text-ink-950 sm:text-4xl">
@@ -256,7 +255,7 @@ export default async function HomePage() {
         <h2 id="faq-titre" className="mb-8 text-3xl font-bold text-ink-950">
           Questions fréquentes
         </h2>
-        <div className="divide-y divide-ink-900/[0.07] rounded-3xl border border-ink-900/[0.07] bg-white">
+        <div className="divide-y divide-ink-900/[0.07] rounded-3xl border border-ink-900/[0.07] bg-surface">
           {FAQ.map(({ q, a }) => (
             <details key={q} className="group px-5 sm:px-6">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-semibold text-ink-900">
@@ -273,14 +272,14 @@ export default async function HomePage() {
 
       {/* ─── Appel final ───────────────────────────────────────────────────── */}
       <section className="container-page">
-        <div className="relative overflow-hidden rounded-[2rem] bg-ink-900 px-6 py-12 text-white sm:px-12">
+        <div className="relative overflow-hidden rounded-[2rem] bg-pine-950 px-6 py-12 text-white sm:px-12">
           <div aria-hidden className="absolute -right-24 -top-24 size-80 rounded-full bg-pine-500/30 blur-3xl" />
           <div className="relative flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
             <div>
               <h2 className="text-3xl font-bold">Prêt(e) à y voir plus clair ?</h2>
               <p className="mt-2 max-w-xl text-white/75">Résultat immédiat, sans inscription et sans engagement.</p>
             </div>
-            <Link href="/simulation" className="btn bg-white px-7 py-4 text-base text-ink-900 hover:bg-sand-100">
+            <Link href="/simulation" className="btn bg-white px-7 py-4 text-base text-pine-950 hover:bg-white/90">
               Commencer le test
               <ArrowRight className="size-5" aria-hidden />
             </Link>

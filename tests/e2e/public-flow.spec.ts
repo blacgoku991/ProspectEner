@@ -54,9 +54,11 @@ test.describe("parcours public complet", () => {
     await page.getByLabel("Numéro de téléphone").fill("06 98 76 54 32");
     const confirm = page.getByRole("checkbox", { name: /Je demande à être contacté\(e\) par Rénovation Test E2E, par téléphone/ });
     await expect(confirm).not.toBeChecked();
-    await expect(page.getByText(/Responsable du traitement : Rénovation Test E2E/)).toBeVisible();
-    // Mise en relation déclarée : la notice annonce la transmission, limitée au rendez-vous accepté.
-    await expect(page.getByText(/Si vous acceptez un rendez-vous, l'entreprise qui réalise l'étude et les travaux reçoit vos coordonnées/)).toBeVisible();
+    // Information courte sous le formulaire, le détail étant dans la politique de confidentialité.
+    await expect(page.getByText(/Rénovation Test E2E utilise vos coordonnées et vos réponses uniquement pour répondre à votre demande/)).toBeVisible();
+    // Mise en relation déclarée : la transmission à l'entreprise des travaux est annoncée.
+    await expect(page.getByText(/si vous acceptez un rendez-vous, l'entreprise qui réalise les travaux les reçoit/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "voir la politique de confidentialité" })).toHaveAttribute("href", "/confidentialite");
     await page.waitForTimeout(2600);
     await confirm.check();
     await page.getByRole("button", { name: "Envoyer ma demande" }).dblclick();

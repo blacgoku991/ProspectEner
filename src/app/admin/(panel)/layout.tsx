@@ -28,7 +28,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     </div>
   );
   return (
-    <div className="min-h-dvh bg-sand-100 lg:grid lg:grid-cols-[260px_1fr]">
+    <div className="theme-light min-h-dvh bg-sand-100 text-ink-900 lg:grid lg:grid-cols-[260px_1fr]">
       <aside className="hidden h-dvh flex-col justify-between gap-6 bg-ink-950 p-4 lg:sticky lg:top-0 lg:flex">
         <div className="space-y-6">
           <Link href="/admin" className="flex items-center gap-2.5 px-2 pt-2 font-display text-lg font-bold text-white">

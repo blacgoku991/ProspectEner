@@ -13,7 +13,7 @@ export function FranceRenovNotice({ className, tone = "light" }: { className?: s
       aria-label="Information du service public France Rénov'"
       className={cn(
         "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
-        tone === "light" ? "border-sky-soft bg-[#eef7fb] text-ink-800" : "border-white/15 bg-white/5 text-white/85",
+        tone === "light" ? "border-sky-soft bg-sky-soft/40 text-ink-800" : "border-white/15 bg-white/5 text-white/85",
         className,
       )}
     >

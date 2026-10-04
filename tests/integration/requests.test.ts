@@ -35,7 +35,7 @@ describe("création d'une demande de contact", () => {
     expect(row.requestSentence).toBe(
       "Je demande à être contacté(e) par Entreprise Test, par téléphone, au sujet de mon projet de pompe à chaleur air/eau.",
     );
-    expect(row.noticeText.content).toContain("Responsable du traitement : Entreprise Test");
+    expect(row.noticeText.content).toContain("Entreprise Test utilise vos coordonnées et vos réponses uniquement pour répondre à votre demande");
     expect(row.callbackDeadline).not.toBeNull();
     expect(row.cancelTokenHash).not.toBeNull();
     expect(row.ipHash).toMatch(/^[a-f0-9]{32}$/);

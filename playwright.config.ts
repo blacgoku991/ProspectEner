@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_BASE_URL, E2E_ENV, E2E_PORT } from "./tests/e2e/config";
+import { CONSENT_STATE_PATH, E2E_BASE_URL, E2E_ENV, E2E_PORT } from "./tests/e2e/config";
 
 /**
  * Tests de bout en bout : application compilée (next build + next start) sur une base dédiée.
@@ -16,6 +16,7 @@ export default defineConfig({
   globalSetup: "./tests/e2e/global-setup.ts",
   use: {
     baseURL: E2E_BASE_URL,
+    storageState: CONSENT_STATE_PATH,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     launchOptions: { executablePath, args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },

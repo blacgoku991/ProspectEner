@@ -1,4 +1,4 @@
-import { partnerList, referralEnabled, type SiteSettings } from "../settings-schema";
+import { referralEnabled, type SiteSettings } from "../settings-schema";
 
 /**
  * Textes présentés au visiteur. Fonctions pures partagées entre le navigateur et le serveur :
@@ -44,30 +44,23 @@ function months(n: number): string {
 }
 
 /**
- * Information préalable à l'envoi (art. 13 RGPD). Chaque paragraphe est séparé par une ligne vide.
+ * Information préalable à l'envoi (art. 13 RGPD), en deux niveaux : l'essentiel sous le formulaire,
+ * le détail (identité complète, base légale, durées, droits) dans la politique de confidentialité.
+ * Chaque paragraphe est séparé par une ligne vide ; le texte exact est conservé comme preuve.
  */
 export function buildContactNotice(s: SiteSettings): string {
-  const c = s.company;
-  const controller = [c.name, c.legalForm].filter(Boolean).join(", ");
-  const contactForRights = c.privacyContact || c.email || "l'adresse indiquée dans les mentions légales";
-  const r = s.retention;
-  // Mise en relation déclarée : un rendez-vous accepté peut être assuré par l'entreprise qui réalise les travaux, avec l'accord de la personne.
   const referral = referralEnabled(s);
-  const partnersListed = partnerList(s).length > 0;
   return [
-    `Responsable du traitement : ${controller}${c.address ? `, ${c.address}` : ""}.`,
-    referral
-      ? "Finalité : répondre à votre demande de contact, étudier votre projet de rénovation énergétique et, si vous l'acceptez, organiser votre rendez-vous avec l'entreprise qui réalise l'étude et les travaux. Vos réponses au questionnaire et le résultat indicatif sont joints à votre demande."
-      : "Finalité : répondre à votre demande de contact et étudier votre projet de rénovation énergétique. Vos réponses au questionnaire et le résultat indicatif sont joints à votre demande.",
-    "Base légale : mesures précontractuelles prises à votre demande (article 6.1.b du RGPD).",
-    referral
-      ? `Destinataires : les seules personnes habilitées de ${c.name} et ses prestataires techniques (hébergement, messagerie), tenus à la confidentialité. Si vous acceptez un rendez-vous, l'entreprise qui réalise l'étude et les travaux reçoit vos coordonnées et votre projet ; son nom vous est indiqué avant${partnersListed ? " (voir la politique de confidentialité)" : ""}. Vos données ne sont jamais vendues ni transmises à d'autres entreprises. Aucune démarche n'est effectuée en votre nom auprès d'un organisme public.`
-      : `Destinataires : les seules personnes habilitées de ${c.name} et ses prestataires techniques (hébergement, messagerie), tenus à la confidentialité. Vos données ne sont ni vendues, ni transmises à des partenaires. Aucune démarche n'est effectuée en votre nom auprès d'un organisme public.`,
-    `Durée de conservation : ${months(r.requestMonths)} à compter de votre demande ou de votre dernier contact. En cas d'annulation, vos coordonnées sont effacées sous ${r.cancelledRequestDays} jours ; la preuve de votre demande (date, texte accepté, empreinte non réversible de vos coordonnées) est conservée ${months(r.proofMonths)}.`,
-    `Vos droits : accès, rectification, effacement, limitation et opposition, en écrivant à ${contactForRights}. Vous pouvez introduire une réclamation auprès de la CNIL (www.cnil.fr).`,
-    "Cette demande ne vaut pas inscription à une lettre d'information ni accord pour d'autres sollicitations commerciales. Vous pourrez l'annuler à tout moment grâce au lien fourni après l'envoi.",
+    `${s.company.name} utilise vos coordonnées et vos réponses uniquement pour répondre à votre demande et étudier votre projet de rénovation énergétique${
+      referral ? " ; si vous acceptez un rendez-vous, l'entreprise qui réalise les travaux les reçoit, son nom vous étant indiqué avant" : ""
+    }.`,
+    "Elles ne sont jamais vendues, ni utilisées pour une newsletter ou d'autres sollicitations : vous pouvez annuler votre demande à tout moment.",
+    `Durée de conservation (${months(s.retention.requestMonths)} au plus), base légale et exercice de vos droits (accès, effacement, opposition, réclamation auprès de la CNIL) : ${PRIVACY_LINK_TEXT}.`,
   ].join("\n\n");
 }
+
+/** Fin de la notice, affichée comme lien vers la politique de confidentialité. */
+export const PRIVACY_LINK_TEXT = "voir la politique de confidentialité";
 
 /** Texte de la notice d'information découpé pour l'affichage. */
 export function noticeParagraphs(notice: string): string[] {
