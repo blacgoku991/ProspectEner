@@ -61,3 +61,28 @@ export function useInView(ref: RefObject<Element | null>, rootMargin = "160px 0p
   }, [ref, rootMargin]);
   return inView;
 }
+
+/** Devient vrai la première fois que l'élément approche de la fenêtre (chargement différé), puis le reste. */
+export function useSeenOnce(ref: RefObject<Element | null>, enabled: boolean, rootMargin = "400px 0px"): boolean {
+  const [seen, setSeen] = useState(!enabled);
+  useEffect(() => {
+    const element = ref.current;
+    if (!enabled || !element) return;
+    if (typeof IntersectionObserver === "undefined") {
+      const id = window.setTimeout(() => setSeen(true), 0);
+      return () => window.clearTimeout(id);
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setSeen(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref, enabled, rootMargin]);
+  return seen;
+}

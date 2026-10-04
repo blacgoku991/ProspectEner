@@ -2,6 +2,7 @@ import { CalendarClock, PhoneCall } from "lucide-react";
 import Link from "next/link";
 import { TERRITORY_LABELS, WORK_CATEGORY_LABELS } from "@/engine";
 import type { Territory, WorkCategory } from "@/engine/types";
+import { SecurityOverview } from "@/components/admin/SecurityOverview";
 import { Alert, BarList, Panel, PageHeader, StatTile } from "@/components/admin/ui";
 import { buildRequestWhere, callbackState } from "@/lib/admin/requests";
 import { requestScope, requireStaff } from "@/lib/auth/guards";
@@ -118,6 +119,12 @@ export default async function DashboardPage() {
         <StatTile label="Rappels à échéance (≤ 2 jours)" value={soon} tone={soon > 0 ? "warning" : "default"} href="/admin/demandes?deadline=soon&sort=deadline" />
         <StatTile label="Délais de rappel dépassés" value={overdue} tone={overdue > 0 ? "critical" : "default"} href="/admin/demandes?deadline=overdue" />
       </div>
+
+      {user.role === "ADMIN" && (
+        <div className="mt-6">
+          <SecurityOverview />
+        </div>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
         <Panel

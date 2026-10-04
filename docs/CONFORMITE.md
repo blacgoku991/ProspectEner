@@ -113,13 +113,15 @@ Mesures implémentées :
   - TOTP RFC 6238 obligatoire pour les administrateurs (et par défaut pour les collaborateurs), avec anti-rejeu ;
   - secret TOTP chiffré AES-256-GCM ;
   - codes de récupération hachés à usage unique, affichés une seule fois ;
-  - activation de compte par lien à usage unique (72 h).
+  - activation de compte par lien à usage unique (72 h) ;
+  - mots de passe : 12 caractères minimum, refus des mots de passe courants (même déguisés : chiffres, symboles, « leet ») et de ceux qui figurent dans des fuites publiques. La vérification passe par Have I Been Pwned en k-anonymat : seuls 5 caractères de l'empreinte SHA-1 quittent le serveur. Elle se désactive avec `PASSWORD_BREACH_CHECK=off` et, si le service ne répond pas, la saisie n'est pas bloquée.
 - **Sessions** :
   - jeton aléatoire de 256 bits stocké haché ;
   - cookie `__Host-` HttpOnly, Secure, SameSite=Strict ;
   - inactivité de 30 min, durée absolue de 12 h ;
   - rotation après le second facteur ;
-  - révocation des autres sessions au changement de mot de passe.
+  - révocation des autres sessions au changement de mot de passe (et de toutes les sessions à l'activation d'un compte) ;
+  - déconnexion automatique côté navigateur après 30 min sans activité, tous onglets confondus : un écran laissé ouvert n'affiche pas indéfiniment des données personnelles. Une activité réelle prolonge la session.
 - **Autorisations côté serveur** sur chaque page, action et route. Le proxy n'est qu'un premier filtre. Le périmètre des collaborateurs est appliqué dans les requêtes ; une fiche hors périmètre renvoie 404 et l'accès refusé est journalisé.
 - **Protection des formulaires et des API** :
   - validation Zod stricte (champs inconnus refusés, longueurs bornées) sur toutes les entrées ;
@@ -127,7 +129,7 @@ Mesures implémentées :
   - vérification d'origine sur les API publiques ; protection CSRF native des Server Actions.
 - **Anti-abus** :
   - limitation de débit en base (demandes, annulations, connexions, double authentification, exports, statistiques) ;
-  - verrouillage du compte après 10 échecs ;
+  - verrouillage du compte après 10 échecs, mot de passe et second facteur confondus. Le compteur n'est remis à zéro qu'après une authentification complète. Au-delà, 8 codes par 10 minutes et 30 par jour au maximum. Un verrouillage dû au second facteur ferme toutes les sessions du compte ;
   - champ piège et durée minimale de remplissage ;
   - Turnstile en option.
 - **Idempotence.** Une clé générée par le navigateur et une contrainte d'unicité font qu'un double clic ou un renvoi réseau restitue la même demande. Ce comportement est testé avec deux envois simultanés.
@@ -135,10 +137,12 @@ Mesures implémentées :
   - CSP avec nonce par requête (`strict-dynamic`, `frame-ancestors 'none'`, `object-src 'none'`) ;
   - HSTS, X-Frame-Options et nosniff ;
   - Referrer-Policy et Permissions-Policy ;
-  - `noindex` et `no-store` sur l'administration.
+  - `noindex`, `no-store` et `Cross-Origin-Resource-Policy: same-origin` sur l'administration et les API ;
+  - `X-Permitted-Cross-Domain-Policies: none`.
 - **Journalisation** :
   - journal applicatif sans donnée personnelle (liste blanche de champs techniques) ;
-  - journal d'audit des accès sensibles et des exports.
+  - journal d'audit des accès sensibles et des exports ;
+  - encart « Sécurité » du tableau de bord (administrateurs), sur 7 jours : échecs de connexion et de second facteur, verrouillages, accès refusés, sessions ouvertes, comptes sans double authentification.
 - **Export CSV** :
   - réservé aux administrateurs et aux collaborateurs explicitement autorisés ;
   - neutralisation des formules (`=`, `+`, `-`, `@`, tabulation) ;

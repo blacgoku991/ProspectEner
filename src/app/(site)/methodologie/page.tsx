@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/site/LegalPage";
 import { DISPOSITIF_INFO, ENGINE_VERSION, formatEuros, type DispositifId } from "@/engine";
-import { getPublishedRuleSet } from "@/lib/rulesets";
+import { pageMetadata } from "@/lib/seo";
+import { publishedRules } from "@/lib/site-data";
 
-export const metadata: Metadata = {
-  title: "Méthode et sources",
-  description: "Comment fonctionne le simulateur de pré-éligibilité : dispositifs évalués, règles, sources officielles, limites.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const rules = (await publishedRules()).data;
+  return pageMetadata({
+    title: `Méthode, sources et plafonds de ressources ${rules.incomeCeilings.year}`,
+    description: `Comment fonctionne le simulateur : dispositifs évalués, sources officielles, limites, et plafonds de ressources ${rules.incomeCeilings.year} (Île-de-France et autres régions).`,
+    path: "/methodologie",
+  });
+}
 
 const fmt = (iso: string | null) =>
   iso ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`)) : "—";
@@ -14,7 +19,7 @@ const fmt = (iso: string | null) =>
 const VERIFICATION = { VERIFIED: "Vérifiées", PARTIAL: "Vérifiées partiellement", UNVERIFIED: "Non vérifiées (conclusion désactivée)" } as const;
 
 export default async function MethodologyPage() {
-  const ruleSet = await getPublishedRuleSet();
+  const ruleSet = await publishedRules();
   const r = ruleSet.data;
   const ids = Object.keys(r.dispositifs) as DispositifId[];
   return (
@@ -56,7 +61,9 @@ export default async function MethodologyPage() {
         );
       })}
 
-      <h2>Plafonds de ressources {r.incomeCeilings.year}</h2>
+      <h2 id="plafonds" className="scroll-mt-28">
+        Plafonds de ressources {r.incomeCeilings.year}
+      </h2>
       <p>
         Revenu fiscal de référence du ménage, plafonds inclus. {r.incomeCeilings.rfrNote} Source :{" "}
         {r.incomeCeilings.sources.map((s, i) => (

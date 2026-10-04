@@ -1,14 +1,21 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Field, LegalPage } from "@/components/site/LegalPage";
-import { getSettings } from "@/lib/settings";
+import { siteSettings } from "@/lib/site-data";
 
-export const metadata: Metadata = { title: "Politique de confidentialité" };
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Politique de confidentialité",
+    description: "Données collectées, finalités, durées de conservation et droits des personnes : comment vos informations sont traitées.",
+    path: "/confidentialite",
+  });
+}
 
 const duration = (months: number) => (months % 12 === 0 ? `${months / 12} an${months / 12 > 1 ? "s" : ""}` : `${months} mois`);
 
 export default async function ConfidentialitePage() {
-  const s = await getSettings();
+  const s = await siteSettings();
   const c = s.company;
   const r = s.retention;
   const rights = c.privacyContact || c.email;

@@ -16,4 +16,6 @@ export interface HouseSceneProps {
 export interface HouseHeroProps {
   focus?: HouseFocus;
   className?: string;
+  /** Charge la scène 3D seulement à l'approche de l'écran (visuel placé bas dans la page). */
+  lazy?: boolean;
 }

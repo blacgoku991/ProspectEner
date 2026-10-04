@@ -2,11 +2,16 @@ import type { Metadata } from "next";
 import { IndependenceBadge } from "@/components/site/IndependenceBadge";
 import { QuickCallback } from "@/components/simulator/QuickCallback";
 import { getPublicConfig } from "@/lib/public-config";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Être recontacté",
-  description: "Pas le temps de remplir le questionnaire ? Indiquez votre projet et le canal de réponse souhaité.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Être recontacté(e) pour votre projet de rénovation énergétique",
+    description:
+      "Pas le temps de faire le test ? Indiquez où se situe votre logement et ce que vous envisagez : un conseiller vous recontacte par le canal de votre choix, sans engagement.",
+    path: "/rappel",
+  });
+}
 
 export default async function QuickCallbackPage() {
   const { config } = await getPublicConfig();

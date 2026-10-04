@@ -2,7 +2,9 @@ import { LogOut, Menu } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { IdleGuard } from "@/components/admin/IdleGuard";
 import { requireStaff } from "@/lib/auth/guards";
+import { SESSION_IDLE_MS } from "@/lib/auth/session";
 import { logoutAction } from "../(auth)/actions";
 
 export const metadata: Metadata = { title: { default: "Administration", template: "%s · Administration" }, robots: { index: false, follow: false } };
@@ -54,6 +56,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         )}
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
       </div>
+      <IdleGuard idleMs={SESSION_IDLE_MS} />
     </div>
   );
 }

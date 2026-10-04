@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { CancelRequest } from "@/components/simulator/CancelRequest";
 
-export const metadata: Metadata = { title: "Annuler une demande", robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    ...(await pageMetadata({ title: "Annuler une demande", description: "Annuler une demande de contact envoyée depuis ce site.", path: "/annulation" })),
+    robots: { index: false, follow: false },
+  };
+}
 
 export default function CancelPage() {
   return (

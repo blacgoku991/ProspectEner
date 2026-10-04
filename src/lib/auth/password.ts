@@ -45,7 +45,31 @@ export async function verifyPassword(password: string, stored: string | null | u
   return derived.length === expected.length && timingSafeEqual(derived, expected);
 }
 
-/** Politique de mot de passe : longueur avant tout (recommandations CNIL / ANSSI). */
+/**
+ * Mots de base les plus fréquents des mots de passe divulgués (listes publiques, adaptées au français) :
+ * « Motdepasse2026! » ou « Azertyuiop1? » respectent les règles de longueur mais se devinent en quelques essais.
+ */
+const COMMON_BASES = new Set([
+  "password", "motdepasse", "azerty", "azertyuiop", "qwerty", "qwertyuiop", "qwertz", "admin", "administrateur", "administrator",
+  "root", "bonjour", "bonsoir", "soleil", "welcome", "bienvenue", "letmein", "iloveyou", "jetaime", "changeme", "secret", "motdepassesecret",
+  "football", "dragon", "monkey", "sunshine", "princess", "marseille", "paris", "france", "abc", "abcdef", "abcdefgh", "abcdefghijkl",
+  "test", "testtest", "utilisateur", "user", "login", "connexion", "prospectener", "renovation", "simulateur", "maprimerenov",
+]);
+
+const LEET: Record<string, string> = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", $: "s", "!": "i" };
+
+/** Partie « mot » d'un mot de passe : minuscules, sans accents, chiffres « leet » convertis, sans séparateurs. */
+export function passwordCore(password: string): string {
+  const lower = password.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  // Chiffres et symboles ajoutés au début ou à la fin (« 2026! ») : ils ne font pas partie du mot.
+  const trimmed = lower.replace(/^[^a-z]+|[^a-z]+$/g, "");
+  return [...trimmed]
+    .map((c) => LEET[c] ?? c)
+    .join("")
+    .replace(/[^a-z]/g, "");
+}
+
+/** Politique de mot de passe : longueur avant tout (recommandations CNIL / ANSSI), sans mot de passe courant. */
 export function passwordPolicyError(password: string, email?: string): string | null {
   if (password.length < 12) return "Le mot de passe doit contenir au moins 12 caractères.";
   if (password.length > 200) return "Le mot de passe est trop long.";
@@ -53,9 +77,13 @@ export function passwordPolicyError(password: string, email?: string): string | 
   if (password.length < 16 && classes < 3) {
     return "Utilisez au moins 3 types de caractères (minuscules, majuscules, chiffres, symboles) ou une phrase de passe de 16 caractères ou plus.";
   }
-  if (email && password.toLowerCase().includes(email.split("@")[0]!.toLowerCase())) {
+  const local = email?.split("@")[0]?.toLowerCase();
+  if (local && local.length >= 3 && password.toLowerCase().includes(local)) {
     return "Le mot de passe ne doit pas contenir votre identifiant.";
   }
-  if (/^(.)\1+$/.test(password)) return "Le mot de passe est trop simple.";
+  if (new Set(password).size <= 3 || (/^\d+$/.test(password) && password.length < 20)) return "Le mot de passe est trop simple.";
+  if (COMMON_BASES.has(passwordCore(password))) {
+    return "Ce mot de passe est trop courant : choisissez une phrase de passe personnelle (plusieurs mots sans lien entre eux, par exemple).";
+  }
   return null;
 }

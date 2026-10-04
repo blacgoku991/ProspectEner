@@ -10,6 +10,7 @@ export const E2E_ENV = {
   CRON_SECRET: "e2e-cron-secret-0123456789abcdef",
   ALLOW_DEMO_DATA: "false",
   TRUSTED_PROXY_HOPS: "0",
+  PASSWORD_BREACH_CHECK: "off",
 };
 
 export const ADMIN = { email: "admin@e2e.invalid", password: "Correct-Horse-Battery-42", totpSecret: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP" };

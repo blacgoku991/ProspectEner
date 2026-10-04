@@ -38,6 +38,11 @@ const schema = z.object({
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
   /** Nombre de proxys de confiance devant l'application (pour lire l'IP client). */
   TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
+  /**
+   * Refus des mots de passe présents dans des fuites connues (service Have I Been Pwned, k-anonymat :
+   * seuls les 5 premiers caractères de l'empreinte SHA-1 sont transmis). « off » pour un environnement sans accès externe.
+   */
+  PASSWORD_BREACH_CHECK: z.enum(["on", "off"]).default("on"),
 });
 
 export type Env = z.infer<typeof schema>;

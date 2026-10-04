@@ -14,5 +14,6 @@ export function applyTestEnv(): void {
     SMTP_HOST: "smtp.test.invalid",
     SMTP_FROM: "notifications@test.invalid",
     NOTIFY_WEBHOOK_SECRET: "test-webhook-secret-0123456789",
+    PASSWORD_BREACH_CHECK: "off",
   });
 }

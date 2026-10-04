@@ -1,7 +1,8 @@
 import "server-only";
+import { cache } from "react";
 import { env } from "./env";
 import { noticeWithHash } from "./legal/notice";
-import { getSettings } from "./settings";
+import { siteSettings } from "./site-data";
 import {
   ACTIVITY_LABELS,
   emailReplyAvailable,
@@ -46,7 +47,8 @@ export function toPublicConfig(s: SiteSettings): PublicConfig {
   };
 }
 
-export async function getPublicConfig(): Promise<{ settings: SiteSettings; config: PublicConfig }> {
-  const settings = await getSettings();
+/** Configuration du site public (lecture mémorisée le temps d'une requête). */
+export const getPublicConfig = cache(async (): Promise<{ settings: SiteSettings; config: PublicConfig }> => {
+  const settings = await siteSettings();
   return { settings, config: toPublicConfig(settings) };
-}
+});

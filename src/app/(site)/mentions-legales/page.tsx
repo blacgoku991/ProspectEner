@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Field, LegalPage } from "@/components/site/LegalPage";
 import { INDEPENDENCE_DISCLAIMER } from "@/lib/legal/texts";
-import { getSettings } from "@/lib/settings";
+import { siteSettings } from "@/lib/site-data";
 import { ACTIVITY_LABELS } from "@/lib/settings-schema";
 
-export const metadata: Metadata = { title: "Mentions légales" };
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({ title: "Mentions légales", description: "Éditeur du site, hébergeur, médiateur de la consommation et informations légales.", path: "/mentions-legales" });
+}
 
 export default async function MentionsLegalesPage() {
-  const s = await getSettings();
+  const s = await siteSettings();
   const c = s.company;
   const missing = [
     !c.name && "dénomination",

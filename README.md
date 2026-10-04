@@ -20,7 +20,16 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
 
 ### Site public
 
-- **Page d'accueil** avec maison 3D procédurale (React Three Fiber, aucun fichier externe), positionnement transparent, mention obligatoire France Rénov' (art. L122-26 du Code de la consommation) et explorateur « travaux → dispositifs » généré à partir du barème publié.
+- **Page d'accueil épurée** : maison 3D procédurale (React Three Fiber, aucun fichier externe), un seul appel à l'action, positionnement transparent, mention obligatoire France Rénov' (art. L122-26 du Code de la consommation), trois étapes, types de travaux, aides évaluées et questions fréquentes.
+- **Guide des aides** (`/aides`), une page par aide (`/aides/…`) et par type de travaux (`/travaux/…`), avec l'explorateur 3D « travaux → dispositifs ». Tout leur contenu est **généré à partir du barème publié** : bénéficiaires, travaux couverts ou non (avec la raison), démarches, bonifications datées, sources officielles. Rien n'est écrit en dur ; si le barème change, les pages suivent.
+- **Référencement** :
+  - titre, description et adresse canonique propres à chaque page ;
+  - image de partage générée (Open Graph) et icône Apple ;
+  - `sitemap.xml` et `robots.txt` dynamiques ;
+  - données structurées schema.org : `WebSite`, `FAQPage`, `BreadcrumbList`, et `Organization` seulement avec l'identité réellement renseignée ;
+  - une seule balise `h1` par page ;
+  - scène 3D chargée à l'approche de l'écran quand elle est en bas de page.
+  - Tant que la check-list de mise en ligne n'est pas complète, les pages restent en `noindex` et le plan du site est vide.
 - **Questionnaire progressif** (une question par écran, étapes Logement / Projet / Énergie / Avancement / Foyer). Les questions sont conditionnelles : on ne demande que ce qui sert aux dispositifs évalués. Par exemple, le revenu n'est pas demandé à un locataire ni pour un projet d'isolation seule.
   - La progression est réelle et recalculée.
   - Retour en arrière sans perte, y compris avec le bouton « précédent » du navigateur et après rechargement (stockage de session).
@@ -71,7 +80,9 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - mot de passe haché avec scrypt (paramètres OWASP) ;
   - **double authentification TOTP obligatoire pour les administrateurs** (et par défaut pour les collaborateurs), avec codes de récupération ;
   - sessions en base avec jeton haché, expiration d'inactivité (30 min) et absolue (12 h), rotation après le second facteur ;
-  - verrouillage après échecs et limitation de débit ;
+  - verrouillage du compte après 10 échecs, mot de passe et second facteur confondus : se reconnecter ne remet pas le compteur à zéro. Plafond de 8 codes par 10 minutes et de 30 par jour. Si c'est le second facteur qui échoue, toutes les sessions du compte sont fermées ;
+  - mots de passe d'au moins 12 caractères, sans mot de passe courant même déguisé (« P@ssw0rd2026! »). Les mots de passe présents dans des fuites publiques sont refusés (Have I Been Pwned par k-anonymat : seuls 5 caractères de l'empreinte SHA-1 sont transmis) ;
+  - déconnexion automatique après 30 minutes sans activité, tous onglets confondus, avec un avertissement une minute avant ;
   - comptes activés par lien à usage unique : aucun mot de passe transmis.
 - **Rôles** : administrateur, ou collaborateur qui ne voit que les demandes qui lui sont assignées et, selon le paramétrage, les demandes non assignées. Contrôles **côté serveur** sur chaque page, action et route.
 - **Tableau de bord** :
@@ -79,7 +90,8 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - rappels proches de l'échéance et délais dépassés ;
   - répartition par travaux, territoire, résultat et statut ;
   - parcours agrégé ;
-  - alertes : check-list de mise en ligne, notifications en échec, barème proche de l'expiration.
+  - alertes : check-list de mise en ligne, notifications en échec, barème proche de l'expiration ;
+  - **encart sécurité** (administrateurs) : échecs de connexion et de second facteur, verrouillages, accès refusés sur 7 jours, sessions ouvertes, comptes sans double authentification.
 - **Liste des demandes** : recherche, filtres (statut, résultat, travaux, canal, assignation, échéance, dates), tri et pagination.
 - **Fiche** :
   - coordonnées et canal demandé ;
@@ -118,8 +130,9 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
 
 ```
 src/
-  engine/            Moteur de pré-éligibilité (pur, testé), questionnaire, barème 2026.10-1
-  app/(site)/        Pages publiques
+  engine/            Moteur de pré-éligibilité (pur, testé), questionnaire, barèmes 2026.10-1 et 2026.10-2
+  app/(site)/        Pages publiques, dont le guide des aides (aides/, travaux/)
+  app/               sitemap.ts, robots.ts, image de partage et icône générées
   app/admin/         Authentification (auth) et panel (panel)
   app/api/           Demandes, annulation, communes, statistiques agrégées, cron, santé
   lib/               Sécurité, sessions, demandes, notifications, conservation, CSV, calendrier…
@@ -168,7 +181,7 @@ Ensuite, dans **Administration → Paramètres** :
 ## Tests
 
 ```bash
-npm test                    # tests unitaires (moteur, seuils, calendrier, CSV)
+npm test                    # tests unitaires (moteur, seuils, calendrier, CSV, pages guides, mots de passe)
 npm run test:integration    # intégration sur une base PostgreSQL de test (TEST_DATABASE_URL)
 npm run test:e2e            # bout en bout : build de production + navigateur (bureau et mobile)
 npm run typecheck && npm run lint

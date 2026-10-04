@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { AuthCard } from "@/components/admin/AuthCard";
 import { SubmitButton } from "@/components/admin/SubmitButton";
 import { getCurrentSession } from "@/lib/auth/guards";
-import { dismissRecoveryCodesAction, readFreshRecoveryCodes } from "../../actions";
+import { readFreshRecoveryCodes } from "@/lib/auth/enrollment";
+import { dismissRecoveryCodesAction } from "../../actions";
 
 export default async function RecoveryCodesPage() {
   const s = await getCurrentSession();

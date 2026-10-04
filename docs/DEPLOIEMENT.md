@@ -35,7 +35,12 @@ Ne jamais activer `ALLOW_DEMO_DATA` en production : l'application refuse de dém
 
 5. Les fonctions s'exécutent à Francfort (`regions` dans `vercel.json`), au plus près de la base.
 6. Tâche planifiée : `vercel.json` déclare `/api/cron`, une fois par jour (limite des offres gratuites). Vercel envoie automatiquement `Authorization: Bearer $CRON_SECRET`. Sur une offre payante, passer à `*/15 * * * *` pour relancer plus vite les notifications en échec. Elles sont de toute façon tentées immédiatement après chaque demande.
-7. Tant que la check-list de mise en ligne n'est pas complète, les pages publiques portent `noindex` : le site n'est pas proposé aux moteurs de recherche.
+7. Tant que la check-list de mise en ligne n'est pas complète, les pages publiques portent `noindex` et `sitemap.xml` est vide : le site n'est pas proposé aux moteurs de recherche.
+8. **Référencement, une fois la check-list complète** :
+   - relier un nom de domaine (Settings → Domains), puis renseigner `APP_URL` avec cette adresse : elle sert aux adresses canoniques, au plan du site et aux images de partage ;
+   - vérifier que le site est public. La protection Vercel (« Vercel Authentication ») ne s'applique pas aux domaines personnalisés avec le réglage *Standard Protection*, mais bloque l'adresse `*.vercel.app` ;
+   - déclarer le domaine dans Google Search Console et Bing Webmaster Tools et y soumettre `https://<domaine>/sitemap.xml` ;
+   - contrôler une page avec l'outil d'inspection d'URL et le test des résultats enrichis.
 
 ## Option B — Serveur (VPS) avec reverse proxy
 

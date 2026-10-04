@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { HouseFallback } from "./HouseFallback";
-import { useInView, useWebGLSupport } from "./hooks";
+import { useInView, useSeenOnce, useWebGLSupport } from "./hooks";
 import { SceneErrorBoundary } from "./SceneErrorBoundary";
 import type { HouseFocus, HouseHeroProps } from "./types";
 
@@ -34,10 +34,12 @@ const FOCUS_DESCRIPTION: Record<HouseFocus, string> = {
  * pendant le chargement, sans WebGL ou en cas d'erreur. Le rendu est suspendu
  * lorsque le visuel sort de l'écran.
  */
-export default function HouseHero({ focus = "none", className }: HouseHeroProps) {
+export default function HouseHero({ focus = "none", className, lazy = false }: HouseHeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const webgl = useWebGLSupport();
   const inView = useInView(containerRef);
+  // Visuel placé plus bas dans la page : la scène 3D n'est chargée qu'à l'approche de l'écran.
+  const seen = useSeenOnce(containerRef, lazy);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [contextLost, setContextLost] = useState(false);
@@ -59,7 +61,7 @@ export default function HouseHero({ focus = "none", className }: HouseHeroProps)
   const handleReady = useCallback(() => setReady(true), []);
   const handleError = useCallback(() => setFailed(true), []);
 
-  const showScene = webgl === "supported" && !failed;
+  const showScene = webgl === "supported" && !failed && seen;
   const sceneVisible = showScene && ready && !contextLost;
   const description = `${BASE_DESCRIPTION} ${FOCUS_DESCRIPTION[focus]}`.trim();
 

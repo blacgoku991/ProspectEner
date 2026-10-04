@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AuthCard } from "@/components/admin/AuthCard";
 import { requirePendingSession } from "@/lib/auth/guards";
-import { prepareEnrollment } from "../../actions";
+import { prepareEnrollment } from "@/lib/auth/enrollment";
 import { EnrollForm } from "./EnrollForm";
 
 export default async function MfaSetupPage() {

@@ -1,243 +1,233 @@
-import { ArrowRight, BadgeCheck, CalendarClock, CircleSlash, Clock, FileSearch, Gift, Landmark, ListChecks, MessageSquareText, PhoneCall, Sparkles, UserX } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, PhoneCall } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import HouseHero from "@/components/three/HouseHero";
-import { AidExplorer, type ExplorerTab } from "@/components/site/AidExplorer";
 import { FranceRenovNotice } from "@/components/site/FranceRenovNotice";
+import { AidGuideCards, WorkGuideCards } from "@/components/site/GuideCards";
 import { IndependenceBadge } from "@/components/site/IndependenceBadge";
+import { JsonLd } from "@/components/site/JsonLd";
 import { StickyCta } from "@/components/site/StickyCta";
 import { TrackStep } from "@/components/site/TrackStep";
-import { coverageForCategory, DISPOSITIF_INFO, WORK_ITEMS } from "@/engine";
+import { WORK_ITEMS } from "@/engine";
 import { parisToday } from "@/lib/business-days";
+import { ceeBonuses, frenchList, longDate } from "@/lib/guides";
 import { getPublicConfig } from "@/lib/public-config";
-import { getPublishedRuleSet } from "@/lib/rulesets";
+import { DEFAULT_DESCRIPTION, pageMetadata, siteUrl } from "@/lib/seo";
+import { missingIdentityFields } from "@/lib/settings-schema";
+import { publishedRules } from "@/lib/site-data";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Aides à la rénovation énergétique : testez votre éligibilité en 3 minutes",
+    description: DEFAULT_DESCRIPTION,
+    path: "/",
+  });
+}
+
+const STEPS = [
+  { title: "Répondez à quelques questions", text: "Votre logement, votre projet, votre situation : seules les questions utiles vous sont posées." },
+  { title: "Découvrez votre résultat", text: "Immédiatement, sans inscription ni justificatif. Il est indicatif et repose sur les règles en vigueur." },
+  {
+    title: "Faites-vous rappeler, si vous le souhaitez",
+    text: "Un conseiller étudie votre projet et vous présente le détail des aides. Aucun dossier n'est déposé en votre nom.",
+  },
+];
+
+const FAQ = [
+  {
+    q: "Le test est-il gratuit ?",
+    a: "Oui. Le test est gratuit, sans inscription et sans engagement. Il prend environ 3 minutes.",
+  },
+  {
+    q: "Est-ce un site officiel ?",
+    a: "Non. C'est un service privé indépendant, non affilié à l'État, à l'Anah ou à France Rénov'. Le service public d'information est accessible gratuitement sur france-renov.gouv.fr.",
+  },
+  {
+    q: "Le résultat vaut-il accord d'une aide ?",
+    a: "Non. Il s'agit d'une pré-éligibilité indicative, fondée sur vos réponses et sur les règles en vigueur à la date de la simulation. Seule l'instruction du dossier par l'organisme concerné décide de l'attribution.",
+  },
+  {
+    q: "Dois-je donner mes coordonnées pour voir le résultat ?",
+    a: "Non. Le résultat s'affiche directement. Vous pouvez ensuite, si vous le souhaitez, demander à être recontacté(e) pour une étude de votre projet.",
+  },
+  {
+    q: "Que deviennent mes réponses ?",
+    a: "Tant que vous n'envoyez pas de demande, vos réponses restent dans votre navigateur. Si vous envoyez une demande, elles sont jointes à celle-ci et ne sont transmises à aucun partenaire.",
+  },
+  {
+    q: "Me demanderez-vous des documents ?",
+    a: "Jamais de numéro fiscal, d'avis d'imposition, de pièce d'identité, de coordonnées bancaires ou d'identifiants FranceConnect sur ce site.",
+  },
+  {
+    q: "Puis-je annuler ma demande ?",
+    a: "Oui, à tout moment, grâce au lien d'annulation fourni après l'envoi, ou depuis la page « Annuler une demande ».",
+  },
+];
 
 export default async function HomePage() {
-  const [{ config }, ruleSet] = await Promise.all([getPublicConfig(), getPublishedRuleSet()]);
+  const [{ config, settings }, ruleSet] = await Promise.all([getPublicConfig(), publishedRules()]);
   const rules = ruleSet.data;
-  // Bonifications temporaires en cours (barème publié) : échéance réelle et datée, jamais de compte à rebours.
-  const today = parisToday();
-  const bonuses = rules.dispositifs.CEE.enabled
-    ? rules.dispositifs.CEE.temporaryBonuses.filter((b) => b.engagedFrom <= today && today <= b.engagedUntil)
-    : [];
-  const longDate = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-  const tabs: ExplorerTab[] = [
-    { focus: "chauffage", label: "Chauffage & PAC", coverage: [...coverageForCategory(rules, "PAC"), ...coverageForCategory(rules, "CHAUFFAGE")] },
-    { focus: "isolation", label: "Isolation", coverage: coverageForCategory(rules, "ISOLATION") },
-    { focus: "eau-chaude", label: "Eau chaude", coverage: coverageForCategory(rules, "EAU_CHAUDE") },
-    { focus: "ventilation", label: "Ventilation", coverage: coverageForCategory(rules, "VENTILATION") },
-    { focus: "global", label: "Rénovation globale", coverage: coverageForCategory(rules, "RENOVATION_GLOBALE") },
-  ].map((t) => ({ ...t, coverage: mergeCoverage(t.coverage) })) as ExplorerTab[];
-
-  const d = rules.dispositifs;
-  const labels = (items: string[]) => items.map((i) => WORK_ITEMS[i as keyof typeof WORK_ITEMS].label.toLowerCase()).join(", ");
-  const aids = [
-    {
-      id: "MPR_GESTE" as const,
-      enabled: d.MPR_GESTE.enabled,
-      text: `Travaux couverts actuellement : ${labels(d.MPR_GESTE.eligibleWorks)}. Réservé aux propriétaires, selon les revenus du ménage.`,
-    },
-    {
-      id: "MPR_AMPLEUR" as const,
-      enabled: d.MPR_AMPLEUR.enabled,
-      text: `Projet global sur un logement classé ${d.MPR_AMPLEUR.eligibleDpe.join(", ")}, avec un gain d'au moins deux classes et un accompagnement obligatoire.`,
-    },
-    {
-      id: "CEE" as const,
-      enabled: d.CEE.enabled,
-      text: "Primes versées par des fournisseurs d'énergie pour de nombreux travaux (isolation, chauffage, eau chaude…), à solliciter avant de signer le devis.",
-    },
-    {
-      id: "ECO_PTZ" as const,
-      enabled: d.ECO_PTZ.enabled,
-      text: "Un prêt sans intérêts et sans condition de ressources, à rembourser : ce n'est pas une subvention.",
-    },
-  ].filter((a) => a.enabled);
+  // Bonifications temporaires en cours : échéance réelle et datée, jamais de compte à rebours.
+  const bonuses = ceeBonuses(rules, parisToday()).filter((b) => b.current);
+  const url = siteUrl();
+  const identityComplete = missingIdentityFields(settings).length === 0;
 
   return (
     <>
       <TrackStep step="landing" />
+      <JsonLd
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: config.brandName,
+            url: `${url}/`,
+            inLanguage: "fr-FR",
+            description: DEFAULT_DESCRIPTION,
+          },
+          // Organisation décrite uniquement avec l'identité réellement renseignée par l'éditeur.
+          ...(identityComplete
+            ? [
+                {
+                  "@context": "https://schema.org",
+                  "@type": "Organization",
+                  name: settings.company.name,
+                  url: `${url}/`,
+                  logo: `${url}/icon.svg`,
+                  ...(settings.company.email ? { email: settings.company.email } : {}),
+                  ...(config.companyPhone ? { telephone: config.companyPhone } : {}),
+                  ...(settings.company.address ? { address: settings.company.address } : {}),
+                },
+              ]
+            : []),
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: FAQ.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+          },
+        ]}
+      />
 
       {/* ─── Héros ─────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-40 -top-40 size-[520px] rounded-full bg-pine-200/50 blur-3xl" />
-          <div className="absolute -right-32 top-24 size-[460px] rounded-full bg-[#ffd9a8]/50 blur-3xl" />
-          <div className="absolute inset-0 grain" />
-        </div>
-        <div className="container-page relative grid items-center gap-10 pb-12 pt-10 sm:pt-14 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8 lg:pb-20">
-          <div className="animate-fade-up space-y-7">
-            <p className="inline-flex items-center gap-2 rounded-full border border-pine-600/15 bg-white/70 px-3 py-1.5 text-xs font-semibold text-pine-800 shadow-sm backdrop-blur">
-              <Sparkles className="size-3.5" aria-hidden />
-              Règles {rules.incomeCeilings.year} · réforme du 1er septembre 2026 intégrée
-            </p>
+        <div aria-hidden className="pointer-events-none absolute -right-40 -top-32 size-[560px] rounded-full bg-pine-100/60 blur-3xl" />
+        <div className="container-page relative grid items-center gap-8 pb-10 pt-10 sm:pt-14 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10 lg:pb-16">
+          <div className="animate-fade-up space-y-6">
             {bonuses.map((b) => (
               <Link
-                key={b.title + b.engagedUntil}
+                key={b.title + b.until}
                 href="/simulation"
-                className="flex w-fit max-w-xl items-start gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-50/90 px-4 py-2.5 text-sm leading-snug text-ink-800 shadow-sm backdrop-blur transition hover:bg-amber-50"
+                className="flex w-fit max-w-xl items-start gap-2 rounded-2xl bg-amber-50 px-3.5 py-2 text-sm leading-snug text-ink-800 ring-1 ring-inset ring-amber-500/25 transition hover:bg-amber-100/70"
               >
                 <CalendarClock className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />
                 <span>
-                  <strong className="text-amber-900">Jusqu&apos;au {longDate.format(new Date(`${b.engagedUntil}T00:00:00Z`))} :</strong>{" "}
-                  {b.title.toLowerCase()} pour {b.works.map((w) => WORK_ITEMS[w].label.toLowerCase()).join(" et ")} (devis signé d&apos;ici là, sous
-                  conditions). <span className="font-semibold text-pine-800 underline underline-offset-2">Vérifier mon projet</span>
+                  <strong className="text-amber-900">Jusqu&apos;au {longDate(b.until)}</strong> : {b.title.toLowerCase()} pour{" "}
+                  {frenchList(b.works.map((w) => WORK_ITEMS[w].label.toLowerCase()))}, sous conditions.
                 </span>
               </Link>
             ))}
-            <h1 className="text-[2.6rem] font-extrabold leading-[1.02] text-ink-950 sm:text-6xl">
-              Votre rénovation peut-elle être{" "}
-              <span className="relative whitespace-nowrap text-pine-700">
-                aidée
-                <svg aria-hidden viewBox="0 0 200 12" className="absolute -bottom-2 left-0 h-3 w-full text-amber-glow">
-                  <path d="M2 9c48-6 98-8 196-3" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
-                </svg>
-              </span>{" "}
-              ?
+            <h1 className="text-[2.5rem] font-extrabold leading-[1.04] text-ink-950 sm:text-6xl">
+              Votre rénovation énergétique <span className="whitespace-nowrap">peut-elle</span> être{" "}
+              <span className="whitespace-nowrap">
+                <span className="text-pine-700">aidée</span> ?
+              </span>
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-ink-600">
-              Quelques questions sur votre logement et votre projet : vous savez <strong className="text-ink-900">immédiatement</strong> si votre
-              projet peut être aidé — <strong className="text-ink-900">avant toute demande de coordonnées</strong>.
+              Pompe à chaleur, isolation, chauffe-eau, rénovation globale : en quelques questions, vous savez{" "}
+              <strong className="font-semibold text-ink-900">immédiatement</strong> si votre projet peut être aidé, avant toute demande de
+              coordonnées.
             </p>
-            <div id="hero-cta" className="flex flex-col gap-3 sm:flex-row">
-              <Link href="/simulation" className="btn-primary whitespace-nowrap px-7 py-4 text-base">
+            <div id="hero-cta" className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+              <Link href="/simulation" className="btn-primary px-7 py-4 text-base">
                 Tester mon éligibilité
                 <ArrowRight className="size-5" aria-hidden />
               </Link>
-              <Link href="/rappel" className="btn-ghost whitespace-nowrap px-6 py-4 text-base">
-                <PhoneCall className="size-5" aria-hidden />
+              <Link
+                href="/rappel"
+                className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-ink-700 underline decoration-ink-300 underline-offset-4 hover:text-ink-950"
+              >
+                <PhoneCall className="size-4" aria-hidden />
                 Je préfère être recontacté(e)
               </Link>
             </div>
-            <ul className="flex max-w-xl flex-wrap gap-2.5 text-sm text-ink-700">
-              {[
-                { icon: Gift, text: "Gratuit" },
-                { icon: Clock, text: "3 minutes environ" },
-                { icon: FileSearch, text: "Résultat immédiat" },
-                { icon: UserX, text: "Sans compte" },
-                { icon: CircleSlash, text: "Aucun justificatif" },
-              ].map(({ icon: Icon, text }) => (
-                <li key={text} className="flex items-center gap-2 rounded-xl bg-white/70 px-3 py-2 shadow-sm backdrop-blur">
-                  <Icon className="size-4 shrink-0 text-pine-600" aria-hidden />
-                  {text}
+            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-600">
+              {["Gratuit", "Environ 3 minutes", "Sans inscription", "Sans justificatif"].map((t) => (
+                <li key={t} className="inline-flex items-center gap-1.5">
+                  <Check className="size-4 text-pine-600" aria-hidden />
+                  {t}
                 </li>
               ))}
             </ul>
-            {config.qualifications && (
-              <p className="flex max-w-xl items-start gap-2 text-sm text-ink-700">
-                <BadgeCheck className="mt-0.5 size-4 shrink-0 text-pine-600" aria-hidden />
-                <span>
-                  <span className="font-semibold text-ink-900">Qualifications : </span>
-                  {config.qualifications}
-                </span>
-              </p>
-            )}
             <IndependenceBadge />
           </div>
 
-          <div className="relative h-[340px] sm:h-[460px] lg:h-[560px]">
-            <div aria-hidden className="absolute inset-6 rounded-[3rem] bg-gradient-to-br from-white/70 to-white/10 shadow-lift ring-1 ring-white/60 backdrop-blur-sm" />
-            <HouseHero focus="global" className="absolute inset-6 aspect-auto" />
-            <div className="absolute bottom-8 left-2 hidden animate-float-slow rounded-2xl bg-white/90 px-4 py-3 shadow-lift backdrop-blur sm:block">
-              <p className="text-xs font-medium text-ink-500">Résultat indicatif</p>
-              <p className="flex items-center gap-1.5 text-sm font-semibold text-pine-700">
-                <BadgeCheck className="size-4" aria-hidden /> Immédiat, sans inscription
-              </p>
-            </div>
+          <div className="relative h-[260px] sm:h-[420px] lg:h-[520px]">
+            <HouseHero focus="global" className="absolute inset-0 aspect-auto" />
           </div>
         </div>
-        <div className="container-page relative pb-6">
+        <div className="container-page relative pb-4">
           <FranceRenovNotice />
         </div>
       </section>
 
       {/* ─── Fonctionnement ────────────────────────────────────────────────── */}
-      <section id="fonctionnement" className="container-page scroll-mt-28 py-16 sm:py-20">
-        <div className="mb-10 max-w-2xl">
-          <p className="text-sm font-semibold uppercase tracking-wider text-pine-700">Comment ça marche</p>
-          <h2 className="mt-2 text-3xl font-bold text-ink-950 sm:text-4xl">Un parcours clair, à votre rythme</h2>
-        </div>
-        <ol className="grid gap-4 md:grid-cols-4">
-          {[
-            { icon: ListChecks, title: "Le questionnaire", text: "Logement, projet, avancement : seules les questions utiles aux règles évaluées vous sont posées." },
-            { icon: FileSearch, title: "Le résultat indicatif", text: "Vous savez tout de suite si votre projet peut être aidé. Le détail des aides vous est présenté lors de l'étude." },
-            { icon: MessageSquareText, title: "Une étude, si vous le voulez", text: "Vous choisissez de nous transmettre vos coordonnées, et par quel canal vous souhaitez une réponse." },
-            {
-              icon: Landmark,
-              title: "Aucun dossier déposé",
-              text: "Le simulateur ne dépose rien auprès d'un organisme public : l'attribution dépend de l'instruction de votre dossier.",
-            },
-          ].map(({ icon: Icon, title, text }, i) => (
-            <li key={title} className="card group relative overflow-hidden p-6 transition hover:-translate-y-1 hover:shadow-lift">
-              <span aria-hidden className="absolute -right-3 -top-6 font-display text-8xl font-extrabold text-pine-50 transition group-hover:text-pine-100">
-                {i + 1}
-              </span>
-              <span className="relative grid size-11 place-items-center rounded-2xl bg-pine-600 text-white shadow-glow">
-                <Icon className="size-5" aria-hidden />
-              </span>
-              <h3 className="relative mt-5 text-lg font-bold text-ink-900">{title}</h3>
-              <p className="relative mt-2 text-sm leading-relaxed text-ink-600">{text}</p>
+      <section id="fonctionnement" className="container-page scroll-mt-28 py-16 sm:py-24" aria-labelledby="fonctionnement-titre">
+        <h2 id="fonctionnement-titre" className="max-w-2xl text-3xl font-bold text-ink-950 sm:text-4xl">
+          Simple, rapide et sans engagement
+        </h2>
+        <ol className="mt-10 grid gap-8 md:grid-cols-3 md:gap-10">
+          {STEPS.map((s, i) => (
+            <li key={s.title} className="space-y-2">
+              <span className="grid size-10 place-items-center rounded-full bg-pine-600 font-display text-lg font-bold text-white">{i + 1}</span>
+              <h3 className="pt-2 text-lg font-bold text-ink-900">{s.title}</h3>
+              <p className="leading-relaxed text-ink-600">{s.text}</p>
             </li>
           ))}
         </ol>
       </section>
 
-      {/* ─── Explorateur 3D ────────────────────────────────────────────────── */}
-      <section className="container-page py-8 sm:py-12">
-        <div className="mb-8 max-w-2xl">
-          <p className="text-sm font-semibold uppercase tracking-wider text-pine-700">Explorer</p>
-          <h2 className="mt-2 text-3xl font-bold text-ink-950 sm:text-4xl">Quels travaux, quels dispositifs ?</h2>
-          <p className="mt-3 text-ink-600">
-            Les règles ont beaucoup changé en 2026. Sélectionnez une famille de travaux pour voir ce que chaque dispositif couvre — et ce
-            qu&apos;il ne couvre plus.
-          </p>
+      {/* ─── Travaux ───────────────────────────────────────────────────────── */}
+      <section id="travaux" className="scroll-mt-28 border-y border-ink-900/[0.06] bg-white/60 py-16 sm:py-24" aria-labelledby="travaux-titre">
+        <div className="container-page">
+          <div className="mb-10 max-w-2xl">
+            <h2 id="travaux-titre" className="text-3xl font-bold text-ink-950 sm:text-4xl">
+              Quels travaux peuvent être aidés ?
+            </h2>
+            <p className="mt-3 text-ink-600">Les aides ne sont pas les mêmes selon les travaux. Choisissez les vôtres pour voir les aides évaluées.</p>
+          </div>
+          <WorkGuideCards rules={rules} />
         </div>
-        <AidExplorer tabs={tabs} ruleSetLabel={rules.meta.label} />
       </section>
 
-      {/* ─── Dispositifs ───────────────────────────────────────────────────── */}
-      <section id="aides" className="container-page scroll-mt-28 py-16 sm:py-20">
+      {/* ─── Aides ─────────────────────────────────────────────────────────── */}
+      <section id="aides" className="container-page scroll-mt-28 py-16 sm:py-24" aria-labelledby="aides-titre">
         <div className="mb-10 max-w-2xl">
-          <p className="text-sm font-semibold uppercase tracking-wider text-pine-700">Les aides évaluées</p>
-          <h2 className="mt-2 text-3xl font-bold text-ink-950 sm:text-4xl">Subventions, primes et prêts : ce n&apos;est pas la même chose</h2>
+          <h2 id="aides-titre" className="text-3xl font-bold text-ink-950 sm:text-4xl">
+            Subventions, primes et prêt : les aides évaluées
+          </h2>
+          <p className="mt-3 text-ink-600">
+            Ce ne sont pas les mêmes aides, ni les mêmes conditions. Le simulateur ne calcule pas de montant : il indique une pré-éligibilité
+            expliquée, à confirmer.
+          </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {aids.map((a) => {
-            const info = DISPOSITIF_INFO[a.id];
-            return (
-              <article key={a.id} className="card p-6">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={
-                      info.kind === "Subvention"
-                        ? "badge bg-pine-100 text-pine-800"
-                        : info.kind === "Prime"
-                          ? "badge bg-[#fff1df] text-ember-600"
-                          : "badge bg-sky-soft text-ink-800"
-                    }
-                  >
-                    {info.kind}
-                  </span>
-                  <span className="text-xs text-ink-500">{info.provider}</span>
-                </div>
-                <h3 className="mt-3 text-xl font-bold text-ink-900">{info.name}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-600">{a.text}</p>
-              </article>
-            );
-          })}
-        </div>
-        <p className="mt-6 max-w-3xl text-sm text-ink-500">
-          Non évalués : aides des collectivités locales, MaPrimeRénov&apos; Copropriété, situations en outre-mer. Le simulateur ne calcule pas de
-          montant : il indique une pré-éligibilité expliquée, à confirmer.
+        <AidGuideCards rules={rules} />
+        <p className="mt-6 text-sm text-ink-500">
+          Non évalués : aides des collectivités locales, MaPrimeRénov&apos; Copropriété, situations en outre-mer.{" "}
+          <Link href="/aides" className="font-semibold text-pine-700 underline underline-offset-2">
+            Le guide des aides
+          </Link>
         </p>
       </section>
 
       {/* ─── Qui sommes-nous (uniquement si configuré) ─────────────────────── */}
       {config.activityDescription && (
-        <section className="container-page py-8">
+        <section className="container-page pb-8" aria-labelledby="qui-titre">
           <div className="card grid gap-6 p-8 md:grid-cols-[1fr_1.4fr]">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wider text-pine-700">Qui sommes-nous</p>
-              <h2 className="mt-2 text-2xl font-bold text-ink-950">{config.companyName}</h2>
+              <h2 id="qui-titre" className="mt-2 text-2xl font-bold text-ink-950">
+                {config.companyName}
+              </h2>
               {config.activityKinds.length > 0 && (
                 <ul className="mt-4 flex flex-wrap gap-2">
                   {config.activityKinds.map((k) => (
@@ -259,43 +249,20 @@ export default async function HomePage() {
       )}
 
       {/* ─── FAQ ───────────────────────────────────────────────────────────── */}
-      <section className="container-page py-16">
-        <h2 className="mb-8 text-3xl font-bold text-ink-950">Questions fréquentes</h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          {[
-            {
-              q: "Est-ce un site officiel ?",
-              a: "Non. C'est un service privé indépendant, non affilié à l'État, à l'Anah ou à France Rénov'. Le service public d'information est accessible gratuitement sur france-renov.gouv.fr.",
-            },
-            {
-              q: "Le résultat vaut-il accord d'une aide ?",
-              a: "Non. Il s'agit d'une pré-éligibilité indicative, fondée sur vos réponses et sur les règles en vigueur à la date de la simulation. Seule l'instruction du dossier par l'organisme concerné décide de l'attribution.",
-            },
-            {
-              q: "Dois-je donner mes coordonnées pour voir le résultat ?",
-              a: "Non. Le résultat s'affiche directement. Vous pouvez ensuite, si vous le souhaitez, demander à être recontacté(e) pour une étude de votre projet.",
-            },
-            {
-              q: "Que deviennent mes réponses ?",
-              a: "Tant que vous n'envoyez pas de demande, vos réponses restent dans votre navigateur. Si vous envoyez une demande, elles sont jointes à celle-ci et ne sont transmises à aucun partenaire.",
-            },
-            {
-              q: "Me demanderez-vous des documents ?",
-              a: "Jamais de numéro fiscal, d'avis d'imposition, de pièce d'identité, de coordonnées bancaires ou d'identifiants FranceConnect sur ce site.",
-            },
-            {
-              q: "Puis-je annuler ma demande ?",
-              a: "Oui, à tout moment, grâce au lien d'annulation fourni après l'envoi, ou depuis la page « Annuler une demande ».",
-            },
-          ].map(({ q, a }) => (
-            <details key={q} className="card group p-5 open:shadow-lift">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink-900">
+      <section className="container-page max-w-3xl py-16" aria-labelledby="faq-titre">
+        <h2 id="faq-titre" className="mb-8 text-3xl font-bold text-ink-950">
+          Questions fréquentes
+        </h2>
+        <div className="divide-y divide-ink-900/[0.07] rounded-3xl border border-ink-900/[0.07] bg-white">
+          {FAQ.map(({ q, a }) => (
+            <details key={q} className="group px-5 sm:px-6">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-semibold text-ink-900">
                 {q}
                 <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-sand-100 text-ink-600 transition group-open:rotate-45">
                   +
                 </span>
               </summary>
-              <p className="mt-3 text-sm leading-relaxed text-ink-600">{a}</p>
+              <p className="pb-5 text-sm leading-relaxed text-ink-600">{a}</p>
             </details>
           ))}
         </div>
@@ -305,11 +272,10 @@ export default async function HomePage() {
       <section className="container-page">
         <div className="relative overflow-hidden rounded-[2rem] bg-ink-900 px-6 py-12 text-white sm:px-12">
           <div aria-hidden className="absolute -right-24 -top-24 size-80 rounded-full bg-pine-500/30 blur-3xl" />
-          <div aria-hidden className="absolute -bottom-24 left-10 size-72 rounded-full bg-ember-500/20 blur-3xl" />
           <div className="relative flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
             <div>
               <h2 className="text-3xl font-bold">Prêt(e) à y voir plus clair ?</h2>
-              <p className="mt-2 max-w-xl text-white/75">Résultat immédiat, sans compte et sans engagement.</p>
+              <p className="mt-2 max-w-xl text-white/75">Résultat immédiat, sans inscription et sans engagement.</p>
             </div>
             <Link href="/simulation" className="btn bg-white px-7 py-4 text-base text-ink-900 hover:bg-sand-100">
               Commencer le test
@@ -330,18 +296,4 @@ export default async function HomePage() {
       </StickyCta>
     </>
   );
-}
-
-function mergeCoverage(list: ReturnType<typeof coverageForCategory>) {
-  const map = new Map<string, (typeof list)[number]>();
-  for (const c of list) {
-    const prev = map.get(c.id);
-    if (!prev) map.set(c.id, { ...c, covered: [...c.covered], review: [...c.review], excluded: [...c.excluded] });
-    else {
-      prev.covered.push(...c.covered);
-      prev.review.push(...c.review);
-      prev.excluded.push(...c.excluded);
-    }
-  }
-  return [...map.values()];
 }

@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { ClearLocalData } from "@/components/site/ClearLocalData";
 import { LegalPage } from "@/components/site/LegalPage";
 
-export const metadata: Metadata = { title: "Cookies et préférences" };
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({ title: "Cookies et préférences", description: "Aucun cookie publicitaire ni outil de mesure d'audience tiers : ce que ce site enregistre dans votre navigateur.", path: "/cookies" });
+}
 
 export default function CookiesPage() {
   return (

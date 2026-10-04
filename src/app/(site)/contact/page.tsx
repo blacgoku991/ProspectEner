@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Field, LegalPage } from "@/components/site/LegalPage";
 import { FranceRenovNotice } from "@/components/site/FranceRenovNotice";
-import { getSettings } from "@/lib/settings";
+import { siteSettings } from "@/lib/site-data";
 
-export const metadata: Metadata = { title: "Contact" };
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({ title: "Contact", description: "Coordonnées de l'éditeur du site et moyens de contact.", path: "/contact" });
+}
 
 export default async function ContactPage() {
-  const s = await getSettings();
+  const s = await siteSettings();
   const c = s.company;
   return (
     <LegalPage title="Contact">
