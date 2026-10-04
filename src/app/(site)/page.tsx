@@ -95,8 +95,8 @@ export default async function HomePage() {
               ?
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-ink-600">
-              Quelques questions sur votre logement et votre projet : vous voyez <strong className="text-ink-900">immédiatement</strong> un
-              résultat indicatif, dispositif par dispositif — <strong className="text-ink-900">avant toute demande de coordonnées</strong>.
+              Quelques questions sur votre logement et votre projet : vous savez <strong className="text-ink-900">immédiatement</strong> si votre
+              projet peut être aidé — <strong className="text-ink-900">avant toute demande de coordonnées</strong>.
             </p>
             <div id="hero-cta" className="flex flex-col gap-3 sm:flex-row">
               <Link href="/simulation" className="btn-primary whitespace-nowrap px-7 py-4 text-base">
@@ -112,7 +112,7 @@ export default async function HomePage() {
               {[
                 { icon: Gift, text: "Gratuit" },
                 { icon: Clock, text: "3 minutes environ" },
-                { icon: FileSearch, text: "Résultat expliqué" },
+                { icon: FileSearch, text: "Résultat immédiat" },
                 { icon: UserX, text: "Sans compte" },
                 { icon: CircleSlash, text: "Aucun justificatif" },
               ].map(({ icon: Icon, text }) => (
@@ -140,7 +140,7 @@ export default async function HomePage() {
             <div className="absolute bottom-8 left-2 hidden animate-float-slow rounded-2xl bg-white/90 px-4 py-3 shadow-lift backdrop-blur sm:block">
               <p className="text-xs font-medium text-ink-500">Résultat indicatif</p>
               <p className="flex items-center gap-1.5 text-sm font-semibold text-pine-700">
-                <BadgeCheck className="size-4" aria-hidden /> Critères expliqués un par un
+                <BadgeCheck className="size-4" aria-hidden /> Immédiat, sans inscription
               </p>
             </div>
           </div>
@@ -159,7 +159,7 @@ export default async function HomePage() {
         <ol className="grid gap-4 md:grid-cols-4">
           {[
             { icon: ListChecks, title: "Le questionnaire", text: "Logement, projet, avancement : seules les questions utiles aux règles évaluées vous sont posées." },
-            { icon: FileSearch, title: "Le résultat indicatif", text: "Pour chaque dispositif : les critères remplis, ceux qui ne le sont pas et ce qui reste à vérifier." },
+            { icon: FileSearch, title: "Le résultat indicatif", text: "Vous savez tout de suite si votre projet peut être aidé. Le détail des aides vous est présenté lors de l'étude." },
             { icon: MessageSquareText, title: "Une étude, si vous le voulez", text: "Vous choisissez de nous transmettre vos coordonnées, et par quel canal vous souhaitez une réponse." },
             {
               icon: Landmark,
@@ -269,11 +269,11 @@ export default async function HomePage() {
             },
             {
               q: "Le résultat vaut-il accord d'une aide ?",
-              a: "Non. Il s'agit d'une pré-éligibilité indicative, fondée sur vos réponses et sur les règles enregistrées à la date affichée. Seule l'instruction du dossier par l'organisme concerné décide de l'attribution.",
+              a: "Non. Il s'agit d'une pré-éligibilité indicative, fondée sur vos réponses et sur les règles en vigueur à la date de la simulation. Seule l'instruction du dossier par l'organisme concerné décide de l'attribution.",
             },
             {
               q: "Dois-je donner mes coordonnées pour voir le résultat ?",
-              a: "Non. Le résultat s'affiche directement. Vous pouvez ensuite, si vous le souhaitez, demander une étude de votre projet.",
+              a: "Non. Le résultat s'affiche directement. Vous pouvez ensuite, si vous le souhaitez, demander à être recontacté(e) pour une étude de votre projet.",
             },
             {
               q: "Que deviennent mes réponses ?",

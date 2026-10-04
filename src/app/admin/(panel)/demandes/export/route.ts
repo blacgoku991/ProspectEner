@@ -1,5 +1,5 @@
-import { WORK_CATEGORY_LABELS } from "@/engine";
-import type { WorkCategory } from "@/engine/types";
+import { DISPOSITIF_INFO, WORK_CATEGORY_LABELS } from "@/engine";
+import type { DispositifStatus, Evaluation, WorkCategory } from "@/engine/types";
 import { buildRequestWhere, parseListFilters } from "@/lib/admin/requests";
 import { audit } from "@/lib/audit";
 import { canExport, requireStaff } from "@/lib/auth/guards";
@@ -11,6 +11,12 @@ import { CHANNEL_LONG_LABELS, KIND_LABELS, OUTCOME_LABELS, STATUS_LABELS } from 
 
 const paris = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" });
 const fmt = (d: Date | null) => (d ? paris.format(d) : "");
+/** Aides d'un statut donné dans le résultat enregistré avec la demande. */
+const aidsWith = (evaluation: unknown, status: DispositifStatus) =>
+  ((evaluation as Evaluation | null)?.results ?? [])
+    .filter((x) => x.status === status)
+    .map((x) => DISPOSITIF_INFO[x.id].name)
+    .join(", ");
 
 /** Export CSV réservé aux personnes autorisées ; chaque export est journalisé. */
 export async function GET(request: Request) {
@@ -36,6 +42,8 @@ export async function GET(request: Request) {
     { header: "Type", value: (r) => KIND_LABELS[r.kind] },
     { header: "Statut", value: (r) => STATUS_LABELS[r.status] },
     { header: "Résultat indicatif", value: (r) => OUTCOME_LABELS[r.overallOutcome] },
+    { header: "Aides potentiellement éligibles", value: (r) => aidsWith(r.evaluation, "POTENTIALLY_ELIGIBLE") },
+    { header: "Aides à vérifier", value: (r) => aidsWith(r.evaluation, "NEEDS_REVIEW") },
     { header: "Canal demandé", value: (r) => CHANNEL_LONG_LABELS[r.channel] },
     { header: "Prénom", value: (r) => r.firstName },
     { header: "Nom", value: (r) => r.lastName },

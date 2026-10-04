@@ -9,9 +9,9 @@ test("parcours complet sur mobile", async ({ page }) => {
   expect(overflow).toBeLessThanOrEqual(1);
 
   await fillEligibleQuestionnaire(page);
-  await expect(page.getByRole("heading", { name: /pourrait correspondre à certaines aides/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Votre projet est potentiellement éligible" })).toBeVisible();
   // Sur mobile, la barre fixe reprend l'action du bouton principal : on utilise le premier.
-  await page.getByRole("button", { name: "Demander une étude de mon projet" }).first().click();
+  await page.getByRole("button", { name: "Être recontacté(e)", exact: true }).first().click();
   await page.getByLabel("Prénom").fill("Morgane");
   await page.getByLabel("Nom", { exact: true }).fill("Mobile");
   await page.getByRole("button", { name: /Recevoir une réponse par e-mail/ }).click();

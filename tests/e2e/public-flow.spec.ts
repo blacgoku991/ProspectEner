@@ -32,14 +32,17 @@ test.describe("parcours public complet", () => {
 
   test("résultat avant coordonnées, demande explicite, double-clic, puis apparition dans l'administration", async ({ page, context }) => {
     await fillEligibleQuestionnaire(page);
-    await expect(page.getByRole("heading", { name: /pourrait correspondre à certaines aides/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Votre projet est potentiellement éligible" })).toBeVisible();
+    await expect(page.getByText(/pourrait correspondre à certaines aides/)).toBeVisible();
+    // Le visiteur voit un verdict, sans le nom des aides (présentées lors de l'étude).
+    await expect(page.getByRole("main").getByText(/MaPrimeRénov'|Primes énergie|certificats d'économies|Éco-prêt/)).toHaveCount(0);
     await expect(page.getByText("Service privé indépendant, non affilié à l'État, à l'Anah ou à France Rénov'.").first()).toBeVisible();
     await expect(page.getByText(/ne dépose aucun dossier/).first()).toBeVisible();
     // Aucune coordonnée n'a été demandée à ce stade.
     await expect(page.getByLabel("Numéro de téléphone")).toHaveCount(0);
 
     // Le bouton principal (la barre fixe en reprend l'action quand il n'est pas visible).
-    await page.getByRole("button", { name: "Demander une étude de mon projet" }).first().click();
+    await page.getByRole("button", { name: "Être recontacté(e)", exact: true }).first().click();
     await page.getByLabel("Prénom").fill("Dominique");
     await page.getByLabel("Nom", { exact: true }).fill("Doubleclic");
     await page.getByRole("button", { name: /Être rappelé\(e\) par téléphone/ }).click();
@@ -63,6 +66,10 @@ test.describe("parcours public complet", () => {
     await expect(admin.getByText(reference)).toBeVisible();
     await expect(admin.getByText(/Je demande à être contacté\(e\) par Rénovation Test E2E, par téléphone, au sujet de mon projet de pompe à chaleur air\/eau\./).first()).toBeVisible();
     await expect(admin.getByText("Potentiellement éligible").first()).toBeVisible();
+    // L'équipe reçoit la synthèse complète, avec le nom des aides.
+    await expect(admin.getByRole("heading", { name: "Synthèse d'éligibilité" })).toBeVisible();
+    await expect(admin.getByText("MaPrimeRénov' par geste").first()).toBeVisible();
+    await expect(admin.getByText("« Votre projet est potentiellement éligible »")).toBeVisible();
     await expect(admin.getByText(`barème ${DEFAULT_RULESET.version}`, { exact: false })).toBeVisible();
   });
 
@@ -71,7 +78,8 @@ test.describe("parcours public complet", () => {
     await page.getByLabel("Code postal du logement").fill("97400");
     await expect(page.getByText(/hors périmètre du simulateur/)).toBeVisible();
     await page.getByRole("button", { name: /Voir mon résultat|Continuer/ }).click();
-    await expect(page.getByRole("heading", { name: /hors du périmètre de ce simulateur/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Demander une étude complémentaire" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hors du périmètre du simulateur" })).toBeVisible();
+    await expect(page.getByText(/une étude complémentaire est nécessaire/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Être recontacté(e)", exact: true }).first()).toBeVisible();
   });
 });

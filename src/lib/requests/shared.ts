@@ -1,4 +1,4 @@
-import type { Answers, WorkCategory } from "@/engine/types";
+import type { Answers, DispositifId, OverallOutcome, WorkCategory } from "@/engine/types";
 import { describeWorks, selectedWorkItems, WORK_CATEGORY_LABELS } from "@/engine/works";
 
 /** Libellé des travaux utilisé dans la phrase de demande (identique navigateur / serveur). */
@@ -27,6 +27,25 @@ export const OUTCOME_LABELS = {
   OUT_OF_SCOPE: "Hors périmètre",
   NOT_EVALUATED: "Non évalué (rappel rapide)",
 } as const;
+
+/**
+ * Verdict affiché au visiteur en fin de questionnaire. Le détail dispositif par dispositif
+ * est réservé à l'étude du projet (et à l'équipe, dans l'administration).
+ */
+export const VISITOR_VERDICTS: Record<OverallOutcome, { kicker: string; title: string }> = {
+  POTENTIALLY_ELIGIBLE: { kicker: "Bonne nouvelle", title: "Votre projet est potentiellement éligible" },
+  NEEDS_REVIEW: { kicker: "Résultat à confirmer", title: "Votre projet nécessite une vérification complémentaire" },
+  NOT_ELIGIBLE: { kicker: "Résultat", title: "Critères non remplis selon vos réponses" },
+  OUT_OF_SCOPE: { kicker: "Résultat", title: "Hors du périmètre du simulateur" },
+};
+
+/** Noms courts des dispositifs (liste des demandes). */
+export const DISPOSITIF_SHORT_LABELS: Record<DispositifId, string> = {
+  MPR_GESTE: "MPR geste",
+  MPR_AMPLEUR: "MPR ampleur",
+  CEE: "CEE",
+  ECO_PTZ: "Éco-PTZ",
+};
 
 export const KIND_LABELS = {
   SIMULATION: "Simulation complète",

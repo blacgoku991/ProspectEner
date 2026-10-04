@@ -6,7 +6,8 @@ import { EmptyState, PageHeader } from "@/components/admin/ui";
 import { buildRequestWhere, callbackState, orderByFor, parseListFilters } from "@/lib/admin/requests";
 import { canExport, requireStaff } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db";
-import { OUTCOME_LABELS, STATUS_LABELS } from "@/lib/requests/shared";
+import type { Evaluation } from "@/engine/types";
+import { DISPOSITIF_SHORT_LABELS, OUTCOME_LABELS, STATUS_LABELS } from "@/lib/requests/shared";
 import { cn } from "@/lib/cn";
 
 export const metadata = { title: "Demandes" };
@@ -45,6 +46,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
         postalCode: true,
         projectTypes: true,
         overallOutcome: true,
+        evaluation: true,
         status: true,
         channel: true,
         kind: true,
@@ -177,7 +179,15 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
                     </td>
                     <td className="px-4 py-3 text-ink-700">{r.communeName ?? r.postalCode ?? "—"}</td>
                     <td className="max-w-[220px] px-4 py-3 text-ink-700">{r.projectTypes.map((p) => WORK_CATEGORY_LABELS[p as WorkCategory] ?? p).join(", ")}</td>
-                    <td className="px-4 py-3"><span className={cn("badge", OUTCOME_CLASS[r.overallOutcome])}>{OUTCOME_LABELS[r.overallOutcome]}</span></td>
+                    <td className="px-4 py-3">
+                      <span className={cn("badge", OUTCOME_CLASS[r.overallOutcome])}>{OUTCOME_LABELS[r.overallOutcome]}</span>
+                      {(() => {
+                        const aids = ((r.evaluation as unknown as Evaluation | null)?.results ?? [])
+                          .filter((x) => x.status === "POTENTIALLY_ELIGIBLE")
+                          .map((x) => DISPOSITIF_SHORT_LABELS[x.id]);
+                        return aids.length > 0 ? <span className="mt-1 block text-xs text-ink-500">{aids.join(" · ")}</span> : null;
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-ink-800">{STATUS_LABELS[r.status]}</td>
                     <td className="px-4 py-3 text-ink-700">{r.assignedTo?.displayName ?? <span className="text-ink-400">—</span>}</td>
                     <td className="whitespace-nowrap px-4 py-3">

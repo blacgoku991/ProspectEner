@@ -1,5 +1,6 @@
 import { ArrowLeft, CalendarClock, CircleAlert, Clock, Mail, MessageSquare, Phone, PhoneOff, ShieldBan } from "lucide-react";
 import Link from "next/link";
+import { EligibilitySummary } from "@/components/evaluation/EligibilitySummary";
 import { EvaluationDetails } from "@/components/evaluation/EvaluationDetails";
 import { SubmitButton } from "@/components/admin/SubmitButton";
 import { Alert, Panel } from "@/components/admin/ui";
@@ -202,11 +203,12 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
           </Panel>
 
           {evaluation ? (
-            <Panel title="Résultat présenté au visiteur">
-              <p className="mb-1 text-sm font-semibold text-ink-900">{evaluation.headline}</p>
-              <p className="mb-4 text-xs text-ink-500">
+            <Panel title="Synthèse d'éligibilité">
+              <EligibilitySummary evaluation={evaluation} />
+              <p className="mt-4 text-xs text-ink-500">
                 Date de référence {evaluation.referenceDate} · barème {evaluation.ruleSetVersion} · moteur {evaluation.engineVersion}
               </p>
+              <h3 className="mb-3 mt-6 text-sm font-semibold text-ink-900">Détail, dispositif par dispositif (réservé à l&apos;équipe)</h3>
               <EvaluationDetails evaluation={evaluation} showNotConcerned />
             </Panel>
           ) : (

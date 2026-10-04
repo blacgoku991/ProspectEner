@@ -77,12 +77,10 @@ function focusFor(answers: Answers, current: QuestionId): HouseFocus {
 
 export default function Simulator({
   ruleSet,
-  ruleSetLabel,
   referenceDate,
   config,
 }: {
   ruleSet: RuleSet;
-  ruleSetLabel: string;
   referenceDate: string;
   config: PublicConfig;
 }) {
@@ -239,12 +237,11 @@ export default function Simulator({
     return (
       <div className="mx-auto max-w-3xl space-y-8">
         <h1 ref={headingRef} tabIndex={-1} className="sr-only">
-          {phase === "result" ? "Résultat de votre simulation" : "Demande d'étude de votre projet"}
+          {phase === "result" ? "Résultat de votre simulation" : "Être recontacté(e) au sujet de votre projet"}
         </h1>
         {phase === "result" && (
           <ResultView
             evaluation={evaluation}
-            ruleSetLabel={ruleSetLabel}
             summary={summarizeAnswers(pruned, ctx)}
             canContact={config.submissionsOpen}
             channels={config.channels}
@@ -261,9 +258,10 @@ export default function Simulator({
             <button type="button" onClick={() => navigate("result", currentVisible)} className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ink-600 hover:text-ink-900">
               <ArrowLeft className="size-4" aria-hidden /> Revenir au résultat
             </button>
-            <h2 className="text-2xl font-bold text-ink-950">Demander une étude de votre projet</h2>
+            <h2 className="text-2xl font-bold text-ink-950">Être recontacté(e) au sujet de votre projet</h2>
             <p className="mt-2 text-ink-600">
-              Vos réponses et le résultat indicatif seront joints à votre demande. {config.companyName} vous recontactera uniquement au sujet de ce projet.
+              Un conseiller étudie votre projet et vous présente le détail des aides adaptées. Vos réponses et le résultat indicatif sont joints à votre
+              demande ; {config.companyName} vous recontactera uniquement au sujet de ce projet.
             </p>
             <div className="mt-6">
               <ContactForm
@@ -397,7 +395,7 @@ export default function Simulator({
           </div>
           <div className="card p-5 text-sm text-ink-600">
             <p className="font-semibold text-ink-900">Le résultat s&apos;affiche avant toute demande de coordonnées.</p>
-            <p className="mt-1">Il indique, pour chaque dispositif, les critères remplis et ce qui reste à vérifier.</p>
+            <p className="mt-1">Un conseiller vous présente ensuite le détail des aides adaptées à votre projet.</p>
           </div>
         </div>
       </aside>

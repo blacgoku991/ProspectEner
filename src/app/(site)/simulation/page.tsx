@@ -17,7 +17,6 @@ export default async function SimulationPage() {
       <div className="container-page relative py-8 sm:py-12">
         <SimulatorLoader
           ruleSet={{ version: ruleSet.version, data: ruleSet.data }}
-          ruleSetLabel={ruleSet.data.meta.label}
           referenceDate={parisToday()}
           config={config}
         />

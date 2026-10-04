@@ -27,14 +27,17 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - Validation au fil de la saisie, aides contextuelles, réponse « Je ne sais pas » partout.
   - Tranches de revenu calculées selon la taille du ménage et la zone (Île-de-France / autres régions).
   - Communes issues du jeu de données officiel Etalab, embarqué : aucun appel externe.
-- **Résultat avant coordonnées**, pour chaque dispositif :
-  - critères remplis, non remplis ou à vérifier ;
-  - travaux couverts ;
-  - conditions restant à vérifier ;
-  - nature de l'aide (subvention, prime ou prêt) ;
-  - sources officielles, date de vérification et période de validité ;
-  - date de référence et versions du barème et du moteur ;
-  - réponses ayant conduit au résultat, chacune modifiable.
+- **Résultat avant coordonnées**, sous forme de verdict simple :
+  - « Votre projet est potentiellement éligible », vérification complémentaire nécessaire, critères non remplis ou hors périmètre — toujours le vrai résultat du moteur ;
+  - nombre d'aides qui peuvent correspondre, sans les nommer (le détail est présenté lors de l'étude) ;
+  - bonification temporaire en cours le cas échéant, points bloquants en cas de résultat défavorable ;
+  - mentions d'indépendance, de résultat indicatif et France Rénov' ;
+  - réponses ayant conduit au résultat, repliées, chacune modifiable ;
+  - bouton « Être recontacté(e) ».
+- **Synthèse d'éligibilité dans l'administration**, pour chaque demande :
+  - aides potentiellement éligibles, à vérifier, non éligibles ou hors périmètre, avec travaux couverts et raison principale ;
+  - détail complet par dispositif (critères, conditions, sources, dates de validité), date de référence et versions du barème et du moteur ;
+  - aides repérées dans la liste des demandes et dans l'export CSV.
 - **Demande de contact explicite**.
   - Phrase générée « Je demande à être contacté(e) par [entreprise], par [canal], au sujet de mon projet de [travaux] », avec une case jamais pré-cochée, décochée si le canal change.
   - Notice d'information RGPD affichée avant l'envoi.
