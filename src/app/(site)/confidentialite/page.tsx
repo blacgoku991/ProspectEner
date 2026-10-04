@@ -47,7 +47,7 @@ export default async function ConfidentialitePage() {
             <th>Finalité</th>
             <td>
               Répondre à votre demande et étudier votre projet de rénovation énergétique
-              {referral ? " ; si vous l'acceptez lors de cet échange, organiser un rendez-vous avec une entreprise partenaire qui réalise l'étude et les travaux." : "."}
+              {referral ? " ; si vous l'acceptez, organiser votre rendez-vous avec l'entreprise qui réalise l'étude et les travaux." : "."}
             </td>
           </tr>
           <tr><th>Base légale</th><td>Mesures précontractuelles prises à votre demande (article 6.1.b du RGPD).</td></tr>
@@ -57,9 +57,8 @@ export default async function ConfidentialitePage() {
               Personnes habilitées de l&apos;éditeur et ses prestataires techniques (hébergement, messagerie).{" "}
               {referral ? (
                 <>
-                  Uniquement si vous acceptez un rendez-vous : l&apos;entreprise partenaire qui en est chargée, dont le nom vous est indiqué avant
-                  toute transmission
-                  {partners.length > 0 ? <> (entreprises partenaires : {partners.join(" ; ")})</> : null}. Aucune vente de données, aucune
+                  Si vous acceptez un rendez-vous : l&apos;entreprise qui réalise l&apos;étude et les travaux, dont le nom vous est indiqué avant
+                  {partners.length > 0 ? <> (entreprises concernées : {partners.join(" ; ")})</> : null}. Aucune vente de données, aucune
                   transmission à d&apos;autres entreprises.
                 </>
               ) : (

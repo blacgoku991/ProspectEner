@@ -56,7 +56,7 @@ test.describe("parcours public complet", () => {
     await expect(confirm).not.toBeChecked();
     await expect(page.getByText(/Responsable du traitement : Rénovation Test E2E/)).toBeVisible();
     // Mise en relation déclarée : la notice annonce la transmission, limitée au rendez-vous accepté.
-    await expect(page.getByText(/Uniquement si vous acceptez un rendez-vous, l'entreprise partenaire qui en est chargée reçoit vos coordonnées/)).toBeVisible();
+    await expect(page.getByText(/Si vous acceptez un rendez-vous, l'entreprise qui réalise l'étude et les travaux reçoit vos coordonnées/)).toBeVisible();
     await page.waitForTimeout(2600);
     await confirm.check();
     await page.getByRole("button", { name: "Envoyer ma demande" }).dblclick();

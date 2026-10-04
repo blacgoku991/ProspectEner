@@ -51,17 +51,17 @@ export function buildContactNotice(s: SiteSettings): string {
   const controller = [c.name, c.legalForm].filter(Boolean).join(", ");
   const contactForRights = c.privacyContact || c.email || "l'adresse indiquée dans les mentions légales";
   const r = s.retention;
-  // Mise en relation déclarée : un rendez-vous accepté peut être confié à une entreprise partenaire, avec l'accord de la personne.
+  // Mise en relation déclarée : un rendez-vous accepté peut être assuré par l'entreprise qui réalise les travaux, avec l'accord de la personne.
   const referral = referralEnabled(s);
   const partnersListed = partnerList(s).length > 0;
   return [
     `Responsable du traitement : ${controller}${c.address ? `, ${c.address}` : ""}.`,
     referral
-      ? "Finalité : répondre à votre demande de contact, étudier votre projet de rénovation énergétique et, si vous l'acceptez lors de cet échange, organiser un rendez-vous avec une entreprise partenaire qui réalise l'étude et les travaux. Vos réponses au questionnaire et le résultat indicatif sont joints à votre demande."
+      ? "Finalité : répondre à votre demande de contact, étudier votre projet de rénovation énergétique et, si vous l'acceptez, organiser votre rendez-vous avec l'entreprise qui réalise l'étude et les travaux. Vos réponses au questionnaire et le résultat indicatif sont joints à votre demande."
       : "Finalité : répondre à votre demande de contact et étudier votre projet de rénovation énergétique. Vos réponses au questionnaire et le résultat indicatif sont joints à votre demande.",
     "Base légale : mesures précontractuelles prises à votre demande (article 6.1.b du RGPD).",
     referral
-      ? `Destinataires : les seules personnes habilitées de ${c.name} et ses prestataires techniques (hébergement, messagerie), tenus à la confidentialité. Uniquement si vous acceptez un rendez-vous, l'entreprise partenaire qui en est chargée reçoit vos coordonnées et votre projet : son nom vous est indiqué avant toute transmission${partnersListed ? " (liste des entreprises partenaires dans la politique de confidentialité)" : ""}. Vos données ne sont jamais vendues ni transmises à d'autres entreprises. Aucune démarche n'est effectuée en votre nom auprès d'un organisme public.`
+      ? `Destinataires : les seules personnes habilitées de ${c.name} et ses prestataires techniques (hébergement, messagerie), tenus à la confidentialité. Si vous acceptez un rendez-vous, l'entreprise qui réalise l'étude et les travaux reçoit vos coordonnées et votre projet ; son nom vous est indiqué avant${partnersListed ? " (voir la politique de confidentialité)" : ""}. Vos données ne sont jamais vendues ni transmises à d'autres entreprises. Aucune démarche n'est effectuée en votre nom auprès d'un organisme public.`
       : `Destinataires : les seules personnes habilitées de ${c.name} et ses prestataires techniques (hébergement, messagerie), tenus à la confidentialité. Vos données ne sont ni vendues, ni transmises à des partenaires. Aucune démarche n'est effectuée en votre nom auprès d'un organisme public.`,
     `Durée de conservation : ${months(r.requestMonths)} à compter de votre demande ou de votre dernier contact. En cas d'annulation, vos coordonnées sont effacées sous ${r.cancelledRequestDays} jours ; la preuve de votre demande (date, texte accepté, empreinte non réversible de vos coordonnées) est conservée ${months(r.proofMonths)}.`,
     `Vos droits : accès, rectification, effacement, limitation et opposition, en écrivant à ${contactForRights}. Vous pouvez introduire une réclamation auprès de la CNIL (www.cnil.fr).`,

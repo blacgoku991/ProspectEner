@@ -57,8 +57,8 @@ export default async function MentionsLegalesPage() {
       {referralEnabled(s) && (
         <>
           <p>
-            Mise en relation : lorsqu&apos;une personne accepte un rendez-vous, celui-ci peut être assuré par une entreprise partenaire, dont le nom
-            lui est indiqué avant toute transmission de ses coordonnées.
+            Rendez-vous : lorsqu&apos;une personne accepte un rendez-vous, celui-ci est assuré par l&apos;entreprise qui réalise l&apos;étude et les
+            travaux, dont le nom lui est indiqué avant toute transmission de ses coordonnées.
           </p>
           {partnerList(s).length > 0 ? (
             <ul>
@@ -68,7 +68,7 @@ export default async function MentionsLegalesPage() {
             </ul>
           ) : (
             <p>
-              Entreprises partenaires : <Field value="" />
+              Entreprises qui réalisent les travaux : <Field value="" />
             </p>
           )}
         </>
