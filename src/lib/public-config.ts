@@ -1,0 +1,52 @@
+import "server-only";
+import { env } from "./env";
+import { noticeWithHash } from "./legal/notice";
+import { getSettings } from "./settings";
+import {
+  ACTIVITY_LABELS,
+  emailReplyAvailable,
+  missingIdentityFields,
+  phoneCallbackAvailable,
+  type SiteSettings,
+  submissionsOpen,
+} from "./settings-schema";
+
+/** Configuration publique transmise au navigateur (aucun secret). */
+export interface PublicConfig {
+  companyName: string;
+  brandName: string;
+  companyPhone: string | null;
+  companyEmail: string | null;
+  activityKinds: string[];
+  activityDescription: string;
+  qualifications: string;
+  interventionArea: string;
+  channels: { phone: boolean; email: boolean };
+  callbackDelayBusinessDays: number;
+  submissionsOpen: boolean;
+  notice: { text: string; hash: string };
+  turnstileSiteKey: string | null;
+}
+
+export function toPublicConfig(s: SiteSettings): PublicConfig {
+  return {
+    companyName: s.company.name,
+    brandName: s.company.name || "Simulateur rénovation",
+    companyPhone: s.contact.showCompanyPhone && s.company.phone ? s.company.phone : null,
+    companyEmail: s.company.email || null,
+    activityKinds: s.activity.kinds.map((k) => ACTIVITY_LABELS[k]),
+    activityDescription: s.activity.description,
+    qualifications: s.activity.qualifications,
+    interventionArea: s.activity.interventionArea,
+    channels: { phone: phoneCallbackAvailable(s), email: emailReplyAvailable(s) },
+    callbackDelayBusinessDays: s.contact.callbackDelayBusinessDays,
+    submissionsOpen: submissionsOpen(s) && missingIdentityFields(s).length === 0,
+    notice: noticeWithHash(s),
+    turnstileSiteKey: env().NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null,
+  };
+}
+
+export async function getPublicConfig(): Promise<{ settings: SiteSettings; config: PublicConfig }> {
+  const settings = await getSettings();
+  return { settings, config: toPublicConfig(settings) };
+}

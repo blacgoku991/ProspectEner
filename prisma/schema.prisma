@@ -1,0 +1,399 @@
+// Schéma de données — ProspectEner
+// Principes : minimisation des données, séparation résultat d'éligibilité / statut commercial,
+// traçabilité (preuves de demande, historique, journal d'audit), anonymisation possible.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// Équipe (administration)
+// ─────────────────────────────────────────────────────────────
+
+enum StaffRole {
+  ADMIN
+  COLLABORATOR
+}
+
+model StaffUser {
+  id                  String    @id @default(uuid()) @db.Uuid
+  email               String    @unique
+  displayName         String
+  role                StaffRole
+  /// Hash scrypt (format versionné). Null tant que le compte n'est pas activé.
+  passwordHash        String?
+  passwordChangedAt   DateTime?
+  /// Secret TOTP chiffré (AES-256-GCM) — jamais stocké en clair.
+  mfaSecretEnc        String?
+  mfaEnabledAt        DateTime?
+  /// Dernier pas TOTP accepté (anti-rejeu).
+  mfaLastUsedStep     BigInt?
+  /// Codes de récupération (hachés, usage unique).
+  recoveryCodeHashes  String[]  @default([])
+  isActive            Boolean   @default(true)
+  /// Autorisation explicite d'export CSV pour un collaborateur (les administrateurs l'ont d'office).
+  canExport           Boolean   @default(false)
+  failedLoginCount    Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  /// Lien d'activation / réinitialisation (haché, usage unique, durée limitée).
+  setupTokenHash      String?   @unique
+  setupTokenExpiresAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  sessions         StaffSession[]
+  assignedRequests ContactRequest[] @relation("AssignedTo")
+  notes            InternalNote[]
+  requestEvents    RequestEvent[]
+  auditLogs        AuditLog[]
+}
+
+model StaffSession {
+  id            String    @id @default(uuid()) @db.Uuid
+  /// SHA-256 du jeton de session (le jeton lui-même n'est jamais stocké).
+  tokenHash     String    @unique
+  userId        String    @db.Uuid
+  user          StaffUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mfaVerifiedAt DateTime?
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  ipHash        String?
+  userAgent     String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Demandes de contact
+// ─────────────────────────────────────────────────────────────
+
+enum RequestKind {
+  /// Questionnaire complet + résultat de pré-éligibilité
+  SIMULATION
+  /// Demande de rappel rapide sans questionnaire complet
+  QUICK_CALLBACK
+}
+
+enum ContactChannel {
+  PHONE
+  EMAIL
+}
+
+/// Statut de traitement commercial — distinct du résultat d'éligibilité.
+enum RequestStatus {
+  NOUVEAU
+  A_VERIFIER
+  CONTACTE
+  ETUDE_EN_COURS
+  TERMINE
+  SANS_SUITE
+  CONTACT_ANNULE
+}
+
+/// Synthèse du résultat indicatif affiché au visiteur.
+enum OverallOutcome {
+  POTENTIALLY_ELIGIBLE
+  NEEDS_REVIEW
+  NOT_ELIGIBLE
+  OUT_OF_SCOPE
+  NOT_EVALUATED
+}
+
+enum AcquisitionOrigin {
+  /// Visite sans paramètre de campagne (demande spontanée)
+  DIRECT
+  /// Paramètres de campagne correspondant à un canal déclaré comme autorisé
+  AUTHORIZED_CAMPAIGN
+  /// Paramètres de campagne inconnus (à contrôler)
+  UNLISTED_CAMPAIGN
+  /// Collecte de la source désactivée
+  NOT_COLLECTED
+}
+
+model ContactRequest {
+  id             String         @id @default(uuid()) @db.Uuid
+  /// Référence communiquée au visiteur (non séquentielle).
+  reference      String         @unique
+  /// Clé d'idempotence générée côté navigateur : empêche les doublons (double-clic, renvoi).
+  idempotencyKey String         @unique
+  payloadHash    String
+  kind           RequestKind
+  status         RequestStatus  @default(NOUVEAU)
+  /// Données de démonstration — jamais créées en production.
+  isDemo         Boolean        @default(false)
+
+  // Coordonnées (effacées à l'anonymisation)
+  firstName    String?
+  lastName     String?
+  email        String?
+  phone        String?
+  channel      ContactChannel
+  availability Json?
+  comment      String?
+
+  // Localisation
+  postalCode   String?
+  communeName  String?
+  communeInsee String?
+  departement  String?
+  /// IDF | METRO | OUTRE_MER | HORS_FRANCE | INCONNU
+  territory    String
+
+  // Questionnaire & pré-éligibilité
+  answers        Json
+  projectTypes   String[]
+  evaluation     Json?
+  overallOutcome OverallOutcome
+  engineVersion  String?
+  ruleSetVersion String?
+  ruleSetId      String?        @db.Uuid
+  ruleSet        RuleSet?       @relation(fields: [ruleSetId], references: [id])
+  evaluatedAt    DateTime?
+
+  // Preuve de la demande
+  /// Phrase exacte de demande de contact présentée et validée par le visiteur.
+  requestSentence String
+  noticeTextId    String      @db.Uuid
+  noticeText      TextVersion @relation("NoticeText", fields: [noticeTextId], references: [id])
+  submittedAt     DateTime    @default(now())
+  /// HMAC de l'adresse IP (pas d'IP en clair).
+  ipHash          String?
+  userAgent       String?
+  /// HMAC du téléphone / de l'e-mail : preuve et liste d'opposition après anonymisation.
+  phoneHash       String?
+  emailHash       String?
+
+  // Acquisition (sans donnée personnelle)
+  acquisitionOrigin AcquisitionOrigin
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  landingPath       String?
+  referrerHost      String?
+
+  // Suivi & conformité
+  /// Échéance de réponse à une demande de rappel (jours ouvrables, paramétrable).
+  callbackDeadline DateTime?
+  firstContactAt   DateTime?
+  /// Nombre de tentatives de contact enregistrées (repère de prudence : 4 sur 30 jours).
+  contactAttempts      Int       @default(0)
+  lastContactAttemptAt DateTime?
+  /// Dernier échange effectif avec la personne : point de départ de la durée de conservation.
+  lastProspectContactAt DateTime?
+  closedAt         DateTime?
+  cancelTokenHash  String?
+  cancelledAt      DateTime?
+  cancelledBy      String?
+  /// Le contact figurait déjà dans la liste d'opposition au moment de la demande.
+  oppositionMatch  Boolean    @default(false)
+  assignedToId     String?    @db.Uuid
+  assignedTo       StaffUser? @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  anonymizedAt     DateTime?
+  proofPurgedAt    DateTime?
+  lastActivityAt   DateTime   @default(now())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  notes         InternalNote[]
+  events        RequestEvent[]
+  notifications Notification[]
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([assignedToId])
+  @@index([overallOutcome])
+  @@index([departement])
+  @@index([callbackDeadline])
+  @@index([lastActivityAt])
+}
+
+enum TextKind {
+  CONTACT_NOTICE
+}
+
+/// Versions exactes des textes présentés au visiteur (dédupliquées par empreinte).
+model TextVersion {
+  id        String           @id @default(uuid()) @db.Uuid
+  kind      TextKind
+  hash      String           @unique
+  content   String
+  createdAt DateTime         @default(now())
+  requests  ContactRequest[] @relation("NoticeText")
+}
+
+model InternalNote {
+  id        String         @id @default(uuid()) @db.Uuid
+  requestId String         @db.Uuid
+  request   ContactRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId  String?        @db.Uuid
+  author    StaffUser?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body      String
+  createdAt DateTime       @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+/// Historique des actions sur une demande (sans donnée personnelle dans `data`).
+model RequestEvent {
+  id        String         @id @default(uuid()) @db.Uuid
+  requestId String         @db.Uuid
+  request   ContactRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  actorId   String?        @db.Uuid
+  actor     StaffUser?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  type      String
+  data      Json?
+  createdAt DateTime       @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Notifications internes (file d'envoi découplée de l'enregistrement)
+// ─────────────────────────────────────────────────────────────
+
+enum NotificationChannel {
+  EMAIL
+  WEBHOOK
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model Notification {
+  id            String              @id @default(uuid()) @db.Uuid
+  requestId     String?             @db.Uuid
+  request       ContactRequest?     @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  event         String
+  channel       NotificationChannel
+  status        NotificationStatus  @default(PENDING)
+  attempts      Int                 @default(0)
+  lastError     String?
+  nextAttemptAt DateTime            @default(now())
+  createdAt     DateTime            @default(now())
+  sentAt        DateTime?
+
+  @@index([status, nextAttemptAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Barèmes / règles versionnés
+// ─────────────────────────────────────────────────────────────
+
+enum RuleSetStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model RuleSet {
+  id              String           @id @default(uuid()) @db.Uuid
+  version         String           @unique
+  status          RuleSetStatus
+  data            Json
+  checksum        String
+  /// Version du moteur avec laquelle ces paramètres ont été validés.
+  engineVersion   String
+  notes           String?
+  basedOnId       String?          @db.Uuid
+  createdById     String?          @db.Uuid
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  publishedAt     DateTime?
+  publishedById   String?          @db.Uuid
+  publicationNote String?
+  archivedAt      DateTime?
+  requests        ContactRequest[]
+
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Paramètres, oppositions, acquisition, sécurité, statistiques
+// ─────────────────────────────────────────────────────────────
+
+/// Paramètres du site (singleton, id = 1). Contenu validé par schéma applicatif.
+model SiteSettings {
+  id          Int      @id @default(1)
+  data        Json
+  updatedAt   DateTime @updatedAt
+  updatedById String?  @db.Uuid
+}
+
+model Opposition {
+  id          String    @id @default(uuid()) @db.Uuid
+  phoneHash   String?
+  emailHash   String?
+  /// Valeur masquée pour l'affichage (ex. « 06 •• •• •• 12 »).
+  maskedValue String
+  source      String
+  note        String?
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+
+  @@index([phoneHash])
+  @@index([emailHash])
+}
+
+/// Canaux d'acquisition déclarés comme autorisés (valeur utm_campaign).
+model AcquisitionChannel {
+  id                String   @id @default(uuid()) @db.Uuid
+  campaign          String   @unique
+  source            String?
+  medium            String?
+  label             String
+  authorizationNote String?
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+/// Journal de sécurité : connexions, accès aux fiches, exports, modifications sensibles.
+model AuditLog {
+  id         String     @id @default(uuid()) @db.Uuid
+  actorId    String?    @db.Uuid
+  actor      StaffUser? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorLabel String?
+  action     String
+  targetType String?
+  targetId   String?
+  ipHash     String?
+  metadata   Json?
+  createdAt  DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@index([actorId, createdAt])
+}
+
+model RateLimitBucket {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
+
+/// Statistiques de parcours agrégées par jour (aucun identifiant, aucune réponse).
+model FunnelDailyStat {
+  day   DateTime @db.Date
+  step  String
+  count Int      @default(0)
+
+  @@id([day, step])
+}

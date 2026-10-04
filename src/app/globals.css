@@ -1,0 +1,212 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/bricolage-grotesque";
+
+/*
+ * Identité visuelle : volontairement éloignée des codes de l'État
+ * (pas de bleu-blanc-rouge, pas de Marianne). Palette « pin & ambre ».
+ */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-sand-50: #fbfaf7;
+  --color-sand-100: #f6f3ec;
+  --color-sand-200: #ece6d9;
+  --color-sand-300: #ddd3bf;
+
+  --color-ink-950: #07110f;
+  --color-ink-900: #0c1b18;
+  --color-ink-800: #142824;
+  --color-ink-700: #22403a;
+  --color-ink-600: #3c5a54;
+  --color-ink-500: #5b736e;
+  --color-ink-400: #82958f;
+  --color-ink-300: #a9b8b3;
+
+  --color-pine-50: #eefaf6;
+  --color-pine-100: #d5f2e8;
+  --color-pine-200: #ade4d3;
+  --color-pine-300: #77cfb7;
+  --color-pine-400: #3fb497;
+  --color-pine-500: #1f977c;
+  --color-pine-600: #147a65;
+  --color-pine-700: #136253;
+  --color-pine-800: #134f44;
+  --color-pine-900: #12413a;
+  --color-pine-950: #062521;
+
+  --color-amber-glow: #ffb547;
+  --color-ember-400: #ff9a4d;
+  --color-ember-500: #f97a2b;
+  --color-ember-600: #e05d14;
+
+  --color-sky-soft: #cfe8f3;
+
+  --radius-xl2: 1.25rem;
+  --radius-3xl2: 1.75rem;
+
+  --shadow-soft: 0 1px 2px rgb(7 17 15 / 0.04), 0 8px 24px -8px rgb(7 17 15 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(7 17 15 / 0.05), 0 24px 48px -16px rgb(7 17 15 / 0.25);
+  --shadow-glow: 0 0 0 1px rgb(31 151 124 / 0.25), 0 12px 40px -10px rgb(31 151 124 / 0.45);
+
+  --animate-float-slow: float-slow 9s ease-in-out infinite;
+  --animate-fade-up: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+
+  @keyframes float-slow {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, -10px, 0);
+    }
+  }
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --page-bg: var(--color-sand-50);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-sand-50 font-sans text-ink-900 antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: var(--color-pine-200);
+    color: var(--color-ink-950);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-pine-400);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all duration-200 select-none disabled:cursor-not-allowed disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply btn bg-pine-600 text-white shadow-[0_10px_30px_-10px_rgb(20_122_101/0.7)] hover:bg-pine-700 hover:shadow-[0_14px_36px_-10px_rgb(20_122_101/0.8)] active:scale-[0.98];
+}
+@utility btn-warm {
+  @apply btn bg-ember-500 text-white shadow-[0_10px_30px_-10px_rgb(249_122_43/0.7)] hover:bg-ember-600 active:scale-[0.98];
+}
+@utility btn-ghost {
+  @apply btn border border-ink-900/10 bg-white/70 text-ink-800 backdrop-blur hover:border-ink-900/20 hover:bg-white;
+}
+@utility btn-dark {
+  @apply btn bg-ink-900 text-white hover:bg-ink-800 active:scale-[0.98];
+}
+@utility container-page {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+}
+
+@layer components {
+  .card {
+    @apply rounded-3xl border border-ink-900/[0.06] bg-white shadow-soft;
+  }
+  .glass {
+    @apply border border-white/50 bg-white/60 backdrop-blur-xl;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-ink-800;
+  }
+  .field-input {
+    @apply w-full rounded-xl border border-ink-900/15 bg-white px-4 py-3 text-base text-ink-900 shadow-sm transition outline-none placeholder:text-ink-400 focus:border-pine-500 focus:ring-4 focus:ring-pine-500/15 aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-red-500/10;
+  }
+  .field-help {
+    @apply mt-1.5 text-sm text-ink-500;
+  }
+  .field-error {
+    @apply mt-1.5 text-sm font-medium text-red-600;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .prose-legal {
+    @apply max-w-none text-[15px] leading-relaxed text-ink-700;
+  }
+  .prose-legal h2 {
+    @apply mt-10 mb-3 text-xl font-semibold text-ink-900;
+  }
+  .prose-legal h3 {
+    @apply mt-6 mb-2 text-base font-semibold text-ink-900;
+  }
+  .prose-legal p {
+    @apply my-3;
+  }
+  .prose-legal ul {
+    @apply my-3 list-disc space-y-1.5 pl-5;
+  }
+  .prose-legal a {
+    @apply font-medium text-pine-700 underline decoration-pine-300 underline-offset-2 hover:text-pine-800;
+  }
+  .prose-legal table {
+    @apply my-4 w-full border-collapse text-sm;
+  }
+  .prose-legal th,
+  .prose-legal td {
+    @apply border border-ink-900/10 px-3 py-2 text-left align-top;
+  }
+  .prose-legal th {
+    @apply bg-sand-100 font-semibold text-ink-900;
+  }
+
+  .grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
