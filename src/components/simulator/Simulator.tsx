@@ -57,6 +57,11 @@ function loadPersisted(ruleSetVersion: string, referenceDate: string): Persisted
   }
 }
 
+function withScope(answers: Answers, mode: PublicConfig["testMode"]): Answers {
+  const { scope: _previous, ...rest } = answers;
+  return mode === "ELIGIBILITE" ? { ...rest, scope: "PROFILE" } : rest;
+}
+
 function stepOf(q: QuestionId): StepId {
   return (STEPS.find((s) => s.questions.includes(q)) ?? STEPS[0]!).id;
 }
@@ -87,7 +92,8 @@ export default function Simulator({
   const ctx: QuestionContext = useMemo(() => ({ rules: ruleSet.data, referenceDate }), [ruleSet, referenceDate]);
   // Composant rendu uniquement dans le navigateur : la session est restaurée dès l'initialisation.
   const [initial] = useState(() => loadPersisted(ruleSet.version, referenceDate));
-  const [answers, setAnswers] = useState<Answers>(initial?.answers ?? {});
+  // Portée du test choisie dans les paramètres (test complet par défaut) : elle prime sur une session restaurée.
+  const [answers, setAnswers] = useState<Answers>(() => withScope(initial?.answers ?? {}, config.testMode));
   const [current, setCurrent] = useState<QuestionId>(initial?.current ?? "location");
   const [phase, setPhase] = useState<Phase>(initial?.phase ?? "questions");
   const [returnToResult, setReturnToResult] = useState(Boolean(initial?.returnToResult));
@@ -219,7 +225,9 @@ export default function Simulator({
   };
 
   const restart = () => {
-    setAnswers({});
+    const fresh = withScope({}, config.testMode);
+    answersRef.current = fresh;
+    setAnswers(fresh);
     setReturnToResult(false);
     setDone(null);
     trackedSteps.current.clear();
@@ -232,55 +240,63 @@ export default function Simulator({
   }
 
   // ─── Résultat & contact ──────────────────────────────────────────────────
+  // Le verdict s'affiche d'abord ; le formulaire de rappel suit directement, sans clic supplémentaire.
   if ((phase === "result" || phase === "contact") && evaluation) {
     const location = [pruned.postalCode, pruned.communeName].filter(Boolean).join(" ");
+    // Rappel proposé seulement pour les résultats retenus dans les paramètres (éligibles ou à vérifier par défaut).
+    const accepted = config.acceptedOutcomes.includes(evaluation.outcome);
+    const canContact = config.submissionsOpen && accepted;
+    const goToForm = () => {
+      const form = document.getElementById("contact");
+      form?.scrollIntoView({ behavior: "smooth", block: "start" });
+      form?.querySelector<HTMLInputElement>("input:not([type=hidden])")?.focus({ preventScroll: true });
+    };
     return (
       <div className="mx-auto max-w-3xl space-y-8">
         <h1 ref={headingRef} tabIndex={-1} className="sr-only">
-          {phase === "result" ? "Résultat de votre simulation" : "Être recontacté(e) au sujet de votre projet"}
+          Résultat de votre simulation
         </h1>
-        {phase === "result" && (
-          <ResultView
-            evaluation={evaluation}
-            summary={summarizeAnswers(pruned, ctx)}
-            canContact={config.submissionsOpen}
-            channels={config.channels}
-            onContact={() => navigate("contact", currentVisible)}
-            onEdit={(q) => {
-              setReturnToResult(true);
-              navigate("questions", q);
-            }}
-            onRestart={restart}
-          />
-        )}
-        {phase === "contact" && (
-          <div className="card p-6 sm:p-8">
-            <button type="button" onClick={() => navigate("result", currentVisible)} className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ink-600 hover:text-ink-900">
-              <ArrowLeft className="size-4" aria-hidden /> Revenir au résultat
-            </button>
-            <h2 className="text-2xl font-bold text-ink-950">Être recontacté(e) au sujet de votre projet</h2>
-            <p className="mt-2 text-ink-600">
-              Un conseiller étudie votre projet et vous présente le détail des aides adaptées. Vos réponses et le résultat indicatif sont joints à votre
-              demande ; {config.companyName} vous recontactera uniquement au sujet de ce projet.
-            </p>
-            <div className="mt-6">
-              <ContactForm
-                kind="SIMULATION"
-                config={config}
-                answers={pruned}
-                ruleSetVersion={ruleSet.version}
-                referenceDate={referenceDate}
-                locationLabel={location || "non précisé"}
-                worksText={worksTextForRequest("SIMULATION", pruned)}
-                onSuccess={(r) => {
-                  setDone(r);
-                  navigate("done", currentVisible);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              />
-            </div>
-          </div>
-        )}
+        <ResultView
+          evaluation={evaluation}
+          summary={summarizeAnswers(pruned, ctx)}
+          canContact={canContact}
+          notAccepted={config.submissionsOpen && !accepted}
+          channels={config.channels}
+          onContact={goToForm}
+          onEdit={(q) => {
+            setReturnToResult(true);
+            navigate("questions", q);
+          }}
+          onRestart={restart}
+          contact={
+            <section id="contact" data-sticky-stop aria-labelledby="contact-title" className="card scroll-mt-24 p-6 sm:p-8">
+              <h2 id="contact-title" className="text-2xl font-bold text-ink-950">
+                Être recontacté(e) par un conseiller
+              </h2>
+              <p className="mt-2 text-ink-600">
+                Laissez vos coordonnées : un conseiller de {config.companyName} vous recontacte pour faire le point sur votre projet et vous
+                présenter le détail des aides. Vos réponses et le résultat indicatif sont joints à votre demande ; vous ne serez recontacté(e)
+                qu&apos;au sujet de ce projet.
+              </p>
+              <div className="mt-6">
+                <ContactForm
+                  kind="SIMULATION"
+                  config={config}
+                  answers={pruned}
+                  ruleSetVersion={ruleSet.version}
+                  referenceDate={referenceDate}
+                  locationLabel={location || "non précisé"}
+                  worksText={worksTextForRequest("SIMULATION", pruned)}
+                  onSuccess={(r) => {
+                    setDone(r);
+                    navigate("done", currentVisible);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                />
+              </div>
+            </section>
+          }
+        />
       </div>
     );
   }
@@ -378,7 +394,7 @@ export default function Simulator({
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pine-600" aria-hidden />
           Vos réponses restent dans votre navigateur tant que vous n&apos;envoyez pas de demande. {NO_STATE_DATA_NOTICE}
         </p>
-        {config.submissionsOpen && (
+        {config.quickCallbackOpen && (
           <p className="mt-3 text-sm text-ink-600">
             Pas le temps de répondre ?{" "}
             <Link href="/rappel" className="font-semibold text-pine-700 underline underline-offset-2">

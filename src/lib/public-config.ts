@@ -3,11 +3,14 @@ import { cache } from "react";
 import { env } from "./env";
 import { noticeWithHash } from "./legal/notice";
 import { siteSettings } from "./site-data";
+import type { OverallOutcome } from "@/engine/types";
 import {
+  ACCEPTED_OUTCOMES,
   ACTIVITY_LABELS,
   emailReplyAvailable,
   missingIdentityFields,
   phoneCallbackAvailable,
+  quickCallbackOpen,
   type SiteSettings,
   submissionsOpen,
 } from "./settings-schema";
@@ -25,6 +28,12 @@ export interface PublicConfig {
   channels: { phone: boolean; email: boolean };
   callbackDelayBusinessDays: number;
   submissionsOpen: boolean;
+  /** Résultats du test pour lesquels la demande de rendez-vous est proposée. */
+  acceptedOutcomes: OverallOutcome[];
+  /** Demande de rappel sans faire le test (non qualifiée). */
+  quickCallbackOpen: boolean;
+  /** Test d'éligibilité seul, ou test complet avec le détail du projet. */
+  testMode: "ELIGIBILITE" | "PROJET";
   notice: { text: string; hash: string };
   turnstileSiteKey: string | null;
 }
@@ -42,6 +51,9 @@ export function toPublicConfig(s: SiteSettings): PublicConfig {
     channels: { phone: phoneCallbackAvailable(s), email: emailReplyAvailable(s) },
     callbackDelayBusinessDays: s.contact.callbackDelayBusinessDays,
     submissionsOpen: submissionsOpen(s) && missingIdentityFields(s).length === 0,
+    acceptedOutcomes: ACCEPTED_OUTCOMES[s.contact.acceptedOutcomes],
+    quickCallbackOpen: quickCallbackOpen(s),
+    testMode: s.test.mode,
     notice: noticeWithHash(s),
     turnstileSiteKey: env().NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null,
   };

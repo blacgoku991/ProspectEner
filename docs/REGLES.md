@@ -1,6 +1,6 @@
 # Règles de pré-éligibilité, sources et vérification
 
-Barème embarqué : **`2026.10-2`**, « Règles en vigueur au 4 octobre 2026 (réforme du 1er septembre 2026, bonifications CEE temporaires) ». Moteur : **1.1.0**.
+Barème embarqué : **`2026.10-2`**, « Règles en vigueur au 4 octobre 2026 (réforme du 1er septembre 2026, bonifications CEE temporaires) ». Moteur : **1.2.0**.
 
 `2026.10-2` complète `2026.10-1` (fichier `src/engine/rulesets/2026-10-2.ts`, écrit comme un différentiel) :
 
@@ -13,6 +13,16 @@ Barème embarqué : **`2026.10-2`**, « Règles en vigueur au 4 octobre 2026 (r�
 - aucune version publiée : la version embarquée est publiée ;
 - la version publiée est une version embarquée plus ancienne, publiée automatiquement, et **aucune relecture humaine des règles n'est enregistrée** (Paramètres → check-list) : elle est remplacée, avec une note de publication qui rappelle la relecture à faire ;
 - sinon, la nouvelle version arrive comme **brouillon** à prévisualiser puis publier ; le tableau de bord le signale.
+
+## Variante « test d'éligibilité seul » (moteur 1.2.0)
+
+Par défaut, le questionnaire porte sur le logement **et le projet** : équipement actuel, travaux souhaités. Une variante sans question sur le projet peut être choisie dans Paramètres → « Qualification des demandes » → type de test. Ses réponses portent `scope: "PROFILE"`.
+
+- **Questions posées** : localisation, type de logement, statut d'occupation, résidence, ancienneté, devis signé (et depuis quand si le délai de grâce CEE s'applique), travaux commencés, puis taille du foyer et tranche de revenus lorsqu'ils peuvent changer le résultat.
+- **Évaluation** : chaque dispositif est évalué pour **l'ensemble des travaux qu'il couvre**. La question posée devient « ce foyer peut-il être aidé par ce dispositif ? ». Les conditions personnelles restent appliquées telles quelles : statut, résidence, revenus, ancienneté, devis et travaux commencés.
+- **Ce qui reste à vérifier avec la personne** : les travaux envisagés, et les critères qui dépendent du projet. Exemple : un logement de 2 à 15 ans n'est possible pour MaPrimeRénov' par geste que par la dérogation « remplacement d'une chaudière fioul ». En mode test seul, le critère est donc « à vérifier », et non « rempli » ou « non rempli ».
+- **Messages** : « Vous êtes potentiellement éligible aux aides à la rénovation », « Votre éligibilité doit être vérifiée », critères non remplis ou hors périmètre. Aucun nom d'aide ni montant n'est affiché au visiteur.
+- **Qualification** : dans l'administration, les critères de chaque aide servent de liste à confirmer avant tout rendez-vous. Les critères « territoire » et « entreprise RGE » sont exclus de cette liste, car ils ne dépendent pas de la personne.
 
 ## Méthode de vérification (et ses limites)
 
@@ -171,4 +181,5 @@ Toute évolution de la **logique** (et non des seuils) passe par le code (`src/e
 - la dérogation fioul et le délai de grâce CEE ;
 - l'expiration du barème, la règle non vérifiée et le guichet suspendu ;
 - le déterminisme ;
-- la minimisation du questionnaire (questions masquées et réponses élaguées).
+- la minimisation du questionnaire (questions masquées et réponses élaguées) ;
+- le test d'éligibilité seul : questions posées, élagage, évaluation par aide, conditions réelles maintenues, outre-mer.

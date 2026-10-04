@@ -93,6 +93,8 @@ enum RequestStatus {
   NOUVEAU
   A_VERIFIER
   CONTACTE
+  /// Rendez-vous convenu, après qualification de l'éligibilité avec la personne.
+  RDV_FIXE
   ETUDE_EN_COURS
   TERMINE
   SANS_SUITE
@@ -195,6 +197,17 @@ model ContactRequest {
   cancelledBy      String?
   /// Le contact figurait déjà dans la liste d'opposition au moment de la demande.
   oppositionMatch  Boolean    @default(false)
+
+  // Qualification et rendez-vous
+  /// Critères d'éligibilité confirmés avec la personne (aides retenues, critères cochés, auteur).
+  qualification   Json?
+  qualifiedAt     DateTime?
+  /// Rendez-vous convenu (heure de Paris enregistrée en UTC).
+  appointmentAt   DateTime?
+  /// DOMICILE | VISIO | TELEPHONE
+  appointmentMode String?
+  /// Précisions pratiques — effacées à l'anonymisation.
+  appointmentNote String?
   assignedToId     String?    @db.Uuid
   assignedTo       StaffUser? @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
   anonymizedAt     DateTime?
@@ -214,6 +227,7 @@ model ContactRequest {
   @@index([departement])
   @@index([callbackDeadline])
   @@index([lastActivityAt])
+  @@index([appointmentAt])
 }
 
 enum TextKind {

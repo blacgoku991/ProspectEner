@@ -2,6 +2,7 @@ import { ArrowRight, BookOpenCheck, Check, ExternalLink, PhoneCall } from "lucid
 import Link from "next/link";
 import type { SourceRef } from "@/engine/types";
 import { cn } from "@/lib/cn";
+import { getPublicConfig } from "@/lib/public-config";
 import { Breadcrumbs, type Crumb } from "./Breadcrumbs";
 
 /** En-tête des pages d'information : fil d'Ariane, titre, chapeau. */
@@ -58,7 +59,8 @@ export function SourceList({ sources }: { sources: readonly SourceRef[] }) {
 }
 
 /** Appel à l'action des pages d'information : le test, ou une demande de rappel. */
-export function TestCta({ title = "Votre projet peut-il être aidé ?", text = "Répondez à quelques questions : le résultat s'affiche immédiatement, sans inscription." }: { title?: string; text?: string }) {
+export async function TestCta({ title = "Votre projet peut-il être aidé ?", text = "Répondez à quelques questions : le résultat s'affiche immédiatement, sans inscription." }: { title?: string; text?: string }) {
+  const { config } = await getPublicConfig();
   return (
     <aside className="rounded-3xl bg-ink-900 px-6 py-8 text-white sm:px-10">
       <p className="text-2xl font-bold">{title}</p>
@@ -68,10 +70,12 @@ export function TestCta({ title = "Votre projet peut-il être aidé ?", text = "
           Tester mon éligibilité
           <ArrowRight className="size-5" aria-hidden />
         </Link>
-        <Link href="/rappel" className="inline-flex items-center gap-2 text-sm font-semibold text-white/85 underline underline-offset-4 hover:text-white">
-          <PhoneCall className="size-4" aria-hidden />
-          Être recontacté(e) sans faire le test
-        </Link>
+        {config.quickCallbackOpen && (
+          <Link href="/rappel" className="inline-flex items-center gap-2 text-sm font-semibold text-white/85 underline underline-offset-4 hover:text-white">
+            <PhoneCall className="size-4" aria-hidden />
+            Être recontacté(e) sans faire le test
+          </Link>
+        )}
       </div>
     </aside>
   );

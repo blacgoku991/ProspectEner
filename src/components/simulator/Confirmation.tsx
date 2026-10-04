@@ -24,7 +24,8 @@ export function Confirmation({ result, config }: { result: SubmitSuccess; config
           <span className="grid size-14 place-items-center rounded-2xl bg-white/15">
             <Check className="size-8" aria-hidden />
           </span>
-          <h2 className="mt-4 text-3xl font-bold">Votre demande est bien enregistrée</h2>
+          <h2 className="mt-4 text-3xl font-bold">Merci, vous allez être recontacté(e)</h2>
+          <p className="mt-1 text-white/85">Votre demande est bien enregistrée.</p>
           <p className="mt-2 text-white/85">
             Référence : <strong className="font-mono text-lg tracking-wider text-white">{result.reference}</strong>
           </p>
@@ -35,11 +36,11 @@ export function Confirmation({ result, config }: { result: SubmitSuccess; config
           </p>
           {result.channel === "PHONE" ? (
             <p className="text-ink-700">
-              {config.companyName} pourra vous rappeler dans les {config.callbackDelayBusinessDays} jours ouvrables suivant votre demande
-              {result.callbackDeadline ? `, soit au plus tard le ${fmt(result.callbackDeadline)}` : ""}. L&apos;appel portera uniquement sur votre projet.
+              Un conseiller de {config.companyName} vous rappellera dans les {config.callbackDelayBusinessDays} jours ouvrables suivant votre demande
+              {result.callbackDeadline ? `, au plus tard le ${fmt(result.callbackDeadline)}` : ""}. L&apos;appel portera uniquement sur votre projet.
             </p>
           ) : (
-            <p className="text-ink-700">{config.companyName} vous répondra par e-mail au sujet de votre projet.</p>
+            <p className="text-ink-700">Un conseiller de {config.companyName} vous répondra par e-mail au sujet de votre projet.</p>
           )}
           <p className="flex gap-2 rounded-xl bg-sand-100 px-4 py-3 text-sm text-ink-700">
             <Info className="mt-0.5 size-4 shrink-0 text-ink-500" aria-hidden />

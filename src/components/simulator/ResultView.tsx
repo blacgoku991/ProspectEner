@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CalendarClock, ChevronDown, CircleHelp, Compass, Pencil, RotateCcw, SearchCheck, SearchX, ShieldCheck } from "lucide-react";
+import { ArrowRight, CalendarClock, ChevronDown, CircleHelp, Compass, Info, Pencil, RotateCcw, SearchCheck, SearchX, ShieldCheck } from "lucide-react";
 import { FranceRenovNotice } from "@/components/site/FranceRenovNotice";
 import { IndependenceBadge } from "@/components/site/IndependenceBadge";
 import { StickyCta } from "@/components/site/StickyCta";
@@ -9,7 +9,7 @@ import type { Evaluation, OverallOutcome } from "@/engine/types";
 import { workLabel } from "@/engine/works";
 import { cn } from "@/lib/cn";
 import { INDICATIVE_NOTICE } from "@/lib/legal/texts";
-import { VISITOR_VERDICTS } from "@/lib/requests/shared";
+import { visitorVerdict } from "@/lib/requests/shared";
 
 const OUTCOME_STYLE: Record<OverallOutcome, { icon: typeof SearchCheck; ring: string; bg: string; iconBg: string }> = {
   POTENTIALLY_ELIGIBLE: { icon: SearchCheck, ring: "ring-pine-500/30", bg: "from-pine-50 to-white", iconBg: "bg-pine-600" },
@@ -18,16 +18,32 @@ const OUTCOME_STYLE: Record<OverallOutcome, { icon: typeof SearchCheck; ring: st
   OUT_OF_SCOPE: { icon: Compass, ring: "ring-sky-600/20", bg: "from-[#eef7fb] to-white", iconBg: "bg-sky-700" },
 };
 
+/** Pourquoi aucun rendez-vous n'est proposé (résultat non retenu dans les paramètres). */
+const NOT_ACCEPTED_TEXT: Record<OverallOutcome, string> = {
+  POTENTIALLY_ELIGIBLE: "",
+  NEEDS_REVIEW:
+    "Certaines conditions n'ont pas pu être confirmées d'après vos réponses. Si vous avez répondu « Je ne sais pas », précisez ces réponses ci-dessous si vous le pouvez.",
+  NOT_ELIGIBLE:
+    "Selon vos réponses, votre situation ne remplit pas les conditions des aides que nous accompagnons. Si une réponse est inexacte, vous pouvez la modifier ci-dessous.",
+  OUT_OF_SCOPE: "Votre situation sort du périmètre de ce simulateur.",
+};
+
 const longDate = (iso: string) =>
   new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
 
 /** Phrase de synthèse, sans nommer les aides. */
-function leadText(outcome: OverallOutcome, matched: number, toConfirm: number): string | null {
+function leadText(outcome: OverallOutcome, matched: number, toConfirm: number, profile: boolean): string | null {
   if (outcome === "POTENTIALLY_ELIGIBLE") {
     const others = toConfirm === 0 ? "" : toConfirm === 1 ? ", et une autre reste à confirmer" : `, et ${toConfirm} autres restent à confirmer`;
+    if (profile) {
+      return `D'après vos réponses, ${matched === 1 ? "une aide peut vous être accessible" : `${matched} aides peuvent vous être accessibles`}, selon les travaux envisagés${others}.`;
+    }
     return `D'après vos réponses, ${matched === 1 ? "une aide peut" : `${matched} aides peuvent`} correspondre à votre projet${others}.`;
   }
   if (outcome === "NEEDS_REVIEW" && toConfirm > 0) {
+    if (profile) {
+      return `${toConfirm === 1 ? "Une aide pourrait vous être accessible" : `${toConfirm} aides pourraient vous être accessibles`}, sous réserve de vérification.`;
+    }
     return `${toConfirm === 1 ? "Une aide pourrait" : `${toConfirm} aides pourraient`} correspondre à votre projet, sous réserve de vérification.`;
   }
   return null;
@@ -36,12 +52,16 @@ function leadText(outcome: OverallOutcome, matched: number, toConfirm: number): 
 /**
  * Résultat présenté au visiteur : un verdict simple, sans le détail des aides. Le détail est
  * présenté lors de l'étude du projet ; l'équipe le retrouve en entier dans l'administration.
+ * Le formulaire de contact (`contact`) s'affiche juste sous le verdict : le résultat reste
+ * toujours visible avant toute demande de coordonnées.
  */
 export function ResultView({
   evaluation,
   summary,
   canContact,
+  notAccepted = false,
   channels,
+  contact,
   onContact,
   onEdit,
   onRestart,
@@ -49,18 +69,24 @@ export function ResultView({
   evaluation: Evaluation;
   summary: AnswerSummaryLine[];
   canContact: boolean;
+  /** Formulaire ouvert, mais ce résultat ne donne pas lieu à un rendez-vous (paramètres). */
+  notAccepted?: boolean;
   channels: { phone: boolean; email: boolean };
+  /** Formulaire de demande de rappel, affiché sous le verdict. */
+  contact?: React.ReactNode;
+  /** Amène au formulaire. */
   onContact: () => void;
   onEdit: (q: QuestionId) => void;
   onRestart: () => void;
 }) {
   const { outcome } = evaluation;
-  const verdict = VISITOR_VERDICTS[outcome];
+  const profile = evaluation.scope === "PROFILE";
+  const verdict = visitorVerdict(evaluation);
   const style = OUTCOME_STYLE[outcome];
   const Icon = style.icon;
   const matched = evaluation.results.filter((r) => r.status === "POTENTIALLY_ELIGIBLE").length;
   const toConfirm = evaluation.results.filter((r) => r.status === "NEEDS_REVIEW").length;
-  const lead = leadText(outcome, matched, toConfirm);
+  const lead = leadText(outcome, matched, toConfirm, profile);
   const highlights = evaluation.results.flatMap((r) => r.highlights ?? []);
   // Critères non remplis (sans nom d'aide), pour comprendre un résultat défavorable et corriger une réponse.
   const blocking =
@@ -90,8 +116,12 @@ export function ResultView({
           <div className="mt-5 space-y-2 text-[15px] leading-relaxed text-ink-700">
             {lead && <p className="font-semibold text-ink-900">{lead}</p>}
             <p>{evaluation.headline}</p>
-            {(outcome === "POTENTIALLY_ELIGIBLE" || outcome === "NEEDS_REVIEW") && (
-              <p>Un conseiller vous présente le détail des aides adaptées à votre projet et vérifie les conditions avec vous.</p>
+            {(outcome === "POTENTIALLY_ELIGIBLE" || outcome === "NEEDS_REVIEW") && !notAccepted && (
+              <p>
+                {profile
+                  ? "Un conseiller vous rappelle pour faire le point sur vos travaux, vous présenter les aides adaptées et vérifier les conditions avec vous."
+                  : "Un conseiller vous présente le détail des aides adaptées à votre projet et vérifie les conditions avec vous."}
+              </p>
             )}
             {blocking.length > 0 && (
               <div className="pt-1">
@@ -103,7 +133,7 @@ export function ResultView({
                 </ul>
               </div>
             )}
-            {outcome === "NOT_ELIGIBLE" && (
+            {outcome === "NOT_ELIGIBLE" && canContact && (
               <p>Les aides des collectivités locales ne sont pas évaluées par ce simulateur : un conseiller peut tout de même étudier votre projet.</p>
             )}
           </div>
@@ -113,8 +143,9 @@ export function ResultView({
               <CalendarClock className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />
               <span>
                 <strong className="text-amber-900">Bon à savoir : </strong>
-                pour votre projet ({h.works.map((w) => workLabel(w).toLowerCase()).join(", ")}), les aides sont temporairement renforcées si le devis est
-                signé au plus tard le {longDate(h.until)}, sous conditions.
+                {profile
+                  ? `les primes pour un ${h.works.map((w) => workLabel(w).toLowerCase()).join(" ou un ")} sont temporairement renforcées si le devis est signé au plus tard le ${longDate(h.until)}, sous conditions.`
+                  : `pour votre projet (${h.works.map((w) => workLabel(w).toLowerCase()).join(", ")}), les aides sont temporairement renforcées si le devis est signé au plus tard le ${longDate(h.until)}, sous conditions.`}
               </span>
             </p>
           ))}
@@ -125,6 +156,14 @@ export function ResultView({
                 {cta}
                 <ArrowRight className="size-5" aria-hidden />
               </button>
+            ) : notAccepted ? (
+              <div className="flex gap-3 rounded-2xl bg-white/70 px-4 py-3 text-sm text-ink-700 ring-1 ring-inset ring-ink-900/10">
+                <Info className="mt-0.5 size-4 shrink-0 text-ink-500" aria-hidden />
+                <p>
+                  <strong className="text-ink-900">Nous ne pouvons pas vous proposer de rendez-vous. </strong>
+                  {NOT_ACCEPTED_TEXT[outcome]} Le service public France Rénov&apos; vous conseille gratuitement, y compris sur les aides locales.
+                </p>
+              </div>
             ) : (
               <p className="text-sm text-ink-500">La prise de contact en ligne n&apos;est pas encore ouverte sur ce site.</p>
             )}
@@ -147,7 +186,9 @@ export function ResultView({
         </div>
       </section>
 
-      <details className="card group">
+      {canContact && contact}
+
+      <details className="card group" open={notAccepted}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 text-sm font-semibold text-ink-800 hover:bg-sand-50 sm:px-8">
           Revoir ou modifier mes réponses
           <ChevronDown className="size-4 transition group-open:rotate-180" aria-hidden />

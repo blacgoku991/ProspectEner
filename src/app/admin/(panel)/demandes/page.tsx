@@ -14,6 +14,7 @@ export const metadata = { title: "Demandes" };
 
 const PAGE_SIZE = 25;
 const date = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+const appointmentDate = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 
 const OUTCOME_CLASS: Record<string, string> = {
   POTENTIALLY_ELIGIBLE: "bg-pine-100 text-pine-800",
@@ -52,6 +53,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
         kind: true,
         callbackDeadline: true,
         firstContactAt: true,
+        appointmentAt: true,
         isDemo: true,
         anonymizedAt: true,
         oppositionMatch: true,
@@ -178,7 +180,13 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
                       </span>
                     </td>
                     <td className="px-4 py-3 text-ink-700">{r.communeName ?? r.postalCode ?? "—"}</td>
-                    <td className="max-w-[220px] px-4 py-3 text-ink-700">{r.projectTypes.map((p) => WORK_CATEGORY_LABELS[p as WorkCategory] ?? p).join(", ")}</td>
+                    <td className="max-w-[220px] px-4 py-3 text-ink-700">
+                      {r.projectTypes.length > 0 ? (
+                        r.projectTypes.map((p) => WORK_CATEGORY_LABELS[p as WorkCategory] ?? p).join(", ")
+                      ) : (
+                        <span className="text-ink-400">À préciser</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={cn("badge", OUTCOME_CLASS[r.overallOutcome])}>{OUTCOME_LABELS[r.overallOutcome]}</span>
                       {(() => {
@@ -188,7 +196,12 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
                         return aids.length > 0 ? <span className="mt-1 block text-xs text-ink-500">{aids.join(" · ")}</span> : null;
                       })()}
                     </td>
-                    <td className="px-4 py-3 text-ink-800">{STATUS_LABELS[r.status]}</td>
+                    <td className="px-4 py-3 text-ink-800">
+                      {STATUS_LABELS[r.status]}
+                      {r.status === "RDV_FIXE" && r.appointmentAt && (
+                        <span className="mt-1 block text-xs font-semibold text-pine-700">{appointmentDate.format(r.appointmentAt)}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-ink-700">{r.assignedTo?.displayName ?? <span className="text-ink-400">—</span>}</td>
                     <td className="whitespace-nowrap px-4 py-3">
                       {r.channel === "EMAIL" ? (

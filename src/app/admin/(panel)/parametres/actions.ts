@@ -45,6 +45,10 @@ function apply(section: Section, s: SiteSettings, f: FormData, actorLabel: strin
       next.contact.showCompanyPhone = bool(f, "showCompanyPhone");
       next.contact.alsaceMoselleHolidays = bool(f, "alsaceMoselleHolidays");
       next.contact.callbackDelayBusinessDays = int(f, "callbackDelayBusinessDays");
+      next.contact.quickCallbackEnabled = bool(f, "quickCallbackEnabled");
+      const accepted = str(f, "acceptedOutcomes");
+      if (accepted === "ELIGIBLE_OR_REVIEW" || accepted === "ELIGIBLE_ONLY" || accepted === "ALL") next.contact.acceptedOutcomes = accepted;
+      next.test.mode = str(f, "testMode") === "ELIGIBILITE" ? "ELIGIBILITE" : "PROJET";
       if (wantPhone && !next.contact.phoneCallbackReviewedAt && !confirmed) {
         throw new Error("Pour activer le rappel téléphonique, cochez la confirmation après lecture de l'avertissement.");
       }

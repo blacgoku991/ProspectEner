@@ -27,6 +27,8 @@ export const constructionSchema = z.discriminatedUnion("kind", [
 
 export const answersSchema = z
   .object({
+    /** Test d'éligibilité seul (sans le détail du projet). */
+    scope: z.literal("PROFILE").optional(),
     postalCode: z.string().regex(/^\d{5}$/, "Code postal invalide (5 chiffres)."),
     communeInsee: z.string().regex(/^(\d{5}|2[AB]\d{3})$/).optional(),
     communeName: z.string().trim().min(1).max(100).optional(),

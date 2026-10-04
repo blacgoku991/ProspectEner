@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { SubmitButton } from "@/components/admin/SubmitButton";
-import { ACTIVITY_KINDS, ACTIVITY_LABELS, type SiteSettings } from "@/lib/settings-schema";
+import { ACCEPTED_OUTCOMES_LABELS, ACTIVITY_KINDS, ACTIVITY_LABELS, type SiteSettings } from "@/lib/settings-schema";
 import { applyRetentionAction, retryNotificationsAction, saveSettingsAction, type SettingsState, testNotificationAction } from "./actions";
 
 function Feedback({ state }: { state: SettingsState }) {
@@ -99,6 +99,35 @@ export function ContactForm({ s }: { s: SiteSettings }) {
   const reviewed = s.contact.phoneCallbackReviewedAt;
   return (
     <SectionForm section="contact">
+      <fieldset className="space-y-3 rounded-xl border border-ink-900/10 p-4">
+        <legend className="px-1 text-sm font-semibold text-ink-900">Qualification des demandes</legend>
+        <label className="block text-sm text-ink-800">
+          Test proposé aux visiteurs
+          <select name="testMode" defaultValue={s.test.mode} className="field-input mt-1 py-2.5 text-sm">
+            <option value="PROJET">Test complet : équipement actuel et travaux souhaités (recommandé)</option>
+            <option value="ELIGIBILITE">Test d&apos;éligibilité seul : le projet est vu ensuite avec un conseiller</option>
+          </select>
+        </label>
+        <label className="block text-sm text-ink-800">
+          Demandes de rendez-vous proposées après le test
+          <select name="acceptedOutcomes" defaultValue={s.contact.acceptedOutcomes} className="field-input mt-1 py-2.5 text-sm">
+            {(Object.keys(ACCEPTED_OUTCOMES_LABELS) as (keyof typeof ACCEPTED_OUTCOMES_LABELS)[]).map((k) => (
+              <option key={k} value={k}>
+                {ACCEPTED_OUTCOMES_LABELS[k]}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs text-ink-500">
+            Un visiteur dont les réponses ne remplissent pas les conditions voit son résultat, sans formulaire de contact : il est orienté vers France
+            Rénov&apos;.
+          </span>
+        </label>
+        <Check
+          name="quickCallbackEnabled"
+          label="Proposer « Être recontacté(e) sans faire le test » (demandes non qualifiées)"
+          checked={s.contact.quickCallbackEnabled}
+        />
+      </fieldset>
       <Check name="emailReplyEnabled" label="Proposer une réponse par e-mail" checked={s.contact.emailReplyEnabled} />
       <Check name="showCompanyPhone" label="Afficher le numéro de l'entreprise (appel entrant à l'initiative du visiteur)" checked={s.contact.showCompanyPhone} />
       <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">

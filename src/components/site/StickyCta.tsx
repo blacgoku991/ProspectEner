@@ -5,8 +5,9 @@ import { cn } from "@/lib/cn";
 
 /**
  * Barre d'action fixée en bas de l'écran. Elle apparaît quand le bouton principal
- * (`triggerId`) n'est pas visible, et s'efface dès qu'un message France Rénov' ou le pied
- * de page arrive en bas de l'écran : elle ne masque jamais l'information obligatoire du service public.
+ * (`triggerId`) n'est pas visible, et s'efface dès qu'un message France Rénov', le pied de page
+ * ou un élément marqué `data-sticky-stop` (formulaire de contact) arrive en bas de l'écran :
+ * elle ne masque jamais l'information obligatoire du service public ni le formulaire.
  */
 export function StickyCta({ triggerId, mobileOnly = false, children }: { triggerId: string; mobileOnly?: boolean; children: React.ReactNode }) {
   const [hidden, setHidden] = useState(false);
@@ -32,7 +33,7 @@ export function StickyCta({ triggerId, mobileOnly = false, children }: { trigger
       },
       { rootMargin: "-85% 0px 0px 0px" },
     );
-    document.querySelectorAll("[data-france-renov-notice], footer").forEach((el) => bandObserver.observe(el));
+    document.querySelectorAll("[data-france-renov-notice], [data-sticky-stop], footer").forEach((el) => bandObserver.observe(el));
 
     return () => {
       passObserver.disconnect();

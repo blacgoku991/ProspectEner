@@ -291,7 +291,7 @@ export function questionText(id: QuestionId, answers: Answers, ctx: QuestionCont
       help: "Elle figure sur le diagnostic de performance énergétique (étiquette de A à G). Si vous ne la connaissez pas, un audit pourra la déterminer.",
     },
     quoteSigned: {
-      title: "Avez-vous déjà signé un devis pour ces travaux ?",
+      title: isProfileTest(answers) ? "Avez-vous déjà signé un devis pour vos travaux de rénovation ?" : "Avez-vous déjà signé un devis pour ces travaux ?",
       help: "Certaines aides doivent être sollicitées avant la signature du devis.",
     },
     quoteSignedRecency: { title: "Quand avez-vous signé ce devis ?", help: grace ? `Le délai de ${grace} jours compte à partir de la signature.` : undefined },
@@ -335,7 +335,8 @@ function hasEvaluableWorks(answers: Answers): boolean {
 
 /** Le revenu peut-il changer le résultat ? (dispositifs MaPrimeRénov' concernés) */
 export function incomeRelevant(answers: Answers, rules: RuleSetData): boolean {
-  if (!hasEvaluableWorks(answers)) return false;
+  const profile = isProfileTest(answers);
+  if (!profile && !hasEvaluableWorks(answers)) return false;
   const occ = answers.occupancy;
   if (!occ || occ === "LOCATAIRE") return false;
   if (answers.residence !== "PRINCIPALE") return false;
@@ -344,9 +345,38 @@ export function incomeRelevant(answers: Answers, rules: RuleSetData): boolean {
     if (!d.enabled || !(d.eligibleOccupancies.includes(occ) || d.reviewOccupancies.includes(occ))) return false;
     // Si toutes les catégories de revenus sont éligibles, le revenu ne change pas le résultat.
     if (d.eligibleIncomeCategories.length >= 4) return false;
+    // Test d'éligibilité seul : le dispositif est évalué pour tous les travaux qu'il couvre.
+    if (profile) return d.eligibleWorks.length > 0;
     const split = splitWorks(items, d);
     return split.covered.length > 0 || split.undetermined.length > 0;
   });
+}
+
+/** Test d'éligibilité seul (sans le détail du projet) ? */
+export function isProfileTest(answers: Answers): boolean {
+  return answers.scope === "PROFILE";
+}
+
+/** Questions du test d'éligibilité seul : logement, avancement et foyer, rien sur le projet. */
+function profileQuestionVisible(id: QuestionId, answers: Answers, ctx: QuestionContext): boolean {
+  switch (id) {
+    case "housingType":
+    case "occupancy":
+    case "construction":
+    case "quoteSigned":
+    case "worksStarted":
+      return true;
+    case "residence":
+      return answers.occupancy !== undefined;
+    case "quoteSignedRecency":
+      return answers.quoteSigned === "OUI" && graceDays(ctx.rules) !== null;
+    case "householdSize":
+      return incomeRelevant(answers, ctx.rules);
+    case "income":
+      return incomeRelevant(answers, ctx.rules) && isValidHouseholdSize(answers.householdSize);
+    default:
+      return false;
+  }
 }
 
 function dpeRelevant(answers: Answers, rules: RuleSetData): boolean {
@@ -376,6 +406,7 @@ function heatingRelevant(answers: Answers): boolean {
 export function isQuestionVisible(id: QuestionId, answers: Answers, ctx: QuestionContext): boolean {
   if (id === "location") return true;
   if (!territoryInScope(answers)) return false;
+  if (isProfileTest(answers)) return profileQuestionVisible(id, answers, ctx);
   const works = answers.works ?? [];
   switch (id) {
     case "housingType":
@@ -485,7 +516,8 @@ export function pruneAnswers(answers: Answers, ctx: QuestionContext): Answers {
   // La visibilité dépend des réponses : on itère jusqu'à stabilité.
   let current: Answers = { ...answers };
   for (let i = 0; i < 5; i++) {
-    const next: Answers = {};
+    // La portée du test n'est liée à aucune question : elle est toujours conservée.
+    const next: Answers = current.scope ? { scope: current.scope } : {};
     for (const step of STEPS) {
       for (const q of step.questions) {
         if (!isQuestionVisible(q, current, ctx)) continue;

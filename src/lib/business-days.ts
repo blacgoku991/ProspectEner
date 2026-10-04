@@ -172,3 +172,15 @@ export function isWithinRecommendedCallWindow(now: Date, options: HolidayOptions
   const minutes = p.hour * 60 + p.minute;
   return (minutes >= 600 && minutes < 780) || (minutes >= 840 && minutes < 1200);
 }
+
+/** Date et heure locales de Paris saisies dans un champ « datetime-local » (AAAA-MM-JJTHH:MM), ou null. */
+export function parseParisLocalDateTime(value: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const [year, month, day, hour, minute] = m.slice(1).map(Number) as [number, number, number, number, number];
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) return null;
+  const date = parisTimeToUtc({ year, month, day }, hour, minute, 0);
+  // Rejette les dates impossibles (31 février…) : la date relue doit être celle saisie.
+  const back = parisParts(date);
+  return back.year === year && back.month === month && back.day === day ? date : null;
+}

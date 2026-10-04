@@ -62,8 +62,15 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
 
   useEffect(() => {
     startedAt.current = performance.now();
+  }, []);
+
+  // Le formulaire s'affiche avec le résultat : l'étape est comptée quand la personne commence à le remplir.
+  const tracked = useRef(false);
+  const onFirstFocus = () => {
+    if (tracked.current) return;
+    tracked.current = true;
     trackStep(kind === "SIMULATION" ? "contact_form" : "quick_form");
-  }, [kind]);
+  };
 
   const sentence = channel ? buildRequestSentence(config.companyName, channel, worksText) : null;
 
@@ -168,7 +175,7 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
   const toggle = <T,>(list: T[], v: T, set: (l: T[]) => void) => set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-7" aria-describedby={`${id}-intro`}>
+    <form onSubmit={submit} onFocus={onFirstFocus} noValidate className="space-y-7" aria-describedby={`${id}-intro`}>
       <p id={`${id}-intro`} className="text-sm text-ink-600">
         Tous les champs sont obligatoires sauf mention « facultatif ».
       </p>

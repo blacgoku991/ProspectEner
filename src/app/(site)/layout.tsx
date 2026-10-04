@@ -23,7 +23,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         Aller au contenu
       </a>
       <AcquisitionCapture />
-      <Header brandName={config.brandName} />
+      <Header brandName={config.brandName} showCallback={config.quickCallbackOpen} />
       <main id="contenu">{children}</main>
       <Footer config={config} aidLinks={aidLinks} workLinks={workLinks} />
     </>

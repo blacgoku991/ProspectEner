@@ -1,9 +1,10 @@
-import { CalendarClock, PhoneCall } from "lucide-react";
+import { CalendarCheck, CalendarClock, PhoneCall } from "lucide-react";
 import Link from "next/link";
 import { TERRITORY_LABELS, WORK_CATEGORY_LABELS } from "@/engine";
 import type { Territory, WorkCategory } from "@/engine/types";
 import { SecurityOverview } from "@/components/admin/SecurityOverview";
 import { Alert, BarList, Panel, PageHeader, StatTile } from "@/components/admin/ui";
+import { APPOINTMENT_MODES, type AppointmentMode } from "@/lib/admin/qualification";
 import { buildRequestWhere, callbackState } from "@/lib/admin/requests";
 import { requestScope, requireStaff } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db";
@@ -25,6 +26,15 @@ export default async function DashboardPage() {
   const since30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
   const scope = requestScope(user, settings);
 
+  const [appointments7, nextAppointments] = await Promise.all([
+    prisma.contactRequest.count({ where: { AND: [scope, { qualifiedAt: { gte: since7 }, appointmentAt: { not: null } }] } }),
+    prisma.contactRequest.findMany({
+      where: { AND: [scope, { status: "RDV_FIXE", appointmentAt: { gte: new Date(now.getTime() - 3600_000) } }] },
+      orderBy: { appointmentAt: "asc" },
+      take: 8,
+      select: { id: true, reference: true, firstName: true, lastName: true, communeName: true, appointmentAt: true, appointmentMode: true },
+    }),
+  ]);
   const [newCount, toProcess, soon, overdue, byOutcome, byStatus, byTerritory, worksRows, funnelRows, upcoming, failedNotifications, ruleSet, demoCount, pendingDraft] =
     await Promise.all([
       prisma.contactRequest.count({ where: { AND: [scope, { createdAt: { gte: since7 } }] } }),
@@ -113,12 +123,47 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatTile label="Rendez-vous fixés (7 jours)" value={appointments7} href="/admin/demandes?status=RDV_FIXE" />
         <StatTile label="Nouvelles demandes (7 jours)" value={newCount} href="/admin/demandes?sort=recent" />
         <StatTile label="À traiter" value={toProcess} hint="Statuts « Nouveau » et « À vérifier »" href="/admin/demandes?open=1&sort=oldest" />
         <StatTile label="Rappels à échéance (≤ 2 jours)" value={soon} tone={soon > 0 ? "warning" : "default"} href="/admin/demandes?deadline=soon&sort=deadline" />
         <StatTile label="Délais de rappel dépassés" value={overdue} tone={overdue > 0 ? "critical" : "default"} href="/admin/demandes?deadline=overdue" />
       </div>
+
+      <Panel
+        title="Prochains rendez-vous"
+        className="mt-6"
+        actions={<Link href="/admin/demandes?status=RDV_FIXE" className="text-sm font-semibold text-pine-700">Tout voir</Link>}
+      >
+        {nextAppointments.length === 0 ? (
+          <p className="text-sm text-ink-500">Aucun rendez-vous à venir.</p>
+        ) : (
+          <ul className="divide-y divide-ink-900/[0.06]">
+            {nextAppointments.map((a) => (
+              <li key={a.id}>
+                <Link href={`/admin/demandes/${a.id}`} className="flex items-center justify-between gap-3 py-3 hover:bg-sand-50">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <CalendarCheck className="size-4 shrink-0 text-pine-600" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-ink-900">
+                        {[a.firstName, a.lastName].filter(Boolean).join(" ") || "Contact anonymisé"}
+                      </span>
+                      <span className="block text-xs text-ink-500">
+                        {a.reference} · {a.communeName ?? "—"}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="badge bg-pine-50 text-pine-800">
+                    {a.appointmentAt ? dateTime.format(a.appointmentAt) : "—"}
+                    {a.appointmentMode ? ` · ${APPOINTMENT_MODES[a.appointmentMode as AppointmentMode] ?? ""}` : ""}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
 
       {user.role === "ADMIN" && (
         <div className="mt-6">

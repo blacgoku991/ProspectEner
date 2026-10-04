@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { IdleGuard } from "@/components/admin/IdleGuard";
-import { requireStaff } from "@/lib/auth/guards";
+import { requestScope, requireStaff } from "@/lib/auth/guards";
 import { SESSION_IDLE_MS } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { logoutAction } from "../(auth)/actions";
 
 export const metadata: Metadata = { title: { default: "Administration", template: "%s · Administration" }, robots: { index: false, follow: false } };
@@ -12,6 +13,8 @@ export const metadata: Metadata = { title: { default: "Administration", template
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const { user, settings } = await requireStaff();
   const isAdmin = user.role === "ADMIN";
+  // Nouvelles demandes (non encore traitées) visibles par cette personne : signalées dans le menu, sur chaque page.
+  const newRequests = await prisma.contactRequest.count({ where: { AND: [requestScope(user, settings), { status: "NOUVEAU" }] } });
   const brand = settings.company.name || "ProspectEner";
   const userBox = (
     <div className="rounded-2xl bg-white/5 p-3">
@@ -32,7 +35,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             <span className="grid size-8 place-items-center rounded-lg bg-pine-600 text-sm">PE</span>
             <span className="truncate">{brand}</span>
           </Link>
-          <AdminNav isAdmin={isAdmin} />
+          <AdminNav isAdmin={isAdmin} newRequests={newRequests} />
         </div>
         {userBox}
       </aside>
@@ -40,10 +43,17 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <details className="group sticky top-0 z-30 bg-ink-950 lg:hidden">
         <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 font-display font-bold text-white">
           {brand}
-          <Menu className="size-5" aria-label="Ouvrir le menu" />
+          <span className="flex items-center gap-3">
+            {newRequests > 0 && (
+              <span className="rounded-full bg-amber-400 px-2 py-0.5 font-sans text-xs font-bold text-ink-950">
+                {newRequests} {newRequests > 1 ? "nouvelles" : "nouvelle"}
+              </span>
+            )}
+            <Menu className="size-5" aria-label="Ouvrir le menu" />
+          </span>
         </summary>
         <div className="space-y-4 px-4 pb-4">
-          <AdminNav isAdmin={isAdmin} />
+          <AdminNav isAdmin={isAdmin} newRequests={newRequests} />
           {userBox}
         </div>
       </details>

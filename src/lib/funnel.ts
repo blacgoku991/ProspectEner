@@ -24,8 +24,8 @@ export const FUNNEL_LABELS: Record<FunnelStep, string> = {
   step_avancement: "Étape avancement",
   step_foyer: "Étape foyer",
   result: "Résultat affiché",
-  contact_form: "Formulaire de contact ouvert",
-  quick_form: "Formulaire de rappel rapide ouvert",
+  contact_form: "Formulaire de contact commencé",
+  quick_form: "Formulaire de rappel rapide commencé",
   submitted: "Demande envoyée",
 };
 

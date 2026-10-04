@@ -1,11 +1,13 @@
-import { ArrowLeft, CalendarClock, CircleAlert, Clock, Mail, MessageSquare, Phone, PhoneOff, ShieldBan } from "lucide-react";
+import { ArrowLeft, CalendarCheck, CalendarClock, CircleAlert, Clock, Mail, MessageSquare, Phone, PhoneOff, ShieldBan } from "lucide-react";
 import Link from "next/link";
 import { EligibilitySummary } from "@/components/evaluation/EligibilitySummary";
 import { EvaluationDetails } from "@/components/evaluation/EvaluationDetails";
+import { AppointmentForm } from "@/components/admin/AppointmentForm";
 import { SubmitButton } from "@/components/admin/SubmitButton";
 import { Alert, Panel } from "@/components/admin/ui";
 import { summarizeAnswers, validateRuleSetData, WORK_CATEGORY_LABELS, type Answers, type Evaluation } from "@/engine";
 import type { WorkCategory } from "@/engine/types";
+import { aidName, APPOINTMENT_MODES, type AppointmentMode, qualificationGroups, type StoredQualification } from "@/lib/admin/qualification";
 import { callbackState } from "@/lib/admin/requests";
 import { audit } from "@/lib/audit";
 import { getAccessibleRequestId, requireStaff } from "@/lib/auth/guards";
@@ -19,8 +21,10 @@ import {
   addNoteAction,
   anonymizeAction,
   assignAction,
+  cancelAppointmentAction,
   deleteAction,
   logContactAction,
+  markNotEligibleAction,
   recordOppositionAction,
   updateStatusAction,
 } from "./actions";
@@ -29,6 +33,7 @@ export const metadata = { title: "Fiche demande" };
 
 const dt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "medium", timeZone: "Europe/Paris" });
 const dts = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Paris" });
+const dtAppointment = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 
 const EVENT_LABELS: Record<string, string> = {
   CREATED: "Demande reçue",
@@ -39,6 +44,9 @@ const EVENT_LABELS: Record<string, string> = {
   CANCELLED_BY_VISITOR: "Annulée par le visiteur",
   OPPOSITION_RECORDED: "Opposition enregistrée",
   ANONYMIZED: "Données anonymisées",
+  APPOINTMENT_BOOKED: "Rendez-vous fixé",
+  APPOINTMENT_CANCELLED: "Rendez-vous annulé",
+  QUALIFICATION_FAILED: "Non éligible après vérification",
 };
 
 const CONTACT_OUTCOME_LABELS: Record<string, string> = {
@@ -53,6 +61,10 @@ function eventDetail(type: string, data: unknown): string {
   if (type === "STATUS_CHANGED") return `${STATUS_LABELS[d.from as keyof typeof STATUS_LABELS] ?? d.from} → ${STATUS_LABELS[d.to as keyof typeof STATUS_LABELS] ?? d.to}`;
   if (type === "CONTACT_LOGGED") return CONTACT_OUTCOME_LABELS[String(d.outcome)] ?? "";
   if (type === "ANONYMIZED") return String(d.reason ?? "");
+  if (type === "APPOINTMENT_BOOKED" && typeof d.at === "string") {
+    const aids = Array.isArray(d.aids) ? d.aids.map((a) => aidName(String(a))).join(", ") : "";
+    return `${dtAppointment.format(new Date(d.at))} · ${APPOINTMENT_MODES[d.mode as AppointmentMode] ?? ""}${aids ? ` · ${aids}` : ""}`;
+  }
   if (type === "CREATED") return `${KIND_LABELS[d.kind as keyof typeof KIND_LABELS] ?? ""}${d.oppositionMatch ? " — contact présent dans la liste d'opposition" : ""}`;
   return "";
 }
@@ -88,6 +100,8 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const availability = r.availability as { days?: (keyof typeof DAY_LABELS)[]; slots?: (keyof typeof SLOT_LABELS)[] } | null;
   const callAllowed = r.channel === "PHONE" && !closed && !r.anonymizedAt && cb.state !== "OVERDUE";
   const works = r.projectTypes.map((p) => WORK_CATEGORY_LABELS[p as WorkCategory] ?? p).join(", ");
+  const groups = qualificationGroups(evaluation);
+  const qualification = r.qualification as unknown as StoredQualification | null;
 
   return (
     <div className="space-y-6">
@@ -159,6 +173,47 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 ou attendez une nouvelle demande de la personne.
               </Alert>
             </div>
+          )}
+        </Panel>
+      )}
+
+      {!r.anonymizedAt && (
+        <Panel title="Qualification et rendez-vous">
+          {r.status === "RDV_FIXE" && r.appointmentAt ? (
+            <div className="space-y-3">
+              <p className="flex flex-wrap items-center gap-2 rounded-xl bg-pine-50 px-4 py-3 font-semibold text-pine-950 ring-1 ring-inset ring-pine-600/20">
+                <CalendarCheck className="size-5 text-pine-700" aria-hidden />
+                Rendez-vous le {dtAppointment.format(r.appointmentAt)}
+                {r.appointmentMode ? ` · ${APPOINTMENT_MODES[r.appointmentMode as AppointmentMode] ?? r.appointmentMode}` : ""}
+              </p>
+              {qualification && (
+                <p className="text-sm text-ink-600">
+                  Éligibilité confirmée le {dts.format(new Date(qualification.at))} par {qualification.byName} :{" "}
+                  {qualification.aids.map((a) => aidName(a)).join(", ")}.
+                </p>
+              )}
+              {r.appointmentNote && <p className="whitespace-pre-line rounded-xl bg-sand-100 px-4 py-3 text-sm text-ink-800">{r.appointmentNote}</p>}
+              <form action={cancelAppointmentAction}>
+                <input type="hidden" name="id" value={r.id} />
+                <SubmitButton variant="ghost" className="py-2 text-xs">
+                  Annuler le rendez-vous
+                </SubmitButton>
+              </form>
+            </div>
+          ) : closed ? (
+            <p className="text-sm text-ink-500">Demande close : aucun rendez-vous à fixer.</p>
+          ) : groups.length === 0 ? (
+            <p className="text-sm text-ink-600">D&apos;après le test, aucune aide n&apos;est accessible : pas de rendez-vous à proposer.</p>
+          ) : (
+            <>
+              <AppointmentForm requestId={r.id} groups={groups} />
+              <form action={markNotEligibleAction} className="mt-5 border-t border-ink-900/[0.06] pt-4">
+                <input type="hidden" name="id" value={r.id} />
+                <SubmitButton variant="ghost" className="py-2 text-xs">
+                  Non éligible après vérification : clôturer sans rendez-vous
+                </SubmitButton>
+              </form>
+            </>
           )}
         </Panel>
       )}
@@ -276,7 +331,9 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
               <input type="hidden" name="id" value={r.id} />
               <label htmlFor="status" className="sr-only">Statut</label>
               <select id="status" name="status" defaultValue={r.status} className="field-input py-2.5 text-sm">
-                {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {Object.entries(STATUS_LABELS)
+                  .filter(([k]) => k !== "RDV_FIXE" || r.status === "RDV_FIXE")
+                  .map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
               <SubmitButton variant="dark" className="py-2.5">Enregistrer</SubmitButton>
             </form>

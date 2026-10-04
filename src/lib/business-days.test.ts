@@ -89,3 +89,19 @@ describe("créneaux d'appel recommandés", () => {
     expect(parisToday(new Date("2026-10-03T22:30:00Z"))).toBe("2026-10-04");
   });
 });
+
+describe("saisie d'une date de rendez-vous (heure de Paris)", () => {
+  it("convertit l'heure locale en instant UTC, été comme hiver", async () => {
+    const { parseParisLocalDateTime } = await import("./business-days");
+    expect(parseParisLocalDateTime("2026-10-08T10:00")?.toISOString()).toBe("2026-10-08T08:00:00.000Z");
+    expect(parseParisLocalDateTime("2026-12-03T14:30")?.toISOString()).toBe("2026-12-03T13:30:00.000Z");
+  });
+
+  it("refuse les saisies invalides", async () => {
+    const { parseParisLocalDateTime } = await import("./business-days");
+    expect(parseParisLocalDateTime("")).toBeNull();
+    expect(parseParisLocalDateTime("2026-02-31T10:00")).toBeNull();
+    expect(parseParisLocalDateTime("2026-10-08 10:00")).toBeNull();
+    expect(parseParisLocalDateTime("2026-10-08T25:00")).toBeNull();
+  });
+});

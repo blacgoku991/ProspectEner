@@ -5,8 +5,8 @@ import { isWithinRecommendedCallWindow, joursOuvrablesRestants } from "../busine
 import type { SiteSettings } from "../settings-schema";
 import { requestScope } from "../auth/guards";
 
-export const OPEN_STATUSES = ["NOUVEAU", "A_VERIFIER", "CONTACTE", "ETUDE_EN_COURS"] as const;
-const STATUSES = ["NOUVEAU", "A_VERIFIER", "CONTACTE", "ETUDE_EN_COURS", "TERMINE", "SANS_SUITE", "CONTACT_ANNULE"] as const;
+export const OPEN_STATUSES = ["NOUVEAU", "A_VERIFIER", "CONTACTE", "RDV_FIXE", "ETUDE_EN_COURS"] as const;
+const STATUSES = ["NOUVEAU", "A_VERIFIER", "CONTACTE", "RDV_FIXE", "ETUDE_EN_COURS", "TERMINE", "SANS_SUITE", "CONTACT_ANNULE"] as const;
 const OUTCOMES = ["POTENTIALLY_ELIGIBLE", "NEEDS_REVIEW", "NOT_ELIGIBLE", "OUT_OF_SCOPE", "NOT_EVALUATED"] as const;
 const WORKS = ["ISOLATION", "CHAUFFAGE", "PAC", "EAU_CHAUDE", "VENTILATION", "RENOVATION_GLOBALE", "AUTRE"] as const;
 

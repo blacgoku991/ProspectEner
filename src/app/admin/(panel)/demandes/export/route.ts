@@ -1,5 +1,6 @@
 import { DISPOSITIF_INFO, WORK_CATEGORY_LABELS } from "@/engine";
 import type { DispositifStatus, Evaluation, WorkCategory } from "@/engine/types";
+import { aidName, APPOINTMENT_MODES, type AppointmentMode, type StoredQualification } from "@/lib/admin/qualification";
 import { buildRequestWhere, parseListFilters } from "@/lib/admin/requests";
 import { audit } from "@/lib/audit";
 import { canExport, requireStaff } from "@/lib/auth/guards";
@@ -56,6 +57,12 @@ export async function GET(request: Request) {
     { header: "Assigné à", value: (r) => r.assignedTo?.displayName },
     { header: "Échéance de rappel", value: (r) => fmt(r.callbackDeadline) },
     { header: "Premier contact", value: (r) => fmt(r.firstContactAt) },
+    { header: "Rendez-vous", value: (r) => fmt(r.appointmentAt) },
+    { header: "Mode du rendez-vous", value: (r) => (r.appointmentMode ? (APPOINTMENT_MODES[r.appointmentMode as AppointmentMode] ?? r.appointmentMode) : "") },
+    {
+      header: "Aides qualifiées",
+      value: (r) => ((r.qualification as unknown as StoredQualification | null)?.aids ?? []).map((a) => aidName(a)).join(", "),
+    },
     { header: "Commentaire", value: (r) => r.comment },
     { header: "Origine", value: (r) => r.acquisitionOrigin },
     { header: "utm_source", value: (r) => r.utmSource },

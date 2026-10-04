@@ -14,7 +14,7 @@ Les références réglementaires ci-dessous ont été vérifiées le 4 octobre 2
   - présente sur l'accueil, le résultat, la confirmation, la page contact et le pied de page.
   - **À valider** : les spécifications de présentation (taille, emplacement) de l'annexe de l'arrêté n'ont pas pu être lues.
 - **Formulations interdites absentes.** Aucun « aide accordée », « droit automatique à X € », « travaux gratuits » ni fausse urgence. Aucun montant n'est calculé.
-- **Résultat avant coordonnées.** La simulation ne dépose aucun dossier, ce qui est rappelé près du résultat et sur la confirmation.
+- **Résultat avant coordonnées.** Le verdict s'affiche en premier ; le formulaire de rappel vient juste en dessous et n'est jamais obligatoire pour voir le résultat. La simulation ne dépose aucun dossier, ce qui est rappelé près du résultat et sur la confirmation.
 - **Activité réelle configurable.** Accompagnement, travaux et/ou mise en relation ; les qualifications ne sont publiées que si elles sont saisies. Aucune mention n'est inventée : un champ vide est signalé « information à compléter par l'éditeur ».
 
 ## 2. Demande de contact et démarchage
@@ -32,6 +32,13 @@ Les références réglementaires ci-dessous ont été vérifiées le 4 octobre 2
   - Le visiteur valide la phrase « Je demande à être contacté(e) par [entreprise], par [canal], au sujet de mon projet de [travaux] » via une case jamais pré-cochée, décochée si le canal change.
   - Le texte exact, la notice exacte (versionnée, avec empreinte), l'horodatage et des empreintes HMAC de l'IP et des coordonnées sont conservés comme preuve.
   - La notice précise que la demande ne vaut ni inscription à une newsletter, ni accord pour d'autres sollicitations.
+  - Avec la variante « test d'éligibilité seul », l'objet de la demande devient « mon projet de rénovation énergétique ». Le projet précis est découvert lors de l'échange demandé, qui reste limité à cet objet.
+- **Demande proposée seulement aux résultats retenus.** Par défaut, la demande de rappel n'est proposée qu'aux résultats « potentiellement éligible » ou « à vérifier ». Le serveur refuse aussi les autres (`OUTCOME_NOT_ACCEPTED`) : aucune fiche n'est créée pour une personne à qui l'on ne proposera rien. Le paramètre est réglable dans Paramètres.
+- **Rappel rapide sans test désactivé par défaut** (`QUICK_CALLBACK_CLOSED` côté serveur). Il produit des demandes non qualifiées, et la page `/rappel` renvoie alors vers le test.
+- **Rendez-vous.**
+  - Il est fixé pendant l'échange demandé, après confirmation des critères d'au moins une aide. Le serveur le contrôle.
+  - Il ne crée **aucune autorisation de sollicitation ultérieure** : en dehors du rendez-vous convenu, les règles ci-dessus continuent de s'appliquer.
+  - Le champ « Projet et précisions » est facultatif et limité à 1 000 caractères. Il est effacé à l'anonymisation.
 - **Coordonnée minimale.** Seule la coordonnée du canal choisi est conservée (téléphone **ou** e-mail).
 - **Échéance de rappel.**
   - Calcul : 5 jours ouvrables suivant la demande, jour de la demande exclu, samedis comptés, dimanches et jours fériés légaux exclus, Alsace-Moselle en option, fin de journée heure de Paris. Le délai est paramétrable, avec 5 au maximum.
@@ -95,6 +102,8 @@ Mesures implémentées :
   - Aucune réponse au questionnaire transmise à une plateforme publicitaire.
   - Cloudflare Turnstile est optionnel et désactivé par défaut. **S'il est activé**, le mentionner dans la politique de confidentialité.
 - **Pas de transmission à des partenaires**, ni par défaut ni en option.
+  - Confier les rendez-vous à une autre entreprise contredirait la notice (« ni vendues, ni transmises à des partenaires ») et la phrase validée par la personne, qui nomme l'éditeur.
+  - Une telle pratique exigerait de revoir la notice, la phrase de demande et la base légale, avec validation juridique. Un contact revendu ne répond pas à « la demande » de la personne au sens de l'article R223-4.
 
 ### À compléter ou valider par l'entreprise
 

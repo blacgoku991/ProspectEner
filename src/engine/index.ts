@@ -5,7 +5,7 @@ export * from "./income";
 export * from "./works";
 export * from "./ruleset-schema";
 export * from "./questionnaire";
-export { evaluate, overallOutcome, HEADLINES } from "./evaluate";
+export { evaluate, overallOutcome, HEADLINES, PROFILE_HEADLINES } from "./evaluate";
 export { RULESET_2026_10 } from "./rulesets/2026-10";
 export { RULESET_2026_10_2 } from "./rulesets/2026-10-2";
 

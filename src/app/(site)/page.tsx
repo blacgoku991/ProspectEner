@@ -28,8 +28,8 @@ const STEPS = [
   { title: "Répondez à quelques questions", text: "Votre logement, votre projet, votre situation : seules les questions utiles vous sont posées." },
   { title: "Découvrez votre résultat", text: "Immédiatement, sans inscription ni justificatif. Il est indicatif et repose sur les règles en vigueur." },
   {
-    title: "Faites-vous rappeler, si vous le souhaitez",
-    text: "Un conseiller étudie votre projet et vous présente le détail des aides. Aucun dossier n'est déposé en votre nom.",
+    title: "Un conseiller vous rappelle",
+    text: "Si vous le souhaitez, un conseiller fait le point avec vous sur vos travaux et les aides adaptées. Aucun dossier n'est déposé en votre nom.",
   },
 ];
 
@@ -134,7 +134,8 @@ export default async function HomePage() {
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-ink-600">
               Pompe à chaleur, isolation, chauffe-eau, rénovation globale : en quelques questions, vous savez{" "}
-              <strong className="font-semibold text-ink-900">immédiatement</strong> si votre projet peut être aidé, avant toute demande de
+              <strong className="font-semibold text-ink-900">immédiatement</strong>{" "}
+              {config.testMode === "ELIGIBILITE" ? "si vous pouvez être aidé(e)" : "si votre projet peut être aidé"}, avant toute demande de
               coordonnées.
             </p>
             <div id="hero-cta" className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
@@ -142,13 +143,15 @@ export default async function HomePage() {
                 Tester mon éligibilité
                 <ArrowRight className="size-5" aria-hidden />
               </Link>
-              <Link
-                href="/rappel"
-                className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-ink-700 underline decoration-ink-300 underline-offset-4 hover:text-ink-950"
-              >
-                <PhoneCall className="size-4" aria-hidden />
-                Je préfère être recontacté(e)
-              </Link>
+              {config.quickCallbackOpen && (
+                <Link
+                  href="/rappel"
+                  className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-ink-700 underline decoration-ink-300 underline-offset-4 hover:text-ink-950"
+                >
+                  <PhoneCall className="size-4" aria-hidden />
+                  Je préfère être recontacté(e)
+                </Link>
+              )}
             </div>
             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-600">
               {["Gratuit", "Environ 3 minutes", "Sans inscription", "Sans justificatif"].map((t) => (
@@ -290,9 +293,11 @@ export default async function HomePage() {
           Tester mon éligibilité
           <ArrowRight className="size-4" aria-hidden />
         </Link>
-        <Link href="/rappel" className="btn-ghost px-4 py-3" aria-label="Être recontacté(e) sans faire le test">
-          <PhoneCall className="size-5" aria-hidden />
-        </Link>
+        {config.quickCallbackOpen && (
+          <Link href="/rappel" className="btn-ghost px-4 py-3" aria-label="Être recontacté(e) sans faire le test">
+            <PhoneCall className="size-5" aria-hidden />
+          </Link>
+        )}
       </StickyCta>
     </>
   );

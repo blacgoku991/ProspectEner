@@ -7,7 +7,7 @@
  */
 
 /** Version de la logique du moteur (code). Les barèmes ont leur propre version. */
-export const ENGINE_VERSION = "1.1.0";
+export const ENGINE_VERSION = "1.2.0";
 
 // ─── Réponses ────────────────────────────────────────────────────────────────
 
@@ -103,6 +103,12 @@ export type ContractorAnswer = "NON_CHOISIE" | "RGE" | "NON_RGE" | "RGE_INCONNU"
 export type PriorAidKind = "MAPRIMERENOV" | "CEE" | "ECO_PTZ" | "AUTRE";
 
 export interface Answers {
+  /**
+   * Portée du test. « PROFILE » : test d'éligibilité seul (logement, avancement, foyer), sans le détail
+   * du projet ; chaque dispositif est alors évalué pour l'ensemble des travaux qu'il couvre, et le projet
+   * est précisé ensuite avec un conseiller. Absent : test complet, avec les travaux envisagés.
+   */
+  scope?: "PROFILE";
   // A. Logement
   postalCode?: string;
   communeInsee?: string;
@@ -243,6 +249,8 @@ export interface Evaluation {
   territory: Territory;
   departement: string | null;
   incomeZone: "IDF" | "HORS_IDF" | null;
+  /** Test d'éligibilité seul : chaque dispositif a été évalué pour l'ensemble des travaux qu'il couvre. */
+  scope?: "PROFILE";
   selectedWorks: WorkItem[];
   outcome: OverallOutcome;
   /** Message principal affiché au visiteur. */

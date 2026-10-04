@@ -17,7 +17,7 @@ const ITEMS = [
   { href: "/admin/compte", label: "Mon compte", icon: UserCog, admin: false },
 ];
 
-export function AdminNav({ isAdmin, onNavigate }: { isAdmin: boolean; onNavigate?: () => void }) {
+export function AdminNav({ isAdmin, newRequests = 0, onNavigate }: { isAdmin: boolean; newRequests?: number; onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <nav aria-label="Administration" className="space-y-1">
@@ -36,6 +36,12 @@ export function AdminNav({ isAdmin, onNavigate }: { isAdmin: boolean; onNavigate
           >
             <Icon className="size-4.5" aria-hidden />
             {label}
+            {href === "/admin/demandes" && newRequests > 0 && (
+              <span className="ml-auto rounded-full bg-amber-400 px-2 py-0.5 text-xs font-bold text-ink-950">
+                {newRequests}
+                <span className="sr-only"> {newRequests > 1 ? "nouvelles demandes" : "nouvelle demande"}</span>
+              </span>
+            )}
           </Link>
         );
       })}

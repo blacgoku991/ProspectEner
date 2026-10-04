@@ -158,19 +158,21 @@ describe("création d'une demande de contact", () => {
     expect(!closed.ok && closed.status).toBe(503);
   });
 
-  it("enregistre une demande de rappel rapide sans résultat d'éligibilité", async () => {
+  it("enregistre une demande de rappel rapide sans résultat d'éligibilité, seulement si elle est activée", async () => {
     const base = await simulationPayload();
-    const res = await createContactRequest(
-      {
-        kind: "QUICK_CALLBACK",
-        idempotencyKey: base.idempotencyKey,
-        answers: { postalCode: "75011", communeInsee: "75111", communeName: "Paris 11e Arrondissement", works: ["ISOLATION", "PAC"] },
-        contact: base.contact,
-        noticeHash: base.noticeHash,
-        formElapsedMs: 9000,
-      },
-      ctx(),
-    );
+    const quick = {
+      kind: "QUICK_CALLBACK",
+      idempotencyKey: base.idempotencyKey,
+      answers: { postalCode: "75011", communeInsee: "75111", communeName: "Paris 11e Arrondissement", works: ["ISOLATION", "PAC"] },
+      contact: base.contact,
+      noticeHash: base.noticeHash,
+      formElapsedMs: 9000,
+    };
+    // Par défaut, seules les demandes qualifiées par le test sont acceptées.
+    const refused = await createContactRequest(quick, ctx());
+    expect(!refused.ok && refused.code).toBe("QUICK_CALLBACK_CLOSED");
+    await saveSettings({ ...TEST_SETTINGS, contact: { ...TEST_SETTINGS.contact, quickCallbackEnabled: true } }, null);
+    const res = await createContactRequest(quick, ctx());
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     const row = await prisma.contactRequest.findUniqueOrThrow({ where: { reference: res.reference } });
@@ -179,6 +181,49 @@ describe("création d'une demande de contact", () => {
     expect(row.evaluation).toBeNull();
     expect(row.territory).toBe("IDF");
     expect(row.requestSentence).toContain("isolation et pompe à chaleur");
+  });
+
+  it("ne propose un rendez-vous qu'aux résultats retenus dans les paramètres", async () => {
+    // Locataire, travaux déjà commencés et devis signé depuis longtemps : critères non remplis.
+    const notEligible = {
+      ...ANSWERS_ELIGIBLE,
+      occupancy: "LOCATAIRE",
+      householdSize: undefined,
+      income: undefined,
+      worksStarted: "OUI",
+      quoteSigned: "OUI",
+      quoteSignedRecency: "OLD",
+    };
+    const refused = await createContactRequest(await simulationPayload({ answers: notEligible }), ctx());
+    expect(!refused.ok && refused.code).toBe("OUTCOME_NOT_ACCEPTED");
+    expect(await prisma.contactRequest.count()).toBe(0);
+    await saveSettings({ ...TEST_SETTINGS, contact: { ...TEST_SETTINGS.contact, acceptedOutcomes: "ALL" } }, null);
+    const accepted = await createContactRequest(await simulationPayload({ answers: notEligible }), ctx());
+    expect(accepted.ok).toBe(true);
+  });
+
+  it("accepte le test d'éligibilité seul et en garde la portée", async () => {
+    const profile = {
+      scope: "PROFILE",
+      postalCode: "69003",
+      communeInsee: "69383",
+      communeName: "Lyon 3e Arrondissement",
+      housingType: "MAISON",
+      occupancy: "PROPRIETAIRE_OCCUPANT",
+      residence: "PRINCIPALE",
+      construction: { kind: "YEAR", year: 1985 },
+      quoteSigned: "NON",
+      worksStarted: "NON",
+      householdSize: 3,
+      income: "MODESTE",
+    };
+    const res = await createContactRequest(await simulationPayload({ answers: profile }), ctx());
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const row = await prisma.contactRequest.findUniqueOrThrow({ where: { reference: res.reference } });
+    expect(row.overallOutcome).toBe("POTENTIALLY_ELIGIBLE");
+    expect((row.evaluation as { scope?: string }).scope).toBe("PROFILE");
+    expect(row.requestSentence).toContain("rénovation énergétique");
   });
 
   it("classe la source d'acquisition sans accepter de donnée personnelle", async () => {

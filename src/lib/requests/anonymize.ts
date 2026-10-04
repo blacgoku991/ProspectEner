@@ -24,6 +24,7 @@ export async function anonymizeRequest(tx: Tx, id: string, actorId: string | nul
       email: null,
       phone: null,
       comment: null,
+      appointmentNote: null,
       availability: Prisma.DbNull,
       postalCode: null,
       communeName: null,

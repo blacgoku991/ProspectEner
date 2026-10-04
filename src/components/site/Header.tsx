@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { INDEPENDENCE_DISCLAIMER } from "@/lib/legal/texts";
 
-export function Header({ brandName }: { brandName: string }) {
+export function Header({ brandName, showCallback }: { brandName: string; showCallback: boolean }) {
   return (
     <header className="sticky top-0 z-40">
       <div className="border-b border-ink-900/[0.06] bg-sand-100 text-center text-[12.5px] font-medium text-ink-700">
@@ -25,9 +25,11 @@ export function Header({ brandName }: { brandName: string }) {
             <Link href="/methodologie" className="hidden rounded-full px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-900/5 md:inline-flex">
               Méthode
             </Link>
-            <Link href="/rappel" className="hidden rounded-full px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-900/5 lg:inline-flex">
-              Être rappelé(e)
-            </Link>
+            {showCallback && (
+              <Link href="/rappel" className="hidden rounded-full px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-900/5 lg:inline-flex">
+                Être rappelé(e)
+              </Link>
+            )}
             <Link href="/simulation" className="btn-primary px-4 py-2.5">
               Faire le test
             </Link>

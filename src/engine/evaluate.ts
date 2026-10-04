@@ -12,6 +12,7 @@ import {
   type Evaluation,
   type OverallOutcome,
   type Territory,
+  type WorkItem,
 } from "./types";
 import { selectedWorkItems } from "./works";
 
@@ -23,6 +24,15 @@ export const HEADLINES: Record<OverallOutcome, string> = {
     "Selon vos réponses, les critères des dispositifs évalués par ce simulateur ne semblent pas remplis.",
   OUT_OF_SCOPE:
     "Votre situation est hors du périmètre de ce simulateur : une étude complémentaire est nécessaire pour l'évaluer.",
+};
+
+/** Messages du test d'éligibilité seul : le projet est précisé ensuite avec un conseiller. */
+export const PROFILE_HEADLINES: Record<OverallOutcome, string> = {
+  POTENTIALLY_ELIGIBLE:
+    "Votre situation pourrait vous ouvrir droit à certaines aides à la rénovation énergétique, selon les travaux envisagés. Une vérification est nécessaire avant toute confirmation.",
+  NEEDS_REVIEW: "Certaines informations doivent être vérifiées pour confirmer votre éligibilité.",
+  NOT_ELIGIBLE: "Selon vos réponses, les conditions des aides évaluées par ce simulateur ne semblent pas remplies.",
+  OUT_OF_SCOPE: HEADLINES.OUT_OF_SCOPE,
 };
 
 const TERRITORY_NOTICES: Partial<Record<Territory, string>> = {
@@ -51,15 +61,24 @@ export function evaluate(answers: Answers, ruleSet: RuleSet, referenceDate: stri
     communeInsee: answers.communeInsee,
     departement: answers.departement,
   });
-  const selectedWorks = selectedWorkItems(answers);
-  const ctx: EvalContext = { answers, territory, referenceDate, selectedWorks };
+  // Test d'éligibilité seul : chaque dispositif est évalué pour tous les travaux qu'il couvre
+  // (« ce foyer peut-il être aidé par ce dispositif ? »), le projet étant précisé ensuite.
+  const profile = answers.scope === "PROFILE";
+  const selectedWorks = profile ? [] : selectedWorkItems(answers);
+  const ctxFor = (eligibleWorks: WorkItem[]): EvalContext => ({
+    answers,
+    territory,
+    referenceDate,
+    selectedWorks: profile ? [...eligibleWorks] : selectedWorks,
+    profile,
+  });
 
   const results: DispositifResult[] = [];
   const d = rules.dispositifs;
-  if (d.MPR_GESTE.enabled) results.push(evaluateMprGeste(ctx, d.MPR_GESTE));
-  if (d.MPR_AMPLEUR.enabled) results.push(evaluateMprAmpleur(ctx, d.MPR_AMPLEUR));
-  if (d.CEE.enabled) results.push(evaluateCee(ctx, d.CEE));
-  if (d.ECO_PTZ.enabled) results.push(evaluateEcoPtz(ctx, d.ECO_PTZ));
+  if (d.MPR_GESTE.enabled) results.push(evaluateMprGeste(ctxFor(d.MPR_GESTE.eligibleWorks), d.MPR_GESTE));
+  if (d.MPR_AMPLEUR.enabled) results.push(evaluateMprAmpleur(ctxFor(d.MPR_AMPLEUR.eligibleWorks), d.MPR_AMPLEUR));
+  if (d.CEE.enabled) results.push(evaluateCee(ctxFor(d.CEE.eligibleWorks), d.CEE));
+  if (d.ECO_PTZ.enabled) results.push(evaluateEcoPtz(ctxFor(d.ECO_PTZ.eligibleWorks), d.ECO_PTZ));
 
   const outcome = overallOutcome(results);
   const notices: string[] = [];
@@ -77,9 +96,10 @@ export function evaluate(answers: Answers, ruleSet: RuleSet, referenceDate: stri
     territory,
     departement,
     incomeZone: incomeZoneForTerritory(territory),
+    ...(profile ? { scope: "PROFILE" as const } : {}),
     selectedWorks,
     outcome,
-    headline: HEADLINES[outcome],
+    headline: profile ? PROFILE_HEADLINES[outcome] : HEADLINES[outcome],
     results,
     notices,
   };

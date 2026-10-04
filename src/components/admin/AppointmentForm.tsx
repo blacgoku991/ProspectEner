@@ -1,0 +1,102 @@
+"use client";
+
+import { CalendarCheck, CircleHelp } from "lucide-react";
+import { useActionState, useMemo, useState } from "react";
+import { type AppointmentState, bookAppointmentAction } from "@/app/admin/(panel)/demandes/[id]/actions";
+import { APPOINTMENT_MODES, type QualificationGroup, qualifiedAids } from "@/lib/admin/qualification";
+import { cn } from "@/lib/cn";
+
+/**
+ * Qualification puis rendez-vous : le conseiller confirme chaque critère avec la personne.
+ * Le bouton ne s'active que lorsqu'une aide au moins est entièrement confirmée (contrôlé aussi côté serveur).
+ */
+export function AppointmentForm({ requestId, groups }: { requestId: string; groups: QualificationGroup[] }) {
+  const [state, action] = useActionState<AppointmentState, FormData>(bookAppointmentAction, {});
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const qualified = useMemo(() => qualifiedAids(groups, checked), [groups, checked]);
+  const toggle = (key: string) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  return (
+    <form action={action} className="space-y-5">
+      <input type="hidden" name="id" value={requestId} />
+      <p className="text-sm text-ink-600">
+        Confirmez chaque point avec la personne. Un rendez-vous ne peut être fixé que si tous les critères d&apos;au moins une aide sont confirmés.
+      </p>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {groups.map((g) => {
+          const done = qualified.includes(g.id);
+          return (
+            <fieldset key={g.id} className={cn("rounded-xl border p-4", done ? "border-pine-500/40 bg-pine-50/60" : "border-ink-900/10")}>
+              <legend className="px-1 text-sm font-semibold text-ink-900">
+                {g.name}
+                {done && <span className="ml-2 badge bg-pine-100 text-pine-800">Qualifiée</span>}
+              </legend>
+              <ul className="mt-1 space-y-2">
+                {g.items.map((item) => (
+                  <li key={item.key}>
+                    <label className="flex cursor-pointer gap-2.5 text-sm">
+                      <input
+                        type="checkbox"
+                        name="checked"
+                        value={item.key}
+                        checked={checked.has(item.key)}
+                        onChange={() => toggle(item.key)}
+                        className="mt-0.5 size-4 shrink-0 accent-pine-600"
+                      />
+                      <span>
+                        <span className="font-medium text-ink-900">{item.label}</span>
+                        {item.declared === "UNKNOWN" && (
+                          <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-900">
+                            <CircleHelp className="size-3" aria-hidden /> à vérifier
+                          </span>
+                        )}
+                        <span className="block text-xs text-ink-500">{item.detail}</span>
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
+        <label className="block text-sm text-ink-800">
+          Date et heure (heure de Paris)
+          <input type="datetime-local" name="appointmentAt" required className="field-input mt-1 py-2.5 text-sm" />
+        </label>
+        <label className="block text-sm text-ink-800">
+          Mode
+          <select name="mode" defaultValue="DOMICILE" className="field-input mt-1 py-2.5 text-sm">
+            {Object.entries(APPOINTMENT_MODES).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label className="block text-sm text-ink-800">
+        Projet et précisions <span className="text-ink-500">(facultatif : travaux envisagés, accès…)</span>
+        <textarea name="note" rows={2} maxLength={1000} className="field-input mt-1 text-sm" />
+      </label>
+      {state.error && (
+        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {state.error}
+        </p>
+      )}
+      <button type="submit" disabled={qualified.length === 0} className="btn-primary py-3">
+        <CalendarCheck className="size-4" aria-hidden />
+        Fixer le rendez-vous
+      </button>
+      {qualified.length === 0 && <p className="text-xs text-ink-500">Le bouton s&apos;active quand une aide est entièrement qualifiée.</p>}
+    </form>
+  );
+}

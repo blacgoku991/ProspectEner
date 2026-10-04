@@ -48,11 +48,13 @@ export function Footer({ config, aidLinks, workLinks }: { config: PublicConfig; 
                 Tester mon éligibilité
               </Link>
             </li>
-            <li>
-              <Link className="hover:text-white" href="/rappel">
-                Être recontacté(e)
-              </Link>
-            </li>
+            {config.quickCallbackOpen && (
+              <li>
+                <Link className="hover:text-white" href="/rappel">
+                  Être recontacté(e)
+                </Link>
+              </li>
+            )}
             <li>
               <Link className="hover:text-white" href="/methodologie">
                 Méthode et sources

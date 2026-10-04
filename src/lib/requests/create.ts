@@ -11,7 +11,7 @@ import { enqueueNotifications } from "../notifications/dispatch";
 import { rateLimit } from "../ratelimit";
 import { getRuleSetByVersion } from "../rulesets";
 import { getSettings } from "../settings";
-import { emailReplyAvailable, phoneCallbackAvailable, submissionsOpen } from "../settings-schema";
+import { contactAcceptedFor, emailReplyAvailable, phoneCallbackAvailable, submissionsOpen } from "../settings-schema";
 import { verifyTurnstile } from "../turnstile";
 import { type ParsedRequestPayload, requestPayloadSchema } from "../validation/request";
 import { cancelTokenFor, generateReference } from "./reference";
@@ -118,6 +118,9 @@ export async function createContactRequest(
   if ((channel === "PHONE" && !phoneCallbackAvailable(settings)) || (channel === "EMAIL" && !emailReplyAvailable(settings))) {
     return fail(403, "CHANNEL_UNAVAILABLE", "Ce canal de réponse n'est pas proposé actuellement.");
   }
+  if (payload.kind === "QUICK_CALLBACK" && !settings.contact.quickCallbackEnabled) {
+    return fail(403, "QUICK_CALLBACK_CLOSED", "Pour être recontacté(e), faites d'abord le test d'éligibilité : il ne prend que quelques minutes.");
+  }
 
   // 5. Le texte d'information présenté doit être celui en vigueur.
   const notice = noticeWithHash(settings);
@@ -143,6 +146,14 @@ export async function createContactRequest(
     }
     evaluation = evaluate(answers, ruleSet, payload.referenceDate);
     ruleSetId = ruleSet.id;
+    // Rendez-vous proposés seulement aux résultats retenus dans les paramètres (projets éligibles par défaut).
+    if (!contactAcceptedFor(settings, evaluation.outcome)) {
+      return fail(
+        403,
+        "OUTCOME_NOT_ACCEPTED",
+        "D'après vos réponses, les conditions des aides évaluées ne semblent pas remplies : nous ne pouvons pas vous proposer de rendez-vous.",
+      );
+    }
   } else {
     answers = payload.answers as Answers;
   }

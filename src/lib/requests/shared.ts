@@ -1,4 +1,4 @@
-import type { Answers, DispositifId, OverallOutcome, WorkCategory } from "@/engine/types";
+import type { Answers, DispositifId, Evaluation, OverallOutcome, WorkCategory } from "@/engine/types";
 import { describeWorks, selectedWorkItems, WORK_CATEGORY_LABELS } from "@/engine/works";
 
 /** Libellé des travaux utilisé dans la phrase de demande (identique navigateur / serveur). */
@@ -14,6 +14,7 @@ export const STATUS_LABELS = {
   NOUVEAU: "Nouveau",
   A_VERIFIER: "À vérifier",
   CONTACTE: "Contacté",
+  RDV_FIXE: "Rendez-vous fixé",
   ETUDE_EN_COURS: "Étude en cours",
   TERMINE: "Terminé",
   SANS_SUITE: "Sans suite",
@@ -38,6 +39,18 @@ export const VISITOR_VERDICTS: Record<OverallOutcome, { kicker: string; title: s
   NOT_ELIGIBLE: { kicker: "Résultat", title: "Critères non remplis selon vos réponses" },
   OUT_OF_SCOPE: { kicker: "Résultat", title: "Hors du périmètre du simulateur" },
 };
+
+/** Verdicts du test d'éligibilité seul (le projet est précisé ensuite avec un conseiller). */
+export const PROFILE_VISITOR_VERDICTS: Record<OverallOutcome, { kicker: string; title: string }> = {
+  POTENTIALLY_ELIGIBLE: { kicker: "Bonne nouvelle", title: "Vous êtes potentiellement éligible aux aides à la rénovation" },
+  NEEDS_REVIEW: { kicker: "Résultat à confirmer", title: "Votre éligibilité doit être vérifiée" },
+  NOT_ELIGIBLE: { kicker: "Résultat", title: "Critères non remplis selon vos réponses" },
+  OUT_OF_SCOPE: { kicker: "Résultat", title: "Hors du périmètre du simulateur" },
+};
+
+export function visitorVerdict(evaluation: Pick<Evaluation, "outcome" | "scope">): { kicker: string; title: string } {
+  return (evaluation.scope === "PROFILE" ? PROFILE_VISITOR_VERDICTS : VISITOR_VERDICTS)[evaluation.outcome];
+}
 
 /** Noms courts des dispositifs (liste des demandes). */
 export const DISPOSITIF_SHORT_LABELS: Record<DispositifId, string> = {

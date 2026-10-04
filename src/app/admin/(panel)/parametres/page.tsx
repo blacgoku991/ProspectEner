@@ -40,7 +40,7 @@ export default async function SettingsPage() {
         </Panel>
         <Panel title="Identité de l'entreprise et mentions légales"><CompanyForm s={settings} /></Panel>
         <Panel title="Activité présentée sur le site"><ActivityForm s={settings} /></Panel>
-        <Panel title="Canaux de réponse aux demandes"><ContactForm s={settings} /></Panel>
+        <Panel title="Demandes de rendez-vous et canaux de réponse"><ContactForm s={settings} /></Panel>
         <section id="notifications" className="scroll-mt-24">
           <Panel title="Notifications internes">
             <NotificationsForm s={settings} transports={transports} />

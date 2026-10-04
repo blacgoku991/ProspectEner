@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { OverallOutcome } from "@/engine/types";
 
 /**
  * Paramètres configurables depuis l'administration. Valeurs par défaut volontairement vides :
@@ -58,6 +59,16 @@ export const siteSettingsSchema = z.object({
       callbackDelayBusinessDays: z.number().int().min(1).max(5).default(5),
       alsaceMoselleHolidays: z.boolean().default(false),
       showCompanyPhone: z.boolean().default(true),
+      /** Résultats du test pour lesquels une demande de rendez-vous est proposée au visiteur. */
+      acceptedOutcomes: z.enum(["ELIGIBLE_OR_REVIEW", "ELIGIBLE_ONLY", "ALL"]).default("ELIGIBLE_OR_REVIEW"),
+      /** Demande de rappel sans faire le test (non qualifiée) : désactivée par défaut. */
+      quickCallbackEnabled: z.boolean().default(false),
+    })
+    .prefault({}),
+  test: z
+    .object({
+      /** PROJET : test complet (équipement actuel, travaux souhaités) ; ELIGIBILITE : test d'éligibilité seul, le projet est vu avec un conseiller. */
+      mode: z.enum(["ELIGIBILITE", "PROJET"]).default("PROJET"),
     })
     .prefault({}),
   notifications: z
@@ -134,6 +145,30 @@ export function missingIdentityFields(s: SiteSettings): string[] {
 
 export function submissionsOpen(s: SiteSettings): boolean {
   return missingIdentityFields(s).length === 0 && (phoneCallbackAvailable(s) || emailReplyAvailable(s));
+}
+
+export type AcceptedOutcomesMode = SiteSettings["contact"]["acceptedOutcomes"];
+
+/** Résultats du test qui ouvrent la demande de rendez-vous, selon le réglage choisi. */
+export const ACCEPTED_OUTCOMES: Record<AcceptedOutcomesMode, OverallOutcome[]> = {
+  ELIGIBLE_ONLY: ["POTENTIALLY_ELIGIBLE"],
+  ELIGIBLE_OR_REVIEW: ["POTENTIALLY_ELIGIBLE", "NEEDS_REVIEW"],
+  ALL: ["POTENTIALLY_ELIGIBLE", "NEEDS_REVIEW", "NOT_ELIGIBLE", "OUT_OF_SCOPE"],
+};
+
+export const ACCEPTED_OUTCOMES_LABELS: Record<AcceptedOutcomesMode, string> = {
+  ELIGIBLE_OR_REVIEW: "Projets potentiellement éligibles et à vérifier (recommandé)",
+  ELIGIBLE_ONLY: "Projets potentiellement éligibles uniquement",
+  ALL: "Toutes les demandes, même si les critères ne sont pas remplis",
+};
+
+export function contactAcceptedFor(s: SiteSettings, outcome: OverallOutcome): boolean {
+  return ACCEPTED_OUTCOMES[s.contact.acceptedOutcomes].includes(outcome);
+}
+
+/** Demande de rappel sans test : seulement si elle est activée (elle n'est pas qualifiée par le test). */
+export function quickCallbackOpen(s: SiteSettings): boolean {
+  return submissionsOpen(s) && s.contact.quickCallbackEnabled;
 }
 
 export interface LaunchCheckItem {

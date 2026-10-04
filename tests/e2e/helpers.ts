@@ -63,7 +63,7 @@ export async function next(page: Page) {
   await page.waitForTimeout(400);
 }
 
-/** Questionnaire complet du cas « potentiellement éligible ». */
+/** Questionnaire complet (réglage par défaut) du cas « potentiellement éligible ». */
 export async function fillEligibleQuestionnaire(page: Page) {
   await page.goto("/simulation");
   await page.getByLabel("Code postal du logement").fill("69003");
@@ -89,4 +89,11 @@ export async function fillEligibleQuestionnaire(page: Page) {
   await page.getByRole("button", { name: "Une personne de plus" }).click();
   await next(page);
   await choose(page, /De 30\s?541/);
+}
+
+/** Date et heure locales (AAAA-MM-JJTHH:MM) dans `days` jours, pour un champ « datetime-local ». */
+export function localDateTimeIn(days: number, hour = 10): string {
+  const d = new Date(Date.now() + days * 86_400_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(hour)}:00`;
 }

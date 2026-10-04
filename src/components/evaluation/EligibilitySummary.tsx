@@ -3,7 +3,7 @@ import { DISPOSITIF_INFO } from "@/engine/coverage";
 import type { DispositifResult, DispositifStatus, Evaluation } from "@/engine/types";
 import { workLabel } from "@/engine/works";
 import { cn } from "@/lib/cn";
-import { VISITOR_VERDICTS } from "@/lib/requests/shared";
+import { visitorVerdict } from "@/lib/requests/shared";
 
 const GROUPS: { status: DispositifStatus; label: string; icon: typeof CheckCircle2; className: string }[] = [
   { status: "POTENTIALLY_ELIGIBLE", label: "Potentiellement éligible", icon: CheckCircle2, className: "bg-pine-50 text-pine-900 ring-pine-600/20" },
@@ -29,8 +29,12 @@ export function EligibilitySummary({ evaluation }: { evaluation: Evaluation }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-sand-50 px-4 py-3 text-sm">
-        <p className="text-ink-500">Verdict affiché au visiteur (sans le détail des aides)</p>
-        <p className="font-semibold text-ink-900">« {VISITOR_VERDICTS[evaluation.outcome].title} »</p>
+        <p className="text-ink-500">
+          {evaluation.scope === "PROFILE"
+            ? "Test d'éligibilité seul : le projet est à préciser avec la personne. Verdict affiché au visiteur :"
+            : "Verdict affiché au visiteur (sans le détail des aides)"}
+        </p>
+        <p className="font-semibold text-ink-900">« {visitorVerdict(evaluation).title} »</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {GROUPS.map((g) => {
@@ -50,7 +54,12 @@ export function EligibilitySummary({ evaluation }: { evaluation: Evaluation }) {
                     <li key={r.id}>
                       <span className="font-semibold">{DISPOSITIF_INFO[r.id].name}</span>{" "}
                       <span className="text-xs opacity-75">({DISPOSITIF_INFO[r.id].kind})</span>
-                      {r.coveredWorks.length > 0 && <span className="block text-xs opacity-80">{r.coveredWorks.map(workLabel).join(", ")}</span>}
+                      {r.coveredWorks.length > 0 && (
+                        <span className="block text-xs opacity-80">
+                          {evaluation.scope === "PROFILE" ? "Travaux possibles : " : ""}
+                          {r.coveredWorks.map(workLabel).join(", ")}
+                        </span>
+                      )}
                       {reason && <span className="block text-xs opacity-80">{reason}</span>}
                     </li>
                   );

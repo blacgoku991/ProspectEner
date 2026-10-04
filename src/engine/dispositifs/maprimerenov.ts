@@ -114,6 +114,19 @@ export function evaluateMprGeste(ctx: EvalContext, rules: MprGesteRules): Dispos
     }
   }
 
+  // Test d'éligibilité seul : le chauffage actuel n'est pas connu, la dérogation reste à vérifier.
+  if (ctx.profile && age.status === "NOT_MET") {
+    const ex = rules.ageExceptions.find((e) => ageCriterion(ctx, e.minAgeYears).status !== "NOT_MET");
+    if (ex) {
+      age = {
+        ...age,
+        status: "UNKNOWN",
+        label: `Ancienneté du logement (dérogation possible : ${ex.label})`,
+        detail: `Logement achevé depuis moins de ${rules.minAgeYears} ans : l'aide n'est possible que par dérogation, en cas de ${ex.label}. À vérifier avec la personne.`,
+      };
+    }
+  }
+
   const criteria = [
     territory,
     occupancyCriterion(ctx, rules),

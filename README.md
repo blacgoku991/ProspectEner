@@ -2,7 +2,7 @@
 
 Site de conversion **transparent** pour une entreprise privée de rénovation énergétique, relié à un **panel d'administration sécurisé** :
 
-**Accueil → Questionnaire → Résultat (avant toute coordonnée) → Demande de contact → Confirmation → Fiche dans l'administration.**
+**Accueil → Questionnaire → Résultat, puis formulaire de rappel juste en dessous (personnes potentiellement éligibles) → « Vous allez être recontacté(e) » → Fiche dans l'administration → Qualification par un conseiller → Rendez-vous.**
 
 > Service privé indépendant, non affilié à l'État, à l'Anah ou à France Rénov'. Le simulateur donne une **pré-éligibilité indicative**, ne calcule aucun montant et ne dépose aucun dossier auprès d'un organisme public.
 
@@ -30,7 +30,8 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - une seule balise `h1` par page ;
   - scène 3D chargée à l'approche de l'écran quand elle est en bas de page.
   - Tant que la check-list de mise en ligne n'est pas complète, les pages restent en `noindex` et le plan du site est vide.
-- **Questionnaire progressif** (une question par écran, étapes Logement / Projet / Énergie / Avancement / Foyer). Les questions sont conditionnelles : on ne demande que ce qui sert aux dispositifs évalués. Par exemple, le revenu n'est pas demandé à un locataire ni pour un projet d'isolation seule.
+- **Questionnaire progressif** (une question par écran, étapes Logement / Projet / Énergie / Avancement / Foyer) : le logement, ce que la personne a aujourd'hui (chauffage, eau chaude…) et ce qu'elle veut installer à la place. Les questions sont conditionnelles : on ne demande que ce qui sert aux dispositifs évalués. Par exemple, le revenu n'est pas demandé à un locataire ni pour un projet d'isolation seule.
+  - Variante « test d'éligibilité seul », sans question sur le projet, au choix dans Paramètres : chaque aide est alors évaluée pour l'ensemble des travaux qu'elle couvre, et le projet est précisé avec un conseiller.
   - La progression est réelle et recalculée.
   - Retour en arrière sans perte, y compris avec le bouton « précédent » du navigateur et après rechargement (stockage de session).
   - Validation au fil de la saisie, aides contextuelles, réponse « Je ne sais pas » partout.
@@ -42,7 +43,7 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - bonification temporaire en cours le cas échéant, points bloquants en cas de résultat défavorable ;
   - mentions d'indépendance, de résultat indicatif et France Rénov' ;
   - réponses ayant conduit au résultat, repliées, chacune modifiable ;
-  - bouton « Être recontacté(e) ».
+  - **formulaire de rappel affiché directement sous le verdict** (prénom, nom, canal, téléphone ou e-mail), sans obligation de le remplir pour voir le résultat, **seulement pour les résultats retenus** (par défaut : potentiellement éligible ou à vérifier). Sinon, le visiteur lit « Nous ne pouvons pas vous proposer de rendez-vous », avec les points bloquants : aucune fiche n'est créée, et le serveur refuse aussi la demande (`OUTCOME_NOT_ACCEPTED`).
 - **Synthèse d'éligibilité dans l'administration**, pour chaque demande :
   - aides potentiellement éligibles, à vérifier, non éligibles ou hors périmètre, avec travaux couverts et raison principale ;
   - détail complet par dispositif (critères, conditions, sources, dates de validité), date de référence et versions du barème et du moteur ;
@@ -51,8 +52,8 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - Phrase générée « Je demande à être contacté(e) par [entreprise], par [canal], au sujet de mon projet de [travaux] », avec une case jamais pré-cochée, décochée si le canal change.
   - Notice d'information RGPD affichée avant l'envoi.
   - Pas de newsletter ni de partenaires.
-- **Parcours « rappel rapide »** sans questionnaire, pour qui ne veut pas remplir le test.
-- **Confirmation honnête** : aucun dossier déposé. Elle fournit une référence et un lien d'annulation personnel.
+- **Parcours « rappel rapide »** sans questionnaire : **désactivé par défaut**, puisqu'il produit des demandes non qualifiées. `/rappel` renvoie alors vers le test, et le serveur refuse ce type de demande (`QUICK_CALLBACK_CLOSED`).
+- **Confirmation** « Merci, vous allez être recontacté(e) », avec le délai de rappel. Elle précise qu'aucun dossier n'est déposé et fournit une référence et un lien d'annulation personnel.
 - **Annulation** par le visiteur, avec effacement immédiat des coordonnées et opposition en option.
 - Pages mentions légales, confidentialité, cookies et préférences, contact, méthode et sources. Les informations manquantes sont signalées, jamais inventées.
 
@@ -85,6 +86,7 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - déconnexion automatique après 30 minutes sans activité, tous onglets confondus, avec un avertissement une minute avant ;
   - comptes activés par lien à usage unique : aucun mot de passe transmis.
 - **Rôles** : administrateur, ou collaborateur qui ne voit que les demandes qui lui sont assignées et, selon le paramétrage, les demandes non assignées. Contrôles **côté serveur** sur chaque page, action et route.
+- **Nouvelles demandes signalées sur chaque page** : leur nombre s'affiche à côté de « Demandes » dans le menu (dans le périmètre de chaque collaborateur). Les notifications par e-mail ou webhook complètent ce signal.
 - **Tableau de bord** :
   - nouvelles demandes et demandes à traiter ;
   - rappels proches de l'échéance et délais dépassés ;
@@ -93,6 +95,13 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - alertes : check-list de mise en ligne, notifications en échec, barème proche de l'expiration ;
   - **encart sécurité** (administrateurs) : échecs de connexion et de second facteur, verrouillages, accès refusés sur 7 jours, sessions ouvertes, comptes sans double authentification.
 - **Liste des demandes** : recherche, filtres (statut, résultat, travaux, canal, assignation, échéance, dates), tri et pagination.
+- **Qualification et rendez-vous** (sur chaque fiche) :
+  - liste des critères de chaque aide, tirée du résultat du moteur : le conseiller les confirme un à un avec la personne (les points « à vérifier » sont signalés) ;
+  - **un rendez-vous ne peut être fixé que si tous les critères d'au moins une aide sont confirmés**, contrôle refait côté serveur ;
+  - date et heure (heure de Paris), mode (à domicile, en visio, par téléphone) et précisions sur le projet ;
+  - statut « Rendez-vous fixé » posé uniquement par cette action, avec les aides qualifiées, l'auteur et la date ; annulation possible ;
+  - bouton « Non éligible après vérification » qui clôture la demande sans rendez-vous ;
+  - tableau de bord : rendez-vous fixés sur 7 jours et prochains rendez-vous ; colonnes rendez-vous, mode et aides qualifiées dans l'export CSV.
 - **Fiche** :
   - coordonnées et canal demandé ;
   - réponses utiles ;
@@ -113,7 +122,7 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - oppositions (empreintes non réversibles) ;
   - canaux d'acquisition autorisés ;
   - équipe ;
-  - paramètres (identité, mentions, activité, canaux, notifications, conservation, sécurité) ;
+  - paramètres (identité, mentions, activité, canaux, type de test, résultats qui ouvrent un rendez-vous, rappel rapide, notifications, conservation, sécurité) ;
   - journal d'audit ;
   - compte personnel.
 - **Notifications internes** par e-mail ou webhook signé, via une file d'envoi. Elles contiennent une référence et un lien, **sans données personnelles**. Leur échec n'empêche jamais l'enregistrement et elles sont relancées automatiquement.
@@ -174,14 +183,14 @@ Ensuite, dans **Administration → Paramètres** :
 
 1. Renseigner l'identité et les mentions légales. Le formulaire public reste fermé tant que la dénomination, le siège et le contact « données personnelles » manquent.
 2. Décrire l'activité réelle : accompagnement, travaux et/ou mise en relation.
-3. Choisir les canaux de réponse. Le rappel téléphonique ne s'active qu'après confirmation de l'avertissement juridique.
+3. Choisir les canaux de réponse. Le rappel téléphonique ne s'active qu'après confirmation de l'avertissement juridique. Dans le même encadré, « Qualification des demandes » règle le type de test, les résultats qui ouvrent une demande de rendez-vous et le rappel rapide.
 4. Configurer les notifications (SMTP ou webhook) et tester l'envoi.
 5. Traiter la check-list de mise en ligne.
 
 ## Tests
 
 ```bash
-npm test                    # tests unitaires (moteur, seuils, calendrier, CSV, pages guides, mots de passe)
+npm test                    # tests unitaires (moteur, test d'éligibilité seul, seuils, calendrier, CSV, qualification, pages guides, mots de passe)
 npm run test:integration    # intégration sur une base PostgreSQL de test (TEST_DATABASE_URL)
 npm run test:e2e            # bout en bout : build de production + navigateur (bureau et mobile)
 npm run typecheck && npm run lint

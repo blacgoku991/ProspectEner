@@ -16,7 +16,10 @@ export interface EvalContext {
   answers: Answers;
   territory: Territory;
   referenceDate: string;
+  /** Travaux évalués : ceux du visiteur, ou (test d'éligibilité seul) tous ceux que couvre le dispositif. */
   selectedWorks: WorkItem[];
+  /** Test d'éligibilité seul : le projet n'est pas encore précisé. */
+  profile?: boolean;
 }
 
 export const OCCUPANCY_LABELS = {

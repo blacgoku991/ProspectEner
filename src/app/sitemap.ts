@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { AID_GUIDES, WORK_GUIDES } from "@/lib/guides";
 import { siteUrl } from "@/lib/seo";
-import { launchReady, publishedRules } from "@/lib/site-data";
+import { quickCallbackOpen } from "@/lib/settings-schema";
+import { launchReady, publishedRules, siteSettings } from "@/lib/site-data";
 
 // Lecture du barème publié et de l'état de mise en ligne à chaque demande.
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ),
     ...WORK_GUIDES.map((g) => page(`/travaux/${g.slug}`, 0.8)),
     page("/methodologie", 0.5),
-    page("/rappel", 0.5),
+    ...(quickCallbackOpen(await siteSettings()) ? [page("/rappel", 0.5)] : []),
     page("/contact", 0.3),
     page("/mentions-legales", 0.1),
     page("/confidentialite", 0.1),

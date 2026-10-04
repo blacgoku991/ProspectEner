@@ -1,13 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { ADMIN, COLLAB, E2E_ENV } from "./config";
-import { login } from "./helpers";
+import { fillEligibleQuestionnaire, login } from "./helpers";
 
 test.describe("annulation d'une demande de contact", () => {
-  test("rappel rapide puis annulation via le lien personnel, visible dans l'administration", async ({ page, context }) => {
+  test("demande après le test puis annulation via le lien personnel, visible dans l'administration", async ({ page, context }) => {
+    // Rappel sans test désactivé par défaut : la page renvoie vers le test d'éligibilité.
     await page.goto("/rappel");
-    await page.getByLabel("Code postal du logement").fill("75011");
-    await expect(page.getByText("Paris 11e Arrondissement").first()).toBeVisible();
-    await page.getByRole("checkbox", { name: /Isolation/ }).click();
+    await expect(page.getByRole("link", { name: "Faire le test d'éligibilité" })).toBeVisible();
+    await fillEligibleQuestionnaire(page);
+    await page.getByRole("button", { name: "Être recontacté(e)", exact: true }).first().click();
     await page.getByLabel("Prénom").fill("Annie");
     await page.getByLabel("Nom", { exact: true }).fill("Annulation");
     await page.getByRole("button", { name: /Recevoir une réponse par e-mail/ }).click();
@@ -15,7 +16,7 @@ test.describe("annulation d'une demande de contact", () => {
     await page.waitForTimeout(2600);
     await page.getByRole("checkbox", { name: /Je demande à être contacté\(e\)/ }).check();
     await page.getByRole("button", { name: "Envoyer ma demande" }).click();
-    await expect(page.getByRole("heading", { name: "Votre demande est bien enregistrée" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Merci, vous allez être recontacté(e)" })).toBeVisible();
 
     await page.getByRole("link", { name: "Annuler maintenant" }).click();
     await expect(page.getByRole("heading", { name: "Annuler une demande de contact" })).toBeVisible();
