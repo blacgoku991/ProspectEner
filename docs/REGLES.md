@@ -1,6 +1,18 @@
 # Règles de pré-éligibilité, sources et vérification
 
-Barème embarqué : **`2026.10-1`**, « Règles en vigueur au 4 octobre 2026 (après la réforme MaPrimeRénov' du 1er septembre 2026) ». Moteur : **1.0.0**.
+Barème embarqué : **`2026.10-2`**, « Règles en vigueur au 4 octobre 2026 (réforme du 1er septembre 2026, bonifications CEE temporaires) ». Moteur : **1.1.0**.
+
+`2026.10-2` complète `2026.10-1` (fichier `src/engine/rulesets/2026-10-2.ts`, écrit comme un différentiel) :
+
+- bonification temporaire des primes CEE pour les chauffe-eau thermodynamiques et solaires, pour un devis signé du 1er septembre au 31 décembre 2026 (arrêté du 25 août 2026, connu par la consultation publique officielle et la presse spécialisée) : affichée sans montant ni coefficient, seulement pendant sa période ;
+- dépose d'une cuve à fioul : question complémentaire posée quand le chauffage actuel au fioul est remplacé, couverte par MaPrimeRénov' par geste, y compris avec la dérogation d'ancienneté ;
+- rappel que les primes CEE n'ont pas de condition de revenus.
+
+**Déploiement d'une nouvelle version embarquée** (`syncEmbeddedRuleSet`, exécuté par `npm run db:seed` et à chaque build de production Vercel) :
+
+- aucune version publiée : la version embarquée est publiée ;
+- la version publiée est une version embarquée plus ancienne, publiée automatiquement, et **aucune relecture humaine des règles n'est enregistrée** (Paramètres → check-list) : elle est remplacée, avec une note de publication qui rappelle la relecture à faire ;
+- sinon, la nouvelle version arrive comme **brouillon** à prévisualiser puis publier ; le tableau de bord le signale.
 
 ## Méthode de vérification (et ses limites)
 
@@ -37,7 +49,7 @@ Hors périmètre, indiqué comme tel et jamais comme « inéligible » :
 ### MaPrimeRénov' par geste (depuis le 1er septembre 2026)
 
 - **Bases** : décret n° 2026-822 et arrêté du 25 août 2026 (JORF du 27 août 2026). Sources : France Rénov', economie.gouv.fr « Ce qui change en septembre 2026 », guide et mode d'emploi de l'Anah (septembre 2026).
-- **Travaux couverts** : pompe à chaleur air/eau ; pompe à chaleur géothermique ; raccordement à un réseau de chaleur. S'y ajoutent l'audit énergétique (avec un autre geste) et la dépose de cuve fioul, non proposés séparément dans le questionnaire.
+- **Travaux couverts** : pompe à chaleur air/eau ; pompe à chaleur géothermique ; raccordement à un réseau de chaleur ; dépose d'une cuve à fioul (depuis `2026.10-2`, demandée en même temps que le nouvel équipement de chauffage). L'audit énergétique (avec un autre geste) n'est pas proposé séparément dans le questionnaire.
 - **Travaux exclus** (raison affichée) :
   - toute l'isolation (les murs depuis le 1er janvier 2026, le reste depuis le 1er septembre 2026) ;
   - la ventilation ;
@@ -96,6 +108,7 @@ Hors périmètre, indiqué comme tel et jamais comme « inéligible » :
   - VMC ;
   - pompe à chaleur hybride ;
   - rénovation d'ampleur (BAR-TH-174 et 175).
+- **Bonification temporaire** (`2026.10-2`) : chauffe-eau thermodynamique et chauffe-eau solaire, pour un devis signé du 1er septembre au 31 décembre 2026, si le chauffage et l'eau chaude ne reposent plus sur une énergie fossile après travaux. Elle est mise en avant dans le résultat et sur l'accueil pendant sa période, sans montant (celui-ci dépend de chaque fournisseur). Points à relire sur Légifrance : liste exacte des fiches (BAR-TH-101, BAR-TH-148, BAR-TH-162, BAR-TH-168, modification de BAR-TH-143) et conditions de décarbonation.
 - **Coup de pouce Chauffage**, jusqu'au 31 décembre 2030 :
   - remplacement d'une chaudière fioul, gaz ou charbon par une pompe à chaleur air/eau ou géothermique, une chaudière biomasse, un système solaire combiné ou un réseau de chaleur ;
   - en résidence principale ;
@@ -143,7 +156,7 @@ Au-delà du plafond « intermédiaires », la catégorie est « supérieurs ».
    - ou le JSON complet (travaux couverts, exclus ou à vérifier, conditions, sources).
 
    Le contenu est validé par schéma à chaque enregistrement.
-3. Contrôler la **prévisualisation** : les 8 scénarios de référence sont comparés à la version publiée, chaque différence est surlignée.
+3. Contrôler la **prévisualisation** : les 9 scénarios de référence sont comparés à la version publiée, chaque différence est surlignée.
 4. **Publier.** Il faut confirmer avoir vérifié les sources et rédiger une note de publication. L'ancienne version est archivée, jamais modifiée.
 5. Si une règle ne peut plus être confirmée : passer la vérification du dispositif à « Non vérifiée ». Ses conclusions sont alors **désactivées** et le visiteur voit « vérification nécessaire » avec la raison.
 

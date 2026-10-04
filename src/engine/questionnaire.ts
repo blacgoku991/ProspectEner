@@ -50,6 +50,7 @@ export type QuestionId =
   | "ventilationTarget"
   | "currentHeating"
   | "gasBoilerCondensing"
+  | "oilTankRemoval"
   | "dpe"
   | "quoteSigned"
   | "quoteSignedRecency"
@@ -86,7 +87,7 @@ export const STEPS: StepDef[] = [
     id: "energie",
     title: "La situation énergétique",
     subtitle: "Uniquement ce qui est utile aux règles évaluées.",
-    questions: ["currentHeating", "gasBoilerCondensing", "dpe"],
+    questions: ["currentHeating", "gasBoilerCondensing", "oilTankRemoval", "dpe"],
   },
   {
     id: "avancement",
@@ -281,6 +282,10 @@ export function questionText(id: QuestionId, answers: Answers, ctx: QuestionCont
     ventilationTarget: { title: "Quel système de ventilation ?" },
     currentHeating: { title: "Comment le logement est-il chauffé aujourd'hui ?", help: "Le chauffage principal." },
     gasBoilerCondensing: { title: "Votre chaudière gaz est-elle à condensation ?", help: "L'information figure sur la plaque signalétique ou la notice de la chaudière." },
+    oilTankRemoval: {
+      title: "Prévoyez-vous de faire retirer la cuve à fioul ?",
+      help: "Sa dépose peut être aidée lorsqu'elle accompagne le remplacement de la chaudière au fioul.",
+    },
     dpe: {
       title: "Quelle est la classe énergétique (DPE) du logement ?",
       help: "Elle figure sur le diagnostic de performance énergétique (étiquette de A à G). Si vous ne la connaissez pas, un audit pourra la déterminer.",
@@ -352,6 +357,17 @@ function dpeRelevant(answers: Answers, rules: RuleSetData): boolean {
   return geste.enabled && geste.dpeRestrictions.some((r) => r.works.some((w) => items.includes(w)));
 }
 
+/** Un dispositif actif évalue-t-il la dépose d'une cuve à fioul ? (sinon la question n'est pas posée) */
+function oilTankEvaluated(rules: RuleSetData): boolean {
+  return Object.values(rules.dispositifs).some(
+    (d) =>
+      d.enabled &&
+      (d.eligibleWorks.includes("DEPOSE_CUVE_FIOUL") ||
+        d.reviewWorks.some((r) => r.item === "DEPOSE_CUVE_FIOUL") ||
+        d.excludedWorks.some((e) => e.item === "DEPOSE_CUVE_FIOUL")),
+  );
+}
+
 function heatingRelevant(answers: Answers): boolean {
   const items = selectedWorkItems(answers);
   return involvesHeating(items) || items.includes("RENOVATION_GLOBALE");
@@ -388,6 +404,13 @@ export function isQuestionVisible(id: QuestionId, answers: Answers, ctx: Questio
         answers.currentHeating === "CHAUDIERE_GAZ" &&
         ctx.rules.dispositifs.CEE.enabled &&
         ctx.rules.dispositifs.CEE.coupDePouceChauffage.gasBoilerMustBeNonCondensing
+      );
+    case "oilTankRemoval":
+      return (
+        hasEvaluableWorks(answers) &&
+        involvesHeating(selectedWorkItems(answers)) &&
+        answers.currentHeating === "CHAUDIERE_FIOUL" &&
+        oilTankEvaluated(ctx.rules)
       );
     case "dpe":
       return hasEvaluableWorks(answers) && dpeRelevant(answers, ctx.rules);
@@ -427,6 +450,7 @@ export const QUESTION_KEYS: Record<QuestionId, (keyof Answers)[]> = {
   ventilationTarget: ["ventilationTarget"],
   currentHeating: ["currentHeating"],
   gasBoilerCondensing: ["gasBoilerCondensing"],
+  oilTankRemoval: ["oilTankRemoval"],
   dpe: ["dpe"],
   quoteSigned: ["quoteSigned"],
   quoteSignedRecency: ["quoteSignedRecency"],
@@ -512,10 +536,11 @@ export function summarizeAnswers(answers: Answers, ctx: QuestionContext): Answer
   if (v("works")) {
     add("works", "Travaux envisagés", (answers.works ?? []).map((w) => WORK_CATEGORY_LABELS[w]).join(", "));
   }
-  const items = selectedWorkItems(answers).filter((i) => i !== "AUTRE_PROJET" && i !== "RENOVATION_GLOBALE");
+  const items = selectedWorkItems(answers).filter((i) => i !== "AUTRE_PROJET" && i !== "RENOVATION_GLOBALE" && i !== "DEPOSE_CUVE_FIOUL");
   if (items.length) add("works", "Détail des travaux", items.map((i) => WORK_ITEMS[i].label).join(", "));
   if (v("currentHeating")) add("currentHeating", "Chauffage actuel", labelOf(CURRENT_HEATING_OPTIONS, answers.currentHeating));
   if (v("gasBoilerCondensing")) add("gasBoilerCondensing", "Chaudière à condensation", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.gasBoilerCondensing));
+  if (v("oilTankRemoval")) add("oilTankRemoval", "Dépose de la cuve à fioul", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.oilTankRemoval));
   if (v("dpe")) add("dpe", "Classe énergétique (DPE)", labelOf(DPE_OPTIONS, answers.dpe));
   if (v("quoteSigned")) add("quoteSigned", "Devis signé", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.quoteSigned));
   if (v("quoteSignedRecency")) {

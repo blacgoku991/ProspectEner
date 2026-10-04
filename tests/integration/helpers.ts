@@ -13,6 +13,7 @@ export const ANSWERS_ELIGIBLE: Answers = {
   works: ["PAC"],
   heatPumpType: "PAC_AIR_EAU",
   currentHeating: "CHAUDIERE_FIOUL",
+  oilTankRemoval: "NON",
   quoteSigned: "NON",
   worksStarted: "NON",
   priorAidStatus: "NON",

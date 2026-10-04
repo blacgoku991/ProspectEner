@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, CircleHelp, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import HouseHero from "@/components/three/HouseHero";
 import type { HouseFocus } from "@/components/three/types";
@@ -246,6 +247,7 @@ export default function Simulator({
             ruleSetLabel={ruleSetLabel}
             summary={summarizeAnswers(pruned, ctx)}
             canContact={config.submissionsOpen}
+            channels={config.channels}
             onContact={() => navigate("contact", currentVisible)}
             onEdit={(q) => {
               setReturnToResult(true);
@@ -378,6 +380,14 @@ export default function Simulator({
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pine-600" aria-hidden />
           Vos réponses restent dans votre navigateur tant que vous n&apos;envoyez pas de demande. {NO_STATE_DATA_NOTICE}
         </p>
+        {config.submissionsOpen && (
+          <p className="mt-3 text-sm text-ink-600">
+            Pas le temps de répondre ?{" "}
+            <Link href="/rappel" className="font-semibold text-pine-700 underline underline-offset-2">
+              Être recontacté(e) sans faire le test
+            </Link>
+          </p>
+        )}
       </div>
 
       <aside className="hidden lg:block" aria-hidden>

@@ -33,6 +33,11 @@ export const REFERENCE_SCENARIOS: ReferenceScenario[] = [
     answers: { ...base, works: ["PAC"], heatPumpType: "PAC_AIR_EAU", currentHeating: "CHAUDIERE_FIOUL" },
   },
   {
+    id: "pac-fioul-cuve",
+    label: "PAC air/eau en remplacement d'une chaudière fioul, avec dépose de la cuve, revenus modestes",
+    answers: { ...base, works: ["PAC"], heatPumpType: "PAC_AIR_EAU", currentHeating: "CHAUDIERE_FIOUL", oilTankRemoval: "OUI" },
+  },
+  {
     id: "isolation-idf",
     label: "Appartement en Île-de-France, isolation des murs, revenus intermédiaires",
     answers: {

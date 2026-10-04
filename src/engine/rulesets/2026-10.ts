@@ -143,6 +143,7 @@ export const RULESET_2026_10: RuleSet = {
           "Subvention de l'Anah (État). Son montant dépend des revenus du ménage et des travaux : il n'est pas calculé par ce simulateur.",
           "Cumulable avec une prime CEE, dans la limite d'un pourcentage maximal de la dépense éligible qui dépend des revenus.",
         ],
+        workNotes: {},
         eligibleIncomeCategories: ["TRES_MODESTE", "MODESTE", "INTERMEDIAIRE"],
         ageExceptions: [
           {
@@ -206,6 +207,7 @@ export const RULESET_2026_10: RuleSet = {
           "Subvention de l'Anah (État), ouverte à toutes les catégories de revenus depuis le 23 février 2026 avec des taux qui dépendent des revenus : le montant n'est pas calculé par ce simulateur.",
           "Les travaux sur les parties communes d'une copropriété relèvent d'un dispositif distinct (MaPrimeRénov' Copropriété), non évalué ici.",
         ],
+        workNotes: {},
         eligibleIncomeCategories: ["TRES_MODESTE", "MODESTE", "INTERMEDIAIRE", "SUPERIEUR"],
         eligibleDpe: ["E", "F", "G"],
         housingTypes: ["MAISON", "APPARTEMENT"],
@@ -282,6 +284,7 @@ export const RULESET_2026_10: RuleSet = {
         notes: [
           "Prime versée par un fournisseur d'énergie (ou son partenaire) dans le cadre du dispositif des certificats d'économies d'énergie encadré par l'État : ce n'est pas une subvention budgétaire de l'État et son montant dépend de l'offre de chaque acteur.",
         ],
+        workNotes: {},
         coupDePouceChauffage: {
           enabled: true,
           validUntil: "2030-12-31",
@@ -295,6 +298,7 @@ export const RULESET_2026_10: RuleSet = {
             { label: "Légifrance — Arrêté du 29 mai 2026", url: "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054152008" },
           ],
         },
+        temporaryBonuses: [],
       },
 
       ECO_PTZ: {
@@ -360,6 +364,7 @@ export const RULESET_2026_10: RuleSet = {
         notes: [
           "Prêt sans intérêts (les intérêts sont pris en charge par l'État), sans condition de ressources. Ce n'est pas une subvention : il doit être remboursé.",
         ],
+        workNotes: {},
       },
     },
 

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { DEFAULT_RULESET } from "../../src/engine";
 import { ADMIN } from "./config";
 import { choose, fillEligibleQuestionnaire, login, next } from "./helpers";
 
@@ -37,7 +38,8 @@ test.describe("parcours public complet", () => {
     // Aucune coordonnée n'a été demandée à ce stade.
     await expect(page.getByLabel("Numéro de téléphone")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Demander une étude de mon projet" }).click();
+    // Le bouton principal (la barre fixe en reprend l'action quand il n'est pas visible).
+    await page.getByRole("button", { name: "Demander une étude de mon projet" }).first().click();
     await page.getByLabel("Prénom").fill("Dominique");
     await page.getByLabel("Nom", { exact: true }).fill("Doubleclic");
     await page.getByRole("button", { name: /Être rappelé\(e\) par téléphone/ }).click();
@@ -61,7 +63,7 @@ test.describe("parcours public complet", () => {
     await expect(admin.getByText(reference)).toBeVisible();
     await expect(admin.getByText(/Je demande à être contacté\(e\) par Rénovation Test E2E, par téléphone, au sujet de mon projet de pompe à chaleur air\/eau\./).first()).toBeVisible();
     await expect(admin.getByText("Potentiellement éligible").first()).toBeVisible();
-    await expect(admin.getByText(/barème 2026\.10-1/)).toBeVisible();
+    await expect(admin.getByText(`barème ${DEFAULT_RULESET.version}`, { exact: false })).toBeVisible();
   });
 
   test("territoire hors périmètre : résultat sans conclusion abusive", async ({ page }) => {

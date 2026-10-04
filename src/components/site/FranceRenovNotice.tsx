@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 export function FranceRenovNotice({ className, tone = "light" }: { className?: string; tone?: "light" | "dark" }) {
   return (
     <aside
+      data-france-renov-notice
       aria-label="Information du service public France Rénov'"
       className={cn(
         "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",

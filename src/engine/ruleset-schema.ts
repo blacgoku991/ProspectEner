@@ -104,6 +104,8 @@ const dispositifCommon = {
   occupancyNotes: z.partialRecord(occupancyEnum, z.string().min(3).max(500)),
   /** Informations générales sur la nature de l'aide (sans montant). */
   notes: z.array(z.string().min(3).max(500)),
+  /** Précisions affichées seulement quand le travail concerné est sélectionné et couvert. */
+  workNotes: z.partialRecord(workItemEnum, z.string().min(3).max(500)).default({}),
 };
 
 export const mprGesteSchema = z.object({
@@ -150,6 +152,25 @@ export const ceeSchema = z.object({
     note: z.string().max(1000).optional(),
     sources: z.array(sourceSchema),
   }),
+  /**
+   * Bonifications temporaires (ex. arrêté du 25 août 2026), affichées sans montant pendant
+   * leur période d'engagement : la date d'engagement de l'opération est celle de la signature du devis.
+   */
+  temporaryBonuses: z
+    .array(
+      z
+        .object({
+          title: z.string().min(3).max(200),
+          works: z.array(workItemEnum).min(1),
+          engagedFrom: isoDate,
+          engagedUntil: isoDate,
+          /** Conditions, rédigées pour compléter « sous réserve que … ». */
+          conditions: z.string().min(3).max(600),
+          sources: z.array(sourceSchema).min(1),
+        })
+        .refine((b) => b.engagedFrom <= b.engagedUntil, { message: "Période d'engagement incohérente", path: ["engagedUntil"] }),
+    )
+    .default([]),
 });
 
 export const ecoPtzSchema = z.object({

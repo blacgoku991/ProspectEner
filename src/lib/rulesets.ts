@@ -1,8 +1,10 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
-import { DEFAULT_RULESET, ENGINE_VERSION, type RuleSet, validateRuleSetData } from "@/engine";
+import { DEFAULT_RULESET, EMBEDDED_RULESETS, ENGINE_VERSION, type RuleSet, validateRuleSetData } from "@/engine";
+import { audit } from "./audit";
 import { prisma } from "./db";
 import { sha256Hex } from "./crypto";
+import { getSettings } from "./settings";
 
 export function checksumOf(data: unknown): string {
   return sha256Hex(JSON.stringify(data));
@@ -61,4 +63,63 @@ export async function ensureDefaultRuleSet() {
     if (!row) throw new Error("Impossible d'initialiser le jeu de règles.");
     return row;
   }
+}
+
+export type EmbeddedSyncAction = "PUBLISHED" | "UPGRADED" | "DRAFT" | "UNCHANGED";
+
+/**
+ * Synchronise le jeu de règles embarqué le plus récent avec la base (initialisation et déploiements).
+ *
+ * - Aucun barème publié : le jeu embarqué est publié (première installation).
+ * - Le barème publié est une version embarquée plus ancienne, publiée automatiquement, et aucune
+ *   relecture humaine des règles n'est enregistrée : il est remplacé (il n'a jamais été validé par une personne).
+ * - Sinon, la nouvelle version est ajoutée comme brouillon : elle sera prévisualisée puis publiée
+ *   depuis l'administration. Un brouillon déjà présent n'est jamais modifié.
+ */
+export async function syncEmbeddedRuleSet(): Promise<{ action: EmbeddedSyncAction; version: string }> {
+  const target = DEFAULT_RULESET;
+  const published = await prisma.ruleSet.findFirst({ where: { status: "PUBLISHED" } });
+  if (!published) {
+    const row = await ensureDefaultRuleSet();
+    return { action: "PUBLISHED", version: row.version };
+  }
+  if (published.version === target.version) return { action: "UNCHANGED", version: target.version };
+  const existing = await prisma.ruleSet.findUnique({ where: { version: target.version } });
+  if (existing) return { action: "UNCHANGED", version: target.version };
+
+  const order = EMBEDDED_RULESETS.map((r) => r.version as string);
+  const olderEmbedded = order.includes(published.version) && order.indexOf(published.version) < order.indexOf(target.version);
+  const settings = await getSettings();
+  const data = target.data as unknown as Prisma.InputJsonValue;
+  const common = {
+    version: target.version,
+    data,
+    checksum: checksumOf(target.data),
+    engineVersion: ENGINE_VERSION,
+    basedOnId: published.id,
+    notes: `Barème embarqué ${target.version}. ${target.data.meta.changelog}`.slice(0, 4000),
+  };
+
+  if (olderEmbedded && published.publishedById === null && !settings.launch.rulesReviewedAt) {
+    await prisma.$transaction(async (tx) => {
+      await tx.ruleSet.updateMany({ where: { status: "PUBLISHED" }, data: { status: "ARCHIVED", archivedAt: new Date() } });
+      const row = await tx.ruleSet.create({
+        data: {
+          ...common,
+          status: "PUBLISHED",
+          publishedAt: new Date(),
+          publicationNote: `Mise à jour automatique depuis ${published.version} : aucune relecture humaine des règles n'était encore enregistrée. Relecture directe des sources officielles requise avant la mise en production.`,
+        },
+      });
+      await audit(
+        { action: "RULESET_PUBLISHED", targetType: "RuleSet", targetId: row.id, metadata: { via: "system", mode: "embedded-upgrade", from: published.version, to: target.version } },
+        tx,
+      );
+    });
+    return { action: "UPGRADED", version: target.version };
+  }
+
+  const draft = await prisma.ruleSet.create({ data: { ...common, status: "DRAFT" } });
+  await audit({ action: "RULESET_DRAFT_SAVED", targetType: "RuleSet", targetId: draft.id, metadata: { via: "system", mode: "embedded-draft", version: target.version } });
+  return { action: "DRAFT", version: target.version };
 }

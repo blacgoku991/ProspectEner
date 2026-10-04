@@ -7,6 +7,7 @@ import type {
   DispositifResult,
   DispositifStatus,
   PriorAidKind,
+  ResultHighlight,
   Territory,
   WorkItem,
 } from "../types";
@@ -273,6 +274,7 @@ const WORK_ANSWER_KEYS: (keyof Answers)[] = [
   "heatingTarget",
   "hotWaterTarget",
   "ventilationTarget",
+  "oilTankRemoval",
 ];
 
 export function worksCriterion(split: WorksSplit, dispositifName: string): CriterionResult {
@@ -380,6 +382,7 @@ export function buildResult(
     split: WorksSplit;
     remainingConditions: string[];
     notes: string[];
+    highlights?: ResultHighlight[];
   },
 ): DispositifResult {
   const uncovered = [
@@ -400,11 +403,12 @@ export function buildResult(
     coveredWorks: params.split.covered,
     uncoveredWorks: uncovered,
     remainingConditions: dedupe(remaining),
-    notes: dedupe(params.notes),
+    notes: dedupe([...params.notes, ...params.split.covered.map((w) => rules.workNotes[w] ?? "")]),
     sources: rules.sources,
     verifiedAt: rules.verification.verifiedAt,
     validFrom: rules.validFrom,
     validUntil: rules.validUntil,
+    ...(params.highlights?.length ? { highlights: params.highlights } : {}),
     ...(params.disabledReason ? { conclusionDisabledReason: params.disabledReason } : {}),
     ...(verificationNote ? { verificationNote } : {}),
   };

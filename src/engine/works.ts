@@ -31,6 +31,7 @@ export const WORK_ITEMS: Record<WorkItem, WorkItemInfo> = {
   SYSTEME_SOLAIRE_COMBINE: { label: "Système solaire combiné (chauffage + eau chaude)", category: "CHAUFFAGE" },
   CHAUDIERE_GAZ: { label: "Nouvelle chaudière gaz", category: "CHAUFFAGE" },
   CHAUFFAGE_INCONNU: { label: "Changement de chauffage (équipement à préciser)", category: "CHAUFFAGE", undetermined: true },
+  DEPOSE_CUVE_FIOUL: { label: "Dépose d'une cuve à fioul", category: "CHAUFFAGE" },
 
   CHAUFFE_EAU_THERMODYNAMIQUE: { label: "Chauffe-eau thermodynamique", category: "EAU_CHAUDE" },
   CHAUFFE_EAU_SOLAIRE: { label: "Chauffe-eau solaire individuel", category: "EAU_CHAUDE" },
@@ -115,6 +116,8 @@ export function selectedWorkItems(answers: Answers): WorkItem[] {
         break;
     }
   }
+  // Dépose de la cuve : seulement en accompagnement d'un changement de chauffage depuis le fioul.
+  if (answers.oilTankRemoval === "OUI" && answers.currentHeating === "CHAUDIERE_FIOUL" && involvesHeating(out)) push("DEPOSE_CUVE_FIOUL");
   return out;
 }
 

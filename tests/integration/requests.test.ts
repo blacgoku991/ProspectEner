@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { DEFAULT_RULESET, ENGINE_VERSION } from "@/engine";
 import { prisma } from "@/lib/db";
 import { createContactRequest } from "@/lib/requests/create";
 import { hashPhone } from "@/lib/crypto";
@@ -27,8 +28,8 @@ describe("création d'une demande de contact", () => {
     expect(row.email).toBeNull();
     expect(row.phoneHash).toBe(hashPhone("0612345678"));
     expect(row.overallOutcome).toBe("POTENTIALLY_ELIGIBLE");
-    expect(row.engineVersion).toBe("1.0.0");
-    expect(row.ruleSetVersion).toBe("2026.10-1");
+    expect(row.engineVersion).toBe(ENGINE_VERSION);
+    expect(row.ruleSetVersion).toBe(DEFAULT_RULESET.version);
     expect(row.territory).toBe("METRO");
     expect(row.departement).toBe("69");
     expect(row.requestSentence).toBe(

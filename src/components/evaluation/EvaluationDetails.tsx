@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, CircleHelp, CircleMinus, ExternalLink, Info, XCircle } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronDown, CircleHelp, CircleMinus, ExternalLink, Info, XCircle } from "lucide-react";
 import type { CriterionStatus, DispositifResult, DispositifStatus, Evaluation } from "@/engine/types";
 import { workLabel } from "@/engine/works";
 import { cn } from "@/lib/cn";
@@ -51,6 +51,23 @@ export function DispositifCard({ result, defaultOpen = false }: { result: Dispos
             <span className="font-medium text-ink-800">Travaux concernés :</span> {result.coveredWorks.map(workLabel).join(", ")}
           </p>
         )}
+        {result.highlights?.map((h) => (
+          <div key={h.title + h.until} className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-50 px-4 py-3 text-sm text-ink-800">
+            <p className="flex items-center gap-2 font-semibold text-amber-900">
+              <CalendarClock className="size-4 shrink-0" aria-hidden />
+              {h.title} · jusqu&apos;au {fmt(h.until)}
+            </p>
+            <p className="mt-1 leading-relaxed">{h.text}</p>
+            <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+              {h.sources.map((s) => (
+                <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-amber-900 underline underline-offset-2">
+                  {s.label}
+                  <ExternalLink className="size-3" aria-hidden />
+                </a>
+              ))}
+            </p>
+          </div>
+        ))}
       </div>
       <details className="group border-t border-ink-900/[0.06]" open={defaultOpen}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3.5 text-sm font-semibold text-pine-800 hover:bg-sand-50 sm:px-6">

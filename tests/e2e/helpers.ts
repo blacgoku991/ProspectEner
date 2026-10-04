@@ -78,6 +78,9 @@ export async function fillEligibleQuestionnaire(page: Page) {
   await next(page);
   await choose(page, "Pompe à chaleur air/eau");
   await choose(page, "Chaudière au fioul");
+  // Barème 2026.10-2 : question complémentaire sur la dépose de la cuve.
+  await expect(page.getByText("Prévoyez-vous de faire retirer la cuve à fioul ?")).toBeVisible();
+  await choose(page, /^Non$/); // dépose de cuve
   await choose(page, /^Non$/); // devis
   await choose(page, /^Non$/); // travaux commencés
   await choose(page, /^Non$/); // aide antérieure

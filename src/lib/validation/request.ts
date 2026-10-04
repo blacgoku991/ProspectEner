@@ -49,6 +49,7 @@ export const answersSchema = z
       .enum(["CHAUDIERE_GAZ", "CHAUDIERE_FIOUL", "CHAUDIERE_CHARBON", "ELECTRIQUE", "BOIS", "PAC", "RESEAU_CHALEUR", "AUTRE", "INCONNU"])
       .optional(),
     gasBoilerCondensing: yesNoUnknown.optional(),
+    oilTankRemoval: yesNoUnknown.optional(),
     dpe: z.enum(["A", "B", "C", "D", "E", "F", "G", "INCONNU"]).optional(),
     quoteSigned: yesNoUnknown.optional(),
     quoteSignedRecency: z.enum(["RECENT", "OLD", "INCONNU"]).optional(),

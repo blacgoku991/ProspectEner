@@ -1,6 +1,6 @@
 import { compareDates, parseIsoDate } from "../construction";
 import type { CeeRules } from "../ruleset-schema";
-import type { CurrentHeating, DispositifResult } from "../types";
+import type { CurrentHeating, DispositifResult, ResultHighlight, WorkItem } from "../types";
 import { workLabel } from "../works";
 import {
   ageCriterion,
@@ -60,6 +60,35 @@ function coupDePouceNotes(ctx: EvalContext, rules: CeeRules, covered: string[]):
   return notes;
 }
 
+const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+function frenchDate(iso: string): string {
+  const { year, month, day } = parseIsoDate(iso);
+  return `${day === 1 ? "1er" : day} ${MONTHS[month - 1]} ${year}`;
+}
+
+/** Bonifications temporaires en cours à la date de référence, pour les travaux couverts. */
+function temporaryBonusHighlights(ctx: EvalContext, rules: CeeRules, covered: WorkItem[]): ResultHighlight[] {
+  const ref = parseIsoDate(ctx.referenceDate);
+  return rules.temporaryBonuses.flatMap((bonus): ResultHighlight[] => {
+    if (compareDates(ref, parseIsoDate(bonus.engagedFrom)) < 0 || compareDates(ref, parseIsoDate(bonus.engagedUntil)) > 0) return [];
+    const works = covered.filter((w) => bonus.works.includes(w));
+    if (works.length === 0) return [];
+    return [
+      {
+        kind: "TEMPORARY_BONUS",
+        title: bonus.title,
+        text: `${bonus.title} pour : ${works.map((w) => workLabel(w).toLowerCase()).join(", ")}, si le devis est signé au plus tard le ${frenchDate(
+          bonus.engagedUntil,
+        )}, sous réserve que ${bonus.conditions}. Le montant dépend de l'offre de chaque fournisseur d'énergie.`,
+        until: bonus.engagedUntil,
+        works,
+        sources: bonus.sources,
+      },
+    ];
+  });
+}
+
 export function evaluateCee(ctx: EvalContext, rules: CeeRules): DispositifResult {
   const name = "les primes CEE";
   const territory = territoryCriterion(ctx, rules);
@@ -87,13 +116,13 @@ export function evaluateCee(ctx: EvalContext, rules: CeeRules): DispositifResult
   }
 
   const notes = [...rules.notes];
-  if (status === "POTENTIALLY_ELIGIBLE" || status === "NEEDS_REVIEW") {
-    notes.push(...coupDePouceNotes(ctx, rules, split.covered));
-  }
+  const favourable = status === "POTENTIALLY_ELIGIBLE" || status === "NEEDS_REVIEW";
+  if (favourable) notes.push(...coupDePouceNotes(ctx, rules, split.covered));
+  const highlights = favourable ? temporaryBonusHighlights(ctx, rules, split.covered) : [];
 
   return buildResult(
     { id: "CEE", name: "Primes énergie (certificats d'économies d'énergie)", aidKind: "PRIME", provider: "Fournisseurs d'énergie (dispositif CEE encadré par l'État)" },
     rules,
-    { status, disabledReason, criteria, split, remainingConditions: remaining, notes },
+    { status, disabledReason, criteria, split, remainingConditions: remaining, notes, highlights },
   );
 }

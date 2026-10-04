@@ -1,17 +1,25 @@
-import { ArrowRight, BadgeCheck, CircleSlash, Clock, FileSearch, Landmark, ListChecks, MessageSquareText, PhoneCall, Sparkles, UserX } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarClock, CircleSlash, Clock, FileSearch, Gift, Landmark, ListChecks, MessageSquareText, PhoneCall, Sparkles, UserX } from "lucide-react";
 import Link from "next/link";
 import HouseHero from "@/components/three/HouseHero";
 import { AidExplorer, type ExplorerTab } from "@/components/site/AidExplorer";
 import { FranceRenovNotice } from "@/components/site/FranceRenovNotice";
 import { IndependenceBadge } from "@/components/site/IndependenceBadge";
+import { StickyCta } from "@/components/site/StickyCta";
 import { TrackStep } from "@/components/site/TrackStep";
 import { coverageForCategory, DISPOSITIF_INFO, WORK_ITEMS } from "@/engine";
+import { parisToday } from "@/lib/business-days";
 import { getPublicConfig } from "@/lib/public-config";
 import { getPublishedRuleSet } from "@/lib/rulesets";
 
 export default async function HomePage() {
   const [{ config }, ruleSet] = await Promise.all([getPublicConfig(), getPublishedRuleSet()]);
   const rules = ruleSet.data;
+  // Bonifications temporaires en cours (barème publié) : échéance réelle et datée, jamais de compte à rebours.
+  const today = parisToday();
+  const bonuses = rules.dispositifs.CEE.enabled
+    ? rules.dispositifs.CEE.temporaryBonuses.filter((b) => b.engagedFrom <= today && today <= b.engagedUntil)
+    : [];
+  const longDate = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
   const tabs: ExplorerTab[] = [
     { focus: "chauffage", label: "Chauffage & PAC", coverage: [...coverageForCategory(rules, "PAC"), ...coverageForCategory(rules, "CHAUFFAGE")] },
     { focus: "isolation", label: "Isolation", coverage: coverageForCategory(rules, "ISOLATION") },
@@ -62,6 +70,20 @@ export default async function HomePage() {
               <Sparkles className="size-3.5" aria-hidden />
               Règles {rules.incomeCeilings.year} · réforme du 1er septembre 2026 intégrée
             </p>
+            {bonuses.map((b) => (
+              <Link
+                key={b.title + b.engagedUntil}
+                href="/simulation"
+                className="flex w-fit max-w-xl items-start gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-50/90 px-4 py-2.5 text-sm leading-snug text-ink-800 shadow-sm backdrop-blur transition hover:bg-amber-50"
+              >
+                <CalendarClock className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />
+                <span>
+                  <strong className="text-amber-900">Jusqu&apos;au {longDate.format(new Date(`${b.engagedUntil}T00:00:00Z`))} :</strong>{" "}
+                  {b.title.toLowerCase()} pour {b.works.map((w) => WORK_ITEMS[w].label.toLowerCase()).join(" et ")} (devis signé d&apos;ici là, sous
+                  conditions). <span className="font-semibold text-pine-800 underline underline-offset-2">Vérifier mon projet</span>
+                </span>
+              </Link>
+            ))}
             <h1 className="text-[2.6rem] font-extrabold leading-[1.02] text-ink-950 sm:text-6xl">
               Votre rénovation peut-elle être{" "}
               <span className="relative whitespace-nowrap text-pine-700">
@@ -76,7 +98,7 @@ export default async function HomePage() {
               Quelques questions sur votre logement et votre projet : vous voyez <strong className="text-ink-900">immédiatement</strong> un
               résultat indicatif, dispositif par dispositif — <strong className="text-ink-900">avant toute demande de coordonnées</strong>.
             </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div id="hero-cta" className="flex flex-col gap-3 sm:flex-row">
               <Link href="/simulation" className="btn-primary whitespace-nowrap px-7 py-4 text-base">
                 Tester mon éligibilité
                 <ArrowRight className="size-5" aria-hidden />
@@ -86,19 +108,29 @@ export default async function HomePage() {
                 Je préfère être recontacté(e)
               </Link>
             </div>
-            <ul className="grid max-w-xl grid-cols-2 gap-3 text-sm text-ink-700 xl:grid-cols-4">
+            <ul className="flex max-w-xl flex-wrap gap-2.5 text-sm text-ink-700">
               {[
+                { icon: Gift, text: "Gratuit" },
                 { icon: Clock, text: "3 minutes environ" },
                 { icon: FileSearch, text: "Résultat expliqué" },
                 { icon: UserX, text: "Sans compte" },
                 { icon: CircleSlash, text: "Aucun justificatif" },
               ].map(({ icon: Icon, text }) => (
-                <li key={text} className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-white/70 px-3 py-2 shadow-sm backdrop-blur">
+                <li key={text} className="flex items-center gap-2 rounded-xl bg-white/70 px-3 py-2 shadow-sm backdrop-blur">
                   <Icon className="size-4 shrink-0 text-pine-600" aria-hidden />
                   {text}
                 </li>
               ))}
             </ul>
+            {config.qualifications && (
+              <p className="flex max-w-xl items-start gap-2 text-sm text-ink-700">
+                <BadgeCheck className="mt-0.5 size-4 shrink-0 text-pine-600" aria-hidden />
+                <span>
+                  <span className="font-semibold text-ink-900">Qualifications : </span>
+                  {config.qualifications}
+                </span>
+              </p>
+            )}
             <IndependenceBadge />
           </div>
 
@@ -286,6 +318,16 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <StickyCta triggerId="hero-cta" mobileOnly>
+        <Link href="/simulation" className="btn-primary flex-1 justify-center py-3">
+          Tester mon éligibilité
+          <ArrowRight className="size-4" aria-hidden />
+        </Link>
+        <Link href="/rappel" className="btn-ghost px-4 py-3" aria-label="Être recontacté(e) sans faire le test">
+          <PhoneCall className="size-5" aria-hidden />
+        </Link>
+      </StickyCta>
     </>
   );
 }

@@ -1,9 +1,12 @@
 "use client";
 
-import { ArrowRight, CircleHelp, Compass, Pencil, RotateCcw, SearchCheck, SearchX } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, CircleHelp, Compass, Pencil, RotateCcw, SearchCheck, SearchX, ShieldCheck } from "lucide-react";
 import { EvaluationDetails } from "@/components/evaluation/EvaluationDetails";
 import { FranceRenovNotice } from "@/components/site/FranceRenovNotice";
 import { IndependenceBadge } from "@/components/site/IndependenceBadge";
+import { StickyCta } from "@/components/site/StickyCta";
+import { DISPOSITIF_INFO } from "@/engine/coverage";
+import { workLabel } from "@/engine/works";
 import type { AnswerSummaryLine, QuestionId } from "@/engine/questionnaire";
 import type { Evaluation, OverallOutcome } from "@/engine/types";
 import { cn } from "@/lib/cn";
@@ -24,6 +27,7 @@ export function ResultView({
   ruleSetLabel,
   summary,
   canContact,
+  channels,
   onContact,
   onEdit,
   onRestart,
@@ -32,6 +36,7 @@ export function ResultView({
   ruleSetLabel: string;
   summary: AnswerSummaryLine[];
   canContact: boolean;
+  channels: { phone: boolean; email: boolean };
   onContact: () => void;
   onEdit: (q: QuestionId) => void;
   onRestart: () => void;
@@ -44,22 +49,70 @@ export function ResultView({
       : evaluation.outcome === "OUT_OF_SCOPE"
         ? "Demander une étude complémentaire"
         : null;
+  const matched = evaluation.results.filter((r) => r.status === "POTENTIALLY_ELIGIBLE");
+  const toConfirm = evaluation.results.filter((r) => r.status === "NEEDS_REVIEW");
+  const highlights = evaluation.results.flatMap((r) => r.highlights ?? []);
+  const channelText =
+    channels.phone && channels.email ? "Réponse par e-mail ou par téléphone, au choix" : channels.phone ? "Rappel téléphonique à votre demande" : "Réponse par e-mail";
+  const showCta = Boolean(cta && canContact);
 
   return (
     <div className="space-y-8">
       <section className={cn("card overflow-hidden bg-gradient-to-br ring-2", style.bg, style.ring)} aria-labelledby="result-title">
         <div className="p-6 sm:p-8">
-          <div className="flex items-start gap-4">
-            <span className={cn("grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-lift", style.iconBg)}>
-              <Icon className="size-7" aria-hidden />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+            <span className={cn("grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-lift sm:size-14", style.iconBg)}>
+              <Icon className="size-6 sm:size-7" aria-hidden />
             </span>
             <div className="space-y-2">
               <p className="text-sm font-semibold uppercase tracking-wider text-ink-500">{style.title}</p>
-              <h2 id="result-title" className="text-2xl font-bold leading-snug text-ink-950 sm:text-3xl">
+              <h2 id="result-title" className="text-xl font-bold leading-snug text-ink-950 sm:text-3xl">
                 {evaluation.headline}
               </h2>
             </div>
           </div>
+          {(matched.length > 0 || toConfirm.length > 0) && (
+            <div className="mt-5 space-y-2">
+              {matched.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-ink-900">
+                    {matched.length === 1 ? "1 aide peut correspondre à votre projet :" : `${matched.length} aides peuvent correspondre à votre projet :`}
+                  </p>
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {matched.map((r) => (
+                      <li key={r.id} className="inline-flex items-center gap-1.5 rounded-full bg-pine-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
+                        <Check className="size-4" aria-hidden />
+                        {DISPOSITIF_INFO[r.id].name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {toConfirm.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-ink-900">À confirmer lors de l&apos;étude :</p>
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {toConfirm.map((r) => (
+                      <li key={r.id} className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-sm font-semibold text-amber-900">
+                        <CircleHelp className="size-4" aria-hidden />
+                        {DISPOSITIF_INFO[r.id].name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          {highlights.map((h) => (
+            <p key={h.title + h.until} className="mt-4 flex gap-2.5 rounded-2xl border border-amber-500/25 bg-amber-50 px-4 py-3 text-sm text-ink-800">
+              <CalendarClock className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />
+              <span>
+                <strong className="text-amber-900">Bon à savoir : </strong>
+                {h.title.toLowerCase()} pour {h.works.map((w) => workLabel(w).toLowerCase()).join(" et ")}, pour un devis signé au plus tard le{" "}
+                {longDate(h.until)}, sous conditions (détail ci-dessous).
+              </span>
+            </p>
+          ))}
           <div className="mt-5 space-y-3">
             <IndependenceBadge />
             <p className="text-sm leading-relaxed text-ink-600">{INDICATIVE_NOTICE}</p>
@@ -68,8 +121,8 @@ export function ResultView({
               {evaluation.engineVersion}
             </p>
           </div>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-            {cta && canContact && (
+          <div id="result-cta" className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+            {showCta && (
               <button type="button" onClick={onContact} className="btn-primary px-7 py-4 text-base">
                 {cta}
                 <ArrowRight className="size-5" aria-hidden />
@@ -84,6 +137,16 @@ export function ResultView({
               Conseil gratuit du service public France Rénov&apos;
             </a>
           </div>
+          {showCta && (
+            <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-ink-600">
+              {["Sans engagement", channelText, "Demande annulable à tout moment"].map((t) => (
+                <li key={t} className="inline-flex items-center gap-1.5">
+                  <ShieldCheck className="size-4 shrink-0 text-pine-600" aria-hidden />
+                  {t}
+                </li>
+              ))}
+            </ul>
+          )}
           {!canContact && (
             <p className="mt-4 text-sm text-ink-500">La prise de contact en ligne n&apos;est pas encore ouverte sur ce site.</p>
           )}
@@ -122,6 +185,15 @@ export function ResultView({
       </section>
 
       <FranceRenovNotice />
+      {showCta && cta && (
+        <StickyCta triggerId="result-cta">
+          <p className="hidden flex-1 text-sm text-ink-600 sm:block">Sans engagement · {channelText.toLowerCase()}</p>
+          <button type="button" onClick={onContact} className="btn-primary w-full justify-center py-3 sm:w-auto">
+            {cta}
+            <ArrowRight className="size-4" aria-hidden />
+          </button>
+        </StickyCta>
+      )}
       <p className="text-center">
         <button type="button" onClick={onRestart} className="inline-flex items-center gap-2 text-sm font-semibold text-ink-600 underline">
           <RotateCcw className="size-4" aria-hidden /> Recommencer la simulation

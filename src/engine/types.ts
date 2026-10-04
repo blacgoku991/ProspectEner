@@ -7,7 +7,7 @@
  */
 
 /** Version de la logique du moteur (code). Les barèmes ont leur propre version. */
-export const ENGINE_VERSION = "1.0.0";
+export const ENGINE_VERSION = "1.1.0";
 
 // ─── Réponses ────────────────────────────────────────────────────────────────
 
@@ -80,6 +80,8 @@ export type WorkItem =
   | "SYSTEME_SOLAIRE_COMBINE"
   | "CHAUDIERE_GAZ"
   | "CHAUFFAGE_INCONNU"
+  /** Ajoutée par la question complémentaire posée lors du remplacement d'une chaudière fioul. */
+  | "DEPOSE_CUVE_FIOUL"
   // Eau chaude sanitaire
   | "CHAUFFE_EAU_THERMODYNAMIQUE"
   | "CHAUFFE_EAU_SOLAIRE"
@@ -121,6 +123,8 @@ export interface Answers {
   // B. Situation énergétique
   currentHeating?: CurrentHeating;
   gasBoilerCondensing?: YesNoUnknown;
+  /** Dépose de la cuve envisagée (question posée si le chauffage actuel est une chaudière fioul). */
+  oilTankRemoval?: YesNoUnknown;
   dpe?: DpeAnswer;
   // Avancement
   quoteSigned?: YesNoUnknown;
@@ -184,6 +188,17 @@ export interface SourceRef {
   url: string;
 }
 
+/** Information mise en avant avec un résultat (ex. bonification temporaire datée), sans montant. */
+export interface ResultHighlight {
+  kind: "TEMPORARY_BONUS";
+  title: string;
+  text: string;
+  /** Dernier jour couvert (AAAA-MM-JJ). */
+  until: string;
+  works: WorkItem[];
+  sources: SourceRef[];
+}
+
 export interface DispositifResult {
   id: DispositifId;
   name: string;
@@ -202,6 +217,8 @@ export interface DispositifResult {
   remainingConditions: string[];
   /** Informations complémentaires (bonifications possibles, nature de l'aide…), sans montant. */
   notes: string[];
+  /** Informations datées à mettre en avant (bonifications temporaires…). */
+  highlights?: ResultHighlight[];
   sources: SourceRef[];
   verifiedAt: string;
   validFrom: string;

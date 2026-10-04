@@ -183,6 +183,16 @@ export function QuestionView({ id, answers, ctx, update }: QuestionViewProps) {
           onSelect={(v) => update({ gasBoilerCondensing: v }, true)}
         />
       );
+    case "oilTankRemoval":
+      return (
+        <SingleChoice
+          label="Dépose de la cuve à fioul"
+          columns={3}
+          options={withIcons(YES_NO_UNKNOWN_OPTIONS, YNU_ICONS)}
+          value={answers.oilTankRemoval}
+          onSelect={(v) => update({ oilTankRemoval: v }, true)}
+        />
+      );
     case "dpe":
       return <DpeInput value={answers.dpe} onSelect={(v) => update({ dpe: v }, true)} />;
     case "quoteSigned":

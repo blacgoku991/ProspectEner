@@ -24,7 +24,7 @@ export default async function DashboardPage() {
   const since30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
   const scope = requestScope(user, settings);
 
-  const [newCount, toProcess, soon, overdue, byOutcome, byStatus, byTerritory, worksRows, funnelRows, upcoming, failedNotifications, ruleSet, demoCount] =
+  const [newCount, toProcess, soon, overdue, byOutcome, byStatus, byTerritory, worksRows, funnelRows, upcoming, failedNotifications, ruleSet, demoCount, pendingDraft] =
     await Promise.all([
       prisma.contactRequest.count({ where: { AND: [scope, { createdAt: { gte: since7 } }] } }),
       prisma.contactRequest.count({ where: { AND: [scope, { status: { in: ["NOUVEAU", "A_VERIFIER"] } }] } }),
@@ -46,6 +46,8 @@ export default async function DashboardPage() {
       prisma.notification.count({ where: { status: "FAILED" } }),
       getPublishedRuleSet(),
       prisma.contactRequest.count({ where: { isDemo: true } }),
+      // Nouvelle version embarquée ajoutée comme brouillon lors d'un déploiement.
+      prisma.ruleSet.findFirst({ where: { status: "DRAFT", createdById: null }, orderBy: { createdAt: "desc" }, select: { id: true, version: true } }),
     ]);
 
   const checklist = launchChecklist(settings, notificationTransports());
@@ -90,6 +92,16 @@ export default async function DashboardPage() {
           <Alert>
             {failedNotifications} notification(s) interne(s) en échec (les demandes sont bien enregistrées).{" "}
             {user.role === "ADMIN" && <Link className="font-semibold underline" href="/admin/parametres#notifications">Voir</Link>}
+          </Alert>
+        )}
+        {pendingDraft && (
+          <Alert>
+            Une nouvelle version des règles ({pendingDraft.version}) est prête : prévisualisez-la, puis publiez-la si elle vous convient.{" "}
+            {user.role === "ADMIN" && (
+              <Link className="font-semibold underline" href={`/admin/baremes/${pendingDraft.id}`}>
+                Prévisualiser
+              </Link>
+            )}
           </Alert>
         )}
         {expiresSoon && (

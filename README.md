@@ -55,7 +55,7 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - potentiellement éligible ;
   - critères non remplis selon les réponses ;
   - vérification nécessaire.
-- **Barèmes versionnés en base** : brouillon, prévisualisation sur 8 scénarios de référence, publication validée. Les versions publiées sont immuables et chaque demande conserve la version du barème et du moteur utilisée.
+- **Barèmes versionnés en base** : brouillon, prévisualisation sur 9 scénarios de référence, publication validée. Les versions publiées sont immuables et chaque demande conserve la version du barème et du moteur utilisée.
 - **Désactivation des conclusions** :
   - règle non vérifiable (`UNVERIFIED`) ;
   - barème expiré ;
