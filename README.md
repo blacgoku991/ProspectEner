@@ -101,6 +101,10 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - date et heure (heure de Paris), mode (à domicile, en visio, par téléphone) et précisions sur le projet ;
   - statut « Rendez-vous fixé » posé uniquement par cette action, avec les aides qualifiées, l'auteur et la date ; annulation possible ;
   - bouton « Non éligible après vérification » qui clôture la demande sans rendez-vous ;
+  - **mise en relation** (si elle est déclarée dans Paramètres → Activité) :
+    - le rendez-vous peut être confié à une entreprise partenaire, avec l'accord de la personne, coché obligatoirement et contrôlé côté serveur ;
+    - un récapitulatif à copier pour l'entreprise, sans revenus ni composition du foyer ;
+    - la première transmission est tracée dans l'historique ;
   - tableau de bord : rendez-vous fixés sur 7 jours et prochains rendez-vous ; colonnes rendez-vous, mode et aides qualifiées dans l'export CSV.
 - **Fiche** :
   - coordonnées et canal demandé ;
@@ -122,7 +126,7 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - oppositions (empreintes non réversibles) ;
   - canaux d'acquisition autorisés ;
   - équipe ;
-  - paramètres (identité, mentions, activité, canaux, type de test, résultats qui ouvrent un rendez-vous, rappel rapide, notifications, conservation, sécurité) ;
+  - paramètres (identité, mentions, activité et entreprises partenaires, canaux, type de test, résultats qui ouvrent un rendez-vous, rappel rapide, notifications, conservation, sécurité) ;
   - journal d'audit ;
   - compte personnel.
 - **Notifications internes** par e-mail ou webhook signé, via une file d'envoi. Elles contiennent une référence et un lien, **sans données personnelles**. Leur échec n'empêche jamais l'enregistrement et elles sont relancées automatiquement.
@@ -182,7 +186,7 @@ Le script affiche un **lien d'activation à usage unique (72 h)**. La personne y
 Ensuite, dans **Administration → Paramètres** :
 
 1. Renseigner l'identité et les mentions légales. Le formulaire public reste fermé tant que la dénomination, le siège et le contact « données personnelles » manquent.
-2. Décrire l'activité réelle : accompagnement, travaux et/ou mise en relation.
+2. Décrire l'activité réelle : accompagnement, travaux et/ou mise en relation. Pour confier les rendez-vous à une entreprise de travaux, cocher « Mise en relation avec des professionnels » et lister les entreprises partenaires : la notice d'information l'annonce alors aux visiteurs.
 3. Choisir les canaux de réponse. Le rappel téléphonique ne s'active qu'après confirmation de l'avertissement juridique. Dans le même encadré, « Qualification des demandes » règle le type de test, les résultats qui ouvrent une demande de rendez-vous et le rappel rapide.
 4. Configurer les notifications (SMTP ou webhook) et tester l'envoi.
 5. Traiter la check-list de mise en ligne.

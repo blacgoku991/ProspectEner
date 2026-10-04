@@ -101,9 +101,16 @@ Mesures implémentées :
   - Polices auto-hébergées.
   - Aucune réponse au questionnaire transmise à une plateforme publicitaire.
   - Cloudflare Turnstile est optionnel et désactivé par défaut. **S'il est activé**, le mentionner dans la politique de confidentialité.
-- **Pas de transmission à des partenaires**, ni par défaut ni en option.
-  - Confier les rendez-vous à une autre entreprise contredirait la notice (« ni vendues, ni transmises à des partenaires ») et la phrase validée par la personne, qui nomme l'éditeur.
-  - Une telle pratique exigerait de revoir la notice, la phrase de demande et la base légale, avec validation juridique. Un contact revendu ne répond pas à « la demande » de la personne au sens de l'article R223-4.
+- **Transmission à une entreprise partenaire : uniquement en mise en relation déclarée, et avec l'accord de la personne.**
+  - Par défaut, la notice indique qu'aucune donnée n'est vendue ni transmise à des partenaires.
+  - Si l'administrateur coche « Mise en relation avec des professionnels » (Paramètres → Activité), plusieurs textes l'annoncent : la notice, la politique de confidentialité et les mentions légales. Un rendez-vous accepté peut alors être assuré par une entreprise partenaire, dont le nom est donné avant toute transmission. Les entreprises déclarées y sont listées.
+  - Pour confier un rendez-vous à une entreprise, il faut cocher l'accord de la personne. Le serveur refuse sinon, et refuse toute entreprise tant que la mise en relation n'est pas déclarée. L'accord, sa date et la première transmission du récapitulatif sont tracés.
+  - Le récapitulatif se limite au rendez-vous : identité, coordonnées, commune, projet et aides confirmées. Il exclut les revenus et la composition du foyer, et rappelle que les coordonnées ne servent qu'à ce rendez-vous.
+  - Aucune vente de contacts : seul un rendez-vous accepté par la personne est transmis, à une seule entreprise.
+  - **À valider juridiquement** :
+    - le cas échéant, les obligations d'information des opérateurs de plateforme en ligne (art. L111-7 du Code de la consommation), notamment sur la relation contractuelle et l'éventuelle rémunération ;
+    - le contrat avec chaque partenaire : usage des données limité au rendez-vous, sécurité, durée de conservation ;
+    - les contacts du partenaire avec la personne en dehors du rendez-vous convenu, qui restent soumis à l'interdiction de prospection (L223-1, L223-8).
 
 ### À compléter ou valider par l'entreprise
 

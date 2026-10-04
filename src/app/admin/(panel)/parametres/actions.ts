@@ -36,6 +36,7 @@ function apply(section: Section, s: SiteSettings, f: FormData, actorLabel: strin
         description: str(f, "description"),
         qualifications: str(f, "qualifications"),
         interventionArea: str(f, "interventionArea"),
+        partners: str(f, "partners"),
       };
       break;
     case "contact": {

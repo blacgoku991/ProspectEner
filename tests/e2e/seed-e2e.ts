@@ -20,6 +20,12 @@ const SETTINGS: SiteSettings = {
     privacyContact: "dpo@e2e.invalid",
     phone: "04 00 00 00 00",
   },
+  activity: {
+    ...DEFAULT_SETTINGS.activity,
+    kinds: ["MISE_EN_RELATION"],
+    description: "Vérification de l'éligibilité et prise de rendez-vous avec une entreprise de travaux partenaire (données de test).",
+    partners: "Chauffage Test E2E, Lyon, RGE",
+  },
   contact: { ...DEFAULT_SETTINGS.contact, emailReplyEnabled: true, phoneCallbackEnabled: true, phoneCallbackReviewedAt: new Date().toISOString(), phoneCallbackReviewedBy: "e2e" },
 };
 

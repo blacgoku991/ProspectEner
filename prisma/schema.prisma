@@ -208,6 +208,12 @@ model ContactRequest {
   appointmentMode String?
   /// Précisions pratiques — effacées à l'anonymisation.
   appointmentNote String?
+  /// Mise en relation : entreprise qui assure le rendez-vous (dénomination).
+  appointmentPartner String?
+  /// Accord de la personne pour la transmission de ses coordonnées et de son projet à cette entreprise.
+  partnerConsentAt   DateTime?
+  /// Première transmission du récapitulatif du rendez-vous à cette entreprise.
+  partnerSentAt      DateTime?
   assignedToId     String?    @db.Uuid
   assignedTo       StaffUser? @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
   anonymizedAt     DateTime?

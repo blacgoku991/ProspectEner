@@ -91,6 +91,15 @@ export function ActivityForm({ s }: { s: SiteSettings }) {
         <textarea name="qualifications" defaultValue={s.activity.qualifications} rows={2} maxLength={1000} className="field-input mt-1 text-sm" />
       </label>
       <Input name="interventionArea" label="Zone d'intervention" value={s.activity.interventionArea} />
+      <label className="block text-sm text-ink-800">
+        Mise en relation : entreprises qui reçoivent les rendez-vous{" "}
+        <span className="text-ink-500">(une par ligne : dénomination, ville, qualification RGE)</span>
+        <textarea name="partners" defaultValue={s.activity.partners} rows={3} maxLength={1000} className="field-input mt-1 text-sm" />
+        <span className="mt-1 block text-xs text-ink-500">
+          Cochez « Mise en relation avec des professionnels » pour pouvoir confier un rendez-vous à l&apos;une de ces entreprises : la notice
+          d&apos;information l&apos;annonce alors aux visiteurs, et l&apos;accord de chaque personne est demandé avant toute transmission.
+        </span>
+      </label>
     </SectionForm>
   );
 }

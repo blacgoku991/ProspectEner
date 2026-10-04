@@ -3,6 +3,7 @@ import Link from "next/link";
 import { EligibilitySummary } from "@/components/evaluation/EligibilitySummary";
 import { EvaluationDetails } from "@/components/evaluation/EvaluationDetails";
 import { AppointmentForm } from "@/components/admin/AppointmentForm";
+import { HandoffRecap } from "@/components/admin/HandoffRecap";
 import { SubmitButton } from "@/components/admin/SubmitButton";
 import { Alert, Panel } from "@/components/admin/ui";
 import { summarizeAnswers, validateRuleSetData, WORK_CATEGORY_LABELS, type Answers, type Evaluation } from "@/engine";
@@ -14,7 +15,8 @@ import { getAccessibleRequestId, requireStaff } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db";
 import { noticeParagraphs } from "@/lib/legal/texts";
 import { requestContext } from "@/lib/request-context";
-import { CHANNEL_LONG_LABELS, KIND_LABELS, OUTCOME_LABELS, STATUS_LABELS } from "@/lib/requests/shared";
+import { CHANNEL_LONG_LABELS, KIND_LABELS, OUTCOME_LABELS, STATUS_LABELS, worksTextForRequest } from "@/lib/requests/shared";
+import { partnerList, referralEnabled } from "@/lib/settings-schema";
 import { getPublishedRuleSet } from "@/lib/rulesets";
 import { DAY_LABELS, formatFrenchPhone, SLOT_LABELS } from "@/lib/validation/contact";
 import {
@@ -46,6 +48,7 @@ const EVENT_LABELS: Record<string, string> = {
   ANONYMIZED: "Données anonymisées",
   APPOINTMENT_BOOKED: "Rendez-vous fixé",
   APPOINTMENT_CANCELLED: "Rendez-vous annulé",
+  APPOINTMENT_SENT: "Rendez-vous transmis à l'entreprise",
   QUALIFICATION_FAILED: "Non éligible après vérification",
 };
 
@@ -63,8 +66,9 @@ function eventDetail(type: string, data: unknown): string {
   if (type === "ANONYMIZED") return String(d.reason ?? "");
   if (type === "APPOINTMENT_BOOKED" && typeof d.at === "string") {
     const aids = Array.isArray(d.aids) ? d.aids.map((a) => aidName(String(a))).join(", ") : "";
-    return `${dtAppointment.format(new Date(d.at))} · ${APPOINTMENT_MODES[d.mode as AppointmentMode] ?? ""}${aids ? ` · ${aids}` : ""}`;
+    return `${dtAppointment.format(new Date(d.at))} · ${APPOINTMENT_MODES[d.mode as AppointmentMode] ?? ""}${aids ? ` · ${aids}` : ""}${typeof d.partner === "string" ? ` · confié à ${d.partner}` : ""}`;
   }
+  if (type === "APPOINTMENT_SENT" && typeof d.partner === "string") return d.partner;
   if (type === "CREATED") return `${KIND_LABELS[d.kind as keyof typeof KIND_LABELS] ?? ""}${d.oppositionMatch ? " — contact présent dans la liste d'opposition" : ""}`;
   return "";
 }
@@ -102,6 +106,27 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const works = r.projectTypes.map((p) => WORK_CATEGORY_LABELS[p as WorkCategory] ?? p).join(", ");
   const groups = qualificationGroups(evaluation);
   const qualification = r.qualification as unknown as StoredQualification | null;
+  // Récapitulatif pour l'entreprise partenaire : le strict nécessaire au rendez-vous (ni revenus, ni composition du foyer).
+  const HANDOFF_EXCLUDED = new Set(["location", "householdSize", "income"]);
+  const handoffRecap =
+    r.status === "RDV_FIXE" && r.appointmentAt && r.appointmentPartner && !r.anonymizedAt
+      ? [
+          `Rendez-vous : ${dtAppointment.format(r.appointmentAt)}${r.appointmentMode ? ` (${(APPOINTMENT_MODES[r.appointmentMode as AppointmentMode] ?? r.appointmentMode).toLowerCase()})` : ""}`,
+          `Client : ${name}`,
+          r.phone ? `Téléphone : ${formatFrenchPhone(r.phone)}` : null,
+          r.email ? `E-mail : ${r.email}` : null,
+          `Commune : ${[r.postalCode, r.communeName].filter(Boolean).join(" ") || "—"}`,
+          `Projet : ${worksTextForRequest(r.kind, answers)}`,
+          ...summary.filter((l) => !HANDOFF_EXCLUDED.has(l.question)).map((l) => `${l.label} : ${l.value}`),
+          qualification ? `Conditions confirmées pour : ${qualification.aids.map((a) => aidName(a)).join(", ")}` : null,
+          r.appointmentNote ? `Précisions : ${r.appointmentNote}` : null,
+          `Référence : ${r.reference}`,
+          "",
+          `Coordonnées transmises avec l'accord de la personne${r.partnerConsentAt ? ` (${dts.format(r.partnerConsentAt)})` : ""}, pour ce rendez-vous uniquement : elles ne doivent servir à aucune autre sollicitation.`,
+        ]
+          .filter((l): l is string => l !== null)
+          .join("\n")
+      : null;
 
   return (
     <div className="space-y-6">
@@ -193,6 +218,15 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 </p>
               )}
               {r.appointmentNote && <p className="whitespace-pre-line rounded-xl bg-sand-100 px-4 py-3 text-sm text-ink-800">{r.appointmentNote}</p>}
+              {r.appointmentPartner && (
+                <p className="text-sm text-ink-700">
+                  Rendez-vous confié à <strong className="text-ink-900">{r.appointmentPartner}</strong>
+                  {r.partnerConsentAt ? ` — accord de la personne pour la transmission recueilli le ${dts.format(r.partnerConsentAt)}` : ""}.
+                </p>
+              )}
+              {handoffRecap && r.appointmentPartner && (
+                <HandoffRecap requestId={r.id} partner={r.appointmentPartner} text={handoffRecap} sentAt={r.partnerSentAt?.toISOString() ?? null} />
+              )}
               <form action={cancelAppointmentAction}>
                 <input type="hidden" name="id" value={r.id} />
                 <SubmitButton variant="ghost" className="py-2 text-xs">
@@ -206,7 +240,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             <p className="text-sm text-ink-600">D&apos;après le test, aucune aide n&apos;est accessible : pas de rendez-vous à proposer.</p>
           ) : (
             <>
-              <AppointmentForm requestId={r.id} groups={groups} />
+              <AppointmentForm requestId={r.id} groups={groups} referral={referralEnabled(ctx.settings)} partners={partnerList(ctx.settings)} />
               <form action={markNotEligibleAction} className="mt-5 border-t border-ink-900/[0.06] pt-4">
                 <input type="hidden" name="id" value={r.id} />
                 <SubmitButton variant="ghost" className="py-2 text-xs">

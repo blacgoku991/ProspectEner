@@ -55,6 +55,8 @@ test.describe("parcours public complet", () => {
     const confirm = page.getByRole("checkbox", { name: /Je demande à être contacté\(e\) par Rénovation Test E2E, par téléphone/ });
     await expect(confirm).not.toBeChecked();
     await expect(page.getByText(/Responsable du traitement : Rénovation Test E2E/)).toBeVisible();
+    // Mise en relation déclarée : la notice annonce la transmission, limitée au rendez-vous accepté.
+    await expect(page.getByText(/Uniquement si vous acceptez un rendez-vous, l'entreprise partenaire qui en est chargée reçoit vos coordonnées/)).toBeVisible();
     await page.waitForTimeout(2600);
     await confirm.check();
     await page.getByRole("button", { name: "Envoyer ma demande" }).dblclick();
@@ -88,10 +90,25 @@ test.describe("parcours public complet", () => {
     await expect(book).toBeEnabled();
     await admin.getByLabel("Date et heure (heure de Paris)").fill(localDateTimeIn(2));
     await admin.getByLabel("Projet et précisions", { exact: false }).fill("Pompe à chaleur air/eau, remplacement d'une chaudière fioul.");
+    // Rendez-vous confié à l'entreprise de travaux : l'accord de la personne est obligatoire.
+    await admin.getByLabel("Entreprise qui assure le rendez-vous", { exact: false }).fill("Chauffage Test E2E, Lyon, RGE");
+    await expect(book).toBeDisabled();
+    await admin.getByRole("checkbox", { name: /La personne a accepté que ses coordonnées et son projet soient transmis à Chauffage Test E2E/ }).check();
+    await expect(book).toBeEnabled();
     await book.click();
     await expect(admin.getByText(/^Rendez-vous le /).first()).toBeVisible();
     await expect(admin.getByText(/Éligibilité confirmée le .* : Primes énergie \(CEE\)/)).toBeVisible();
     await expect(admin.getByText("Rendez-vous fixé").first()).toBeVisible();
+    await expect(admin.getByText(/accord de la personne pour la transmission recueilli le/)).toBeVisible();
+    // Récapitulatif pour l'entreprise : sans revenus ; sa transmission est tracée.
+    const recap = admin.getByLabel("Récapitulatif du rendez-vous");
+    await expect(recap).toHaveValue(/Client : Dominique Doubleclic/);
+    await expect(recap).toHaveValue(/Téléphone : 06 98 76 54 32/);
+    await expect(recap).not.toHaveValue(/Revenu/);
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await admin.getByRole("button", { name: "Copier le récapitulatif" }).click();
+    await expect(admin.getByText(/^Transmis le /)).toBeVisible();
+    await expect(admin.getByText("Rendez-vous transmis à l'entreprise")).toBeVisible();
     await admin.goto("/admin");
     await expect(admin.getByRole("heading", { name: "Prochains rendez-vous" })).toBeVisible();
     await expect(admin.getByRole("link", { name: /Dominique Doubleclic/ })).toBeVisible();

@@ -31,6 +31,7 @@ const DEMO_SETTINGS: SiteSettings = {
     privacyContact: "dpo@example.invalid",
   },
   activity: {
+    ...DEFAULT_SETTINGS.activity,
     kinds: ["ACCOMPAGNEMENT"],
     description: "Texte de démonstration : remplacez-le par la présentation réelle de votre activité dans les paramètres.",
     qualifications: "",

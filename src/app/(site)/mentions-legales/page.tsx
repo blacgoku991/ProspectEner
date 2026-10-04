@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/seo";
 import { Field, LegalPage } from "@/components/site/LegalPage";
 import { INDEPENDENCE_DISCLAIMER } from "@/lib/legal/texts";
 import { siteSettings } from "@/lib/site-data";
-import { ACTIVITY_LABELS } from "@/lib/settings-schema";
+import { ACTIVITY_LABELS, partnerList, referralEnabled } from "@/lib/settings-schema";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({ title: "Mentions légales", description: "Éditeur du site, hébergeur, médiateur de la consommation et informations légales.", path: "/mentions-legales" });
@@ -54,6 +54,25 @@ export default async function MentionsLegalesPage() {
       )}
       {s.activity.description && <p className="whitespace-pre-line">{s.activity.description}</p>}
       {s.activity.qualifications && <p>Qualifications déclarées par l&apos;éditeur : {s.activity.qualifications}</p>}
+      {referralEnabled(s) && (
+        <>
+          <p>
+            Mise en relation : lorsqu&apos;une personne accepte un rendez-vous, celui-ci peut être assuré par une entreprise partenaire, dont le nom
+            lui est indiqué avant toute transmission de ses coordonnées.
+          </p>
+          {partnerList(s).length > 0 ? (
+            <ul>
+              {partnerList(s).map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>
+              Entreprises partenaires : <Field value="" />
+            </p>
+          )}
+        </>
+      )}
       <h2>Hébergement</h2>
       <ul>
         <li>Hébergeur : <Field value={c.hostName} /></li>

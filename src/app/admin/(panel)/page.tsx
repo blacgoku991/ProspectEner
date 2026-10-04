@@ -32,7 +32,7 @@ export default async function DashboardPage() {
       where: { AND: [scope, { status: "RDV_FIXE", appointmentAt: { gte: new Date(now.getTime() - 3600_000) } }] },
       orderBy: { appointmentAt: "asc" },
       take: 8,
-      select: { id: true, reference: true, firstName: true, lastName: true, communeName: true, appointmentAt: true, appointmentMode: true },
+      select: { id: true, reference: true, firstName: true, lastName: true, communeName: true, appointmentAt: true, appointmentMode: true, appointmentPartner: true },
     }),
   ]);
   const [newCount, toProcess, soon, overdue, byOutcome, byStatus, byTerritory, worksRows, funnelRows, upcoming, failedNotifications, ruleSet, demoCount, pendingDraft] =
@@ -151,6 +151,7 @@ export default async function DashboardPage() {
                       </span>
                       <span className="block text-xs text-ink-500">
                         {a.reference} · {a.communeName ?? "—"}
+                        {a.appointmentPartner ? ` · confié à ${a.appointmentPartner}` : ""}
                       </span>
                     </span>
                   </span>

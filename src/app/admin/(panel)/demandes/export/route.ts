@@ -59,6 +59,9 @@ export async function GET(request: Request) {
     { header: "Premier contact", value: (r) => fmt(r.firstContactAt) },
     { header: "Rendez-vous", value: (r) => fmt(r.appointmentAt) },
     { header: "Mode du rendez-vous", value: (r) => (r.appointmentMode ? (APPOINTMENT_MODES[r.appointmentMode as AppointmentMode] ?? r.appointmentMode) : "") },
+    { header: "Entreprise du rendez-vous", value: (r) => r.appointmentPartner },
+    { header: "Accord de transmission", value: (r) => fmt(r.partnerConsentAt) },
+    { header: "Rendez-vous transmis le", value: (r) => fmt(r.partnerSentAt) },
     {
       header: "Aides qualifiées",
       value: (r) => ((r.qualification as unknown as StoredQualification | null)?.aids ?? []).map((a) => aidName(a)).join(", "),

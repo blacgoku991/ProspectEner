@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarCheck, CircleHelp } from "lucide-react";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useId, useMemo, useState } from "react";
 import { type AppointmentState, bookAppointmentAction } from "@/app/admin/(panel)/demandes/[id]/actions";
 import { APPOINTMENT_MODES, type QualificationGroup, qualifiedAids } from "@/lib/admin/qualification";
 import { cn } from "@/lib/cn";
@@ -10,9 +10,24 @@ import { cn } from "@/lib/cn";
  * Qualification puis rendez-vous : le conseiller confirme chaque critère avec la personne.
  * Le bouton ne s'active que lorsqu'une aide au moins est entièrement confirmée (contrôlé aussi côté serveur).
  */
-export function AppointmentForm({ requestId, groups }: { requestId: string; groups: QualificationGroup[] }) {
+export function AppointmentForm({
+  requestId,
+  groups,
+  referral = false,
+  partners = [],
+}: {
+  requestId: string;
+  groups: QualificationGroup[];
+  /** Mise en relation déclarée dans les paramètres : le rendez-vous peut être confié à une entreprise partenaire. */
+  referral?: boolean;
+  partners?: string[];
+}) {
+  const uid = useId();
   const [state, action] = useActionState<AppointmentState, FormData>(bookAppointmentAction, {});
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [partner, setPartner] = useState("");
+  const [consent, setConsent] = useState(false);
+  const partnerName = partner.trim();
   const qualified = useMemo(() => qualifiedAids(groups, checked), [groups, checked]);
   const toggle = (key: string) =>
     setChecked((prev) => {
@@ -84,15 +99,52 @@ export function AppointmentForm({ requestId, groups }: { requestId: string; grou
         </label>
       </div>
       <label className="block text-sm text-ink-800">
-        Projet et précisions <span className="text-ink-500">(facultatif : travaux envisagés, accès…)</span>
+        Projet et précisions <span className="text-ink-500">(facultatif : travaux envisagés, adresse du rendez-vous, accès…)</span>
         <textarea name="note" rows={2} maxLength={1000} className="field-input mt-1 text-sm" />
       </label>
+      {referral && (
+        <div className="space-y-3 rounded-xl border border-ink-900/10 p-4">
+          <label className="block text-sm text-ink-800">
+            Entreprise qui assure le rendez-vous <span className="text-ink-500">(laisser vide si c&apos;est votre entreprise)</span>
+            <input
+              name="partner"
+              list={`${uid}-partners`}
+              maxLength={120}
+              value={partner}
+              onChange={(e) => {
+                setPartner(e.target.value);
+                setConsent(false);
+              }}
+              className="field-input mt-1 py-2.5 text-sm"
+            />
+            <datalist id={`${uid}-partners`}>
+              {partners.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
+          </label>
+          {partnerName && (
+            <label className="flex cursor-pointer gap-2.5 text-sm">
+              <input
+                type="checkbox"
+                name="partnerConsent"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-0.5 size-4 shrink-0 accent-pine-600"
+              />
+              <span>
+                La personne a accepté que ses coordonnées et son projet soient transmis à <strong>{partnerName}</strong> pour ce rendez-vous.
+              </span>
+            </label>
+          )}
+        </div>
+      )}
       {state.error && (
         <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {state.error}
         </p>
       )}
-      <button type="submit" disabled={qualified.length === 0} className="btn-primary py-3">
+      <button type="submit" disabled={qualified.length === 0 || (partnerName !== "" && !consent)} className="btn-primary py-3">
         <CalendarCheck className="size-4" aria-hidden />
         Fixer le rendez-vous
       </button>

@@ -12,6 +12,7 @@ import { prisma } from "@/lib/db";
 import { requestContext } from "@/lib/request-context";
 import { parseParisLocalDateTime } from "@/lib/business-days";
 import { anonymizeRequest } from "@/lib/requests/anonymize";
+import { referralEnabled } from "@/lib/settings-schema";
 import { maskEmail, maskPhone } from "@/lib/validation/contact";
 
 // « Rendez-vous fixé » ne se choisit pas à la main : il passe par la qualification (bookAppointmentAction).
@@ -217,6 +218,20 @@ export async function bookAppointmentAction(_prev: AppointmentState, formData: F
   const mode = z.enum(["DOMICILE", "VISIO", "TELEPHONE"]).safeParse(formData.get("mode"));
   if (!mode.success) return { error: "Choisissez le mode du rendez-vous." };
   const note = String(formData.get("note") ?? "").trim().slice(0, 1000);
+  // Mise en relation : le rendez-vous peut être confié à une entreprise partenaire, annoncée par la notice
+  // d'information et acceptée par la personne pendant l'échange.
+  const partner = String(formData.get("partner") ?? "").trim().replace(/\s+/g, " ").slice(0, 120);
+  if (partner) {
+    if (!referralEnabled(ctx.settings)) {
+      return {
+        error:
+          "Pour confier un rendez-vous à une autre entreprise, cochez d'abord « Mise en relation avec des professionnels » dans Paramètres → Activité : la notice d'information doit l'annoncer aux visiteurs.",
+      };
+    }
+    if (formData.get("partnerConsent") !== "on") {
+      return { error: "Cochez l'accord de la personne pour la transmission de ses coordonnées et de son projet à cette entreprise." };
+    }
+  }
   const validKeys = new Set(groups.flatMap((g) => g.items.map((i) => i.key)));
   const qualification: StoredQualification = {
     aids,
@@ -236,13 +251,21 @@ export async function bookAppointmentAction(_prev: AppointmentState, formData: F
         appointmentAt: when,
         appointmentMode: mode.data,
         appointmentNote: note || null,
+        appointmentPartner: partner || null,
+        partnerConsentAt: partner ? at : null,
+        partnerSentAt: null,
         lastActivityAt: at,
         lastProspectContactAt: at,
         ...(r.firstContactAt ? {} : { firstContactAt: at }),
       },
     }),
     prisma.requestEvent.create({
-      data: { requestId: id, actorId: ctx.user.id, type: "APPOINTMENT_BOOKED", data: { at: when.toISOString(), mode: mode.data, aids } },
+      data: {
+        requestId: id,
+        actorId: ctx.user.id,
+        type: "APPOINTMENT_BOOKED",
+        data: { at: when.toISOString(), mode: mode.data, aids, ...(partner ? { partner } : {}) },
+      },
     }),
   ]);
   revalidatePath(`/admin/demandes/${id}`);
@@ -257,11 +280,37 @@ export async function cancelAppointmentAction(formData: FormData): Promise<void>
   await prisma.$transaction([
     prisma.contactRequest.update({
       where: { id },
-      data: { status: "CONTACTE", appointmentAt: null, appointmentMode: null, appointmentNote: null, lastActivityAt: new Date() },
+      data: {
+        status: "CONTACTE",
+        appointmentAt: null,
+        appointmentMode: null,
+        appointmentNote: null,
+        appointmentPartner: null,
+        partnerConsentAt: null,
+        partnerSentAt: null,
+        lastActivityAt: new Date(),
+      },
     }),
     prisma.requestEvent.create({
       data: { requestId: id, actorId: ctx.user.id, type: "APPOINTMENT_CANCELLED", data: { at: r.appointmentAt?.toISOString() ?? null } },
     }),
+  ]);
+  revalidatePath(`/admin/demandes/${id}`);
+}
+
+/** Récapitulatif du rendez-vous transmis à l'entreprise partenaire : la première transmission est tracée. */
+export async function recordHandoffAction(requestId: string): Promise<void> {
+  const ctx = await requireStaff();
+  const id = await getAccessibleRequestId(ctx, requestId);
+  const r = await prisma.contactRequest.findUniqueOrThrow({
+    where: { id },
+    select: { status: true, anonymizedAt: true, appointmentPartner: true, partnerConsentAt: true, partnerSentAt: true },
+  });
+  if (r.status !== "RDV_FIXE" || r.anonymizedAt || !r.appointmentPartner || !r.partnerConsentAt || r.partnerSentAt) return;
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.contactRequest.update({ where: { id }, data: { partnerSentAt: now, lastActivityAt: now } }),
+    prisma.requestEvent.create({ data: { requestId: id, actorId: ctx.user.id, type: "APPOINTMENT_SENT", data: { partner: r.appointmentPartner } } }),
   ]);
   revalidatePath(`/admin/demandes/${id}`);
 }

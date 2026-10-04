@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Field, LegalPage } from "@/components/site/LegalPage";
+import { partnerList, referralEnabled } from "@/lib/settings-schema";
 import { siteSettings } from "@/lib/site-data";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -19,6 +20,8 @@ export default async function ConfidentialitePage() {
   const c = s.company;
   const r = s.retention;
   const rights = c.privacyContact || c.email;
+  const referral = referralEnabled(s);
+  const partners = partnerList(s);
   return (
     <LegalPage title="Politique de confidentialité" missing={[!c.name && "responsable du traitement", !rights && "contact pour exercer vos droits"].filter(Boolean) as string[]}>
       <h2>Responsable du traitement</h2>
@@ -40,9 +43,30 @@ export default async function ConfidentialitePage() {
       <table>
         <tbody>
           <tr><th>Données</th><td>Prénom, nom, téléphone ou e-mail (selon le canal choisi), commune et code postal, disponibilités et commentaire facultatifs, réponses au questionnaire et résultat indicatif, paramètres de campagne publicitaire éventuels (sans donnée personnelle).</td></tr>
-          <tr><th>Finalité</th><td>Répondre à votre demande et étudier votre projet de rénovation énergétique.</td></tr>
+          <tr>
+            <th>Finalité</th>
+            <td>
+              Répondre à votre demande et étudier votre projet de rénovation énergétique
+              {referral ? " ; si vous l'acceptez lors de cet échange, organiser un rendez-vous avec une entreprise partenaire qui réalise l'étude et les travaux." : "."}
+            </td>
+          </tr>
           <tr><th>Base légale</th><td>Mesures précontractuelles prises à votre demande (article 6.1.b du RGPD).</td></tr>
-          <tr><th>Destinataires</th><td>Personnes habilitées de l&apos;éditeur et ses prestataires techniques (hébergement, messagerie). Aucune vente ni transmission à des partenaires.</td></tr>
+          <tr>
+            <th>Destinataires</th>
+            <td>
+              Personnes habilitées de l&apos;éditeur et ses prestataires techniques (hébergement, messagerie).{" "}
+              {referral ? (
+                <>
+                  Uniquement si vous acceptez un rendez-vous : l&apos;entreprise partenaire qui en est chargée, dont le nom vous est indiqué avant
+                  toute transmission
+                  {partners.length > 0 ? <> (entreprises partenaires : {partners.join(" ; ")})</> : null}. Aucune vente de données, aucune
+                  transmission à d&apos;autres entreprises.
+                </>
+              ) : (
+                "Aucune vente ni transmission à des partenaires."
+              )}
+            </td>
+          </tr>
           <tr><th>Durée</th><td>{duration(r.requestMonths)} à compter de la demande ou de votre dernier contact ; coordonnées effacées sous {r.cancelledRequestDays} jours en cas d&apos;annulation.</td></tr>
         </tbody>
       </table>

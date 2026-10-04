@@ -47,6 +47,8 @@ export const siteSettingsSchema = z.object({
       description: text(1500),
       qualifications: text(1000),
       interventionArea: text(300),
+      /** Mise en relation : entreprises qui reçoivent les rendez-vous (une par ligne). */
+      partners: text(1000),
     })
     .prefault({}),
   contact: z
@@ -166,6 +168,22 @@ export function contactAcceptedFor(s: SiteSettings, outcome: OverallOutcome): bo
   return ACCEPTED_OUTCOMES[s.contact.acceptedOutcomes].includes(outcome);
 }
 
+/**
+ * Mise en relation déclarée : la notice annonce qu'un rendez-vous accepté peut être confié à une
+ * entreprise partenaire. Sans elle, aucune transmission à une autre entreprise n'est possible.
+ */
+export function referralEnabled(s: SiteSettings): boolean {
+  return s.activity.kinds.includes("MISE_EN_RELATION");
+}
+
+/** Entreprises partenaires déclarées (une par ligne). */
+export function partnerList(s: SiteSettings): string[] {
+  return s.activity.partners
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+}
+
 /** Demande de rappel sans test : seulement si elle est activée (elle n'est pas qualifiée par le test). */
 export function quickCallbackOpen(s: SiteSettings): boolean {
   return submissionsOpen(s) && s.contact.quickCallbackEnabled;
@@ -221,6 +239,17 @@ export function launchChecklist(s: SiteSettings, hasNotificationTransport: { ema
       detail: "Décrire honnêtement l'activité : accompagnement, réalisation de travaux et/ou mise en relation.",
       blocking: false,
     },
+    ...(referralEnabled(s)
+      ? [
+          {
+            id: "partners",
+            label: "Entreprises partenaires (mise en relation)",
+            ok: partnerList(s).length > 0,
+            detail: "Dénomination, ville et qualification RGE des entreprises qui reçoivent les rendez-vous : elles sont listées dans la politique de confidentialité.",
+            blocking: false,
+          },
+        ]
+      : []),
     {
       id: "channel",
       label: "Au moins un canal de réponse ouvert",
