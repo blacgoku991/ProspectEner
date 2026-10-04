@@ -1,7 +1,8 @@
 #!/bin/sh
 # Compilation sur Vercel (voir docs/DEPLOIEMENT.md).
 # Déploiement de production : migrations, initialisation idempotente (barème, paramètres vides)
-# et, si BOOTSTRAP_ADMIN_EMAIL est défini, premier compte administrateur tant qu'aucun compte n'existe.
+# et, si BOOTSTRAP_ADMIN_EMAIL est défini, premier compte administrateur tant qu'aucun compte n'existe
+# (jeton d'activation fourni par BOOTSTRAP_ADMIN_TOKEN s'il est défini, aléatoire sinon).
 # Les migrations passent par la connexion directe à la base quand elle est fournie (sans regroupement).
 set -eu
 
@@ -17,7 +18,9 @@ if [ "${VERCEL_ENV:-}" = "production" ]; then
   DATABASE_URL="$DB_URL" npx prisma migrate deploy
   DATABASE_URL="$DB_URL" npm run db:seed
   if [ -n "${BOOTSTRAP_ADMIN_EMAIL:-}" ]; then
-    DATABASE_URL="$DB_URL" npm run admin:create -- --email "$BOOTSTRAP_ADMIN_EMAIL" --name "${BOOTSTRAP_ADMIN_NAME:-Administrateur}" --if-no-staff
+    set -- --email "$BOOTSTRAP_ADMIN_EMAIL" --name "${BOOTSTRAP_ADMIN_NAME:-Administrateur}" --if-no-staff
+    if [ -n "${BOOTSTRAP_ADMIN_TOKEN:-}" ]; then set -- "$@" --token-from-env; fi
+    DATABASE_URL="$DB_URL" npm run admin:create -- "$@"
   fi
 fi
 

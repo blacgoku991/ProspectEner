@@ -5,6 +5,8 @@
  * Usage : npm run admin:create -- --email prenom.nom@exemple.fr --name "Prénom Nom" [--role ADMIN|COLLABORATOR] [--reset]
  *
  * `--if-no-staff` : ne crée le compte que si l'équipe n'a encore aucun compte (premier déploiement automatisé).
+ * `--token-from-env` : utilise le jeton d'activation fourni par BOOTSTRAP_ADMIN_TOKEN (32 caractères base64url minimum)
+ * au lieu d'un jeton aléatoire, pour remettre le lien sans avoir à lire le journal de build.
  */
 import "dotenv/config";
 import { parseArgs } from "node:util";
@@ -20,6 +22,7 @@ async function main() {
       role: { type: "string", default: "ADMIN" },
       reset: { type: "boolean", default: false },
       "if-no-staff": { type: "boolean", default: false },
+      "token-from-env": { type: "boolean", default: false },
     },
   });
   const email = values.email?.trim().toLowerCase();
@@ -33,7 +36,15 @@ async function main() {
     console.log("Un compte de l'équipe existe déjà : aucun compte créé.");
     return;
   }
-  const token = randomToken(32);
+  let token = randomToken(32);
+  if (values["token-from-env"]) {
+    const provided = process.env.BOOTSTRAP_ADMIN_TOKEN ?? "";
+    if (!/^[A-Za-z0-9_-]{32,}$/.test(provided)) {
+      console.error("BOOTSTRAP_ADMIN_TOKEN doit contenir au moins 32 caractères base64url.");
+      process.exit(1);
+    }
+    token = provided;
+  }
   const data = { setupTokenHash: hashToken(token), setupTokenExpiresAt: new Date(Date.now() + 72 * 3600 * 1000) };
   const existing = await prisma.staffUser.findUnique({ where: { email } });
   if (existing && !values.reset) {
