@@ -133,7 +133,8 @@ export function ResultView({
             )}
             {blocking.length > 0 && (
               <div className="mt-1 rounded-2xl bg-amber-100 px-4 py-3 text-amber-950 ring-1 ring-inset ring-amber-500/30">
-                <p className="font-semibold">Votre projet ne remplit pas les conditions des aides évaluées. D&apos;après vos réponses, il manque :</p>
+                <p className="font-semibold">Votre projet ne remplit pas les conditions des aides évaluées.</p>
+                <p className="mt-1">Conditions non remplies d&apos;après vos réponses :</p>
                 <ul className="mt-1 list-disc space-y-0.5 pl-5">
                   {blocking.map((b) => (
                     <li key={b}>{b}</li>
