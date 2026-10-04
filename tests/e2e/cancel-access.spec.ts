@@ -16,7 +16,7 @@ test.describe("annulation d'une demande de contact", () => {
     await page.waitForTimeout(2600);
     await page.getByRole("checkbox", { name: /Je demande à être contacté\(e\)/ }).check();
     await page.getByRole("button", { name: "Envoyer ma demande" }).click();
-    await expect(page.getByRole("heading", { name: "Merci, vous allez être recontacté(e)" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Vous allez être recontacté(e)" })).toBeVisible();
 
     await page.getByRole("link", { name: "Annuler maintenant" }).click();
     await expect(page.getByRole("heading", { name: "Annuler une demande de contact" })).toBeVisible();

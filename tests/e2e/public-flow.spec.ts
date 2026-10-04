@@ -60,7 +60,10 @@ test.describe("parcours public complet", () => {
     await page.waitForTimeout(2600);
     await confirm.check();
     await page.getByRole("button", { name: "Envoyer ma demande" }).dblclick();
-    await expect(page.getByRole("heading", { name: "Merci, vous allez être recontacté(e)" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Vous allez être recontacté(e)" })).toBeVisible();
+    // Comme une confirmation classique : par qui, à quel numéro et quand la personne sera rappelée.
+    await expect(page.getByText(/Un conseiller de Rénovation Test E2E va vous appeler au 06 98 76 54 32, au plus tard le/)).toBeVisible();
+    await expect(page.getByText("Potentiellement éligible aux aides")).toBeVisible();
     await expect(page.getByText(/Aucun dossier d'aide n'a été déposé/)).toBeVisible();
     const reference = (await page.locator("strong.font-mono").first().textContent())?.trim() ?? "";
     expect(reference).toMatch(/^PE-/);

@@ -10,6 +10,7 @@ import { evaluate } from "@/engine/evaluate";
 import {
   firstUnanswered,
   isAnswered,
+  isProfileTest,
   pruneAnswers,
   type QuestionContext,
   type QuestionId,
@@ -104,7 +105,9 @@ export default function Simulator({
 
   useEffect(() => {
     try {
-      const data: Persisted = { v: 1, ruleSetVersion: ruleSet.version, referenceDate, answers, current, phase, returnToResult, done };
+      // Le numéro ou l'adresse saisis ne sont pas conservés dans le navigateur.
+      const kept = done ? { ...done, contactDisplay: undefined } : null;
+      const data: Persisted = { v: 1, ruleSetVersion: ruleSet.version, referenceDate, answers, current, phase, returnToResult, done: kept };
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
       // stockage indisponible : la session n'est pas conservée
@@ -236,7 +239,14 @@ export default function Simulator({
 
   // ─── Confirmation ────────────────────────────────────────────────────────
   if (phase === "done" && done) {
-    return <Confirmation result={done} config={config} />;
+    return (
+      <Confirmation
+        result={done}
+        config={config}
+        project={evaluation ? { works: worksTextForRequest("SIMULATION", pruned), outcome: evaluation.outcome } : undefined}
+        visual={<HouseHero focus={focusFor(answers, currentVisible)} className="absolute inset-0 aspect-auto" />}
+      />
+    );
   }
 
   // ─── Résultat & contact ──────────────────────────────────────────────────
@@ -262,6 +272,7 @@ export default function Simulator({
           canContact={canContact}
           notAccepted={config.submissionsOpen && !accepted}
           channels={config.channels}
+          projectLabel={isProfileTest(pruned) ? undefined : worksTextForRequest("SIMULATION", pruned)}
           onContact={goToForm}
           onEdit={(q) => {
             setReturnToResult(true);

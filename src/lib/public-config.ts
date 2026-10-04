@@ -11,6 +11,7 @@ import {
   missingIdentityFields,
   phoneCallbackAvailable,
   quickCallbackOpen,
+  referralEnabled,
   type SiteSettings,
   submissionsOpen,
 } from "./settings-schema";
@@ -34,6 +35,8 @@ export interface PublicConfig {
   quickCallbackOpen: boolean;
   /** Test d'éligibilité seul, ou test complet avec le détail du projet. */
   testMode: "ELIGIBILITE" | "PROJET";
+  /** Mise en relation déclarée : le rendez-vous est assuré par l'entreprise qui réalise les travaux. */
+  referral: boolean;
   notice: { text: string; hash: string };
   turnstileSiteKey: string | null;
 }
@@ -54,6 +57,7 @@ export function toPublicConfig(s: SiteSettings): PublicConfig {
     acceptedOutcomes: ACCEPTED_OUTCOMES[s.contact.acceptedOutcomes],
     quickCallbackOpen: quickCallbackOpen(s),
     testMode: s.test.mode,
+    referral: referralEnabled(s),
     notice: noticeWithHash(s),
     turnstileSiteKey: env().NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null,
   };

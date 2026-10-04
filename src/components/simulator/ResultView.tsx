@@ -62,6 +62,7 @@ export function ResultView({
   notAccepted = false,
   channels,
   contact,
+  projectLabel,
   onContact,
   onEdit,
   onRestart,
@@ -74,6 +75,8 @@ export function ResultView({
   channels: { phone: boolean; email: boolean };
   /** Formulaire de demande de rappel, affiché sous le verdict. */
   contact?: React.ReactNode;
+  /** Travaux envisagés (test complet), rappelés sous le verdict. */
+  projectLabel?: string;
   /** Amène au formulaire. */
   onContact: () => void;
   onEdit: (q: QuestionId) => void;
@@ -110,6 +113,11 @@ export function ResultView({
               <h2 id="result-title" className="text-2xl font-bold leading-tight text-ink-950 sm:text-3xl">
                 {verdict.title}
               </h2>
+              {projectLabel && (
+                <p className="text-sm text-ink-600">
+                  Votre projet : <span className="font-semibold text-ink-900">{projectLabel.charAt(0).toUpperCase() + projectLabel.slice(1)}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -124,8 +132,8 @@ export function ResultView({
               </p>
             )}
             {blocking.length > 0 && (
-              <div className="pt-1">
-                <p className="font-semibold text-ink-900">Points bloquants d&apos;après vos réponses :</p>
+              <div className="mt-1 rounded-2xl bg-amber-100 px-4 py-3 text-amber-950 ring-1 ring-inset ring-amber-500/30">
+                <p className="font-semibold">Votre projet ne remplit pas les conditions des aides évaluées. D&apos;après vos réponses, il manque :</p>
                 <ul className="mt-1 list-disc space-y-0.5 pl-5">
                   {blocking.map((b) => (
                     <li key={b}>{b}</li>

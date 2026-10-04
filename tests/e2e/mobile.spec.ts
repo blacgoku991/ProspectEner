@@ -19,7 +19,7 @@ test("parcours complet sur mobile", async ({ page }) => {
   await page.waitForTimeout(2600);
   await page.getByRole("checkbox", { name: /Je demande à être contacté\(e\)/ }).check();
   await page.getByRole("button", { name: "Envoyer ma demande" }).click();
-  await expect(page.getByRole("heading", { name: "Merci, vous allez être recontacté(e)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Vous allez être recontacté(e)" })).toBeVisible();
   const overflowAfter = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflowAfter).toBeLessThanOrEqual(1);
 });

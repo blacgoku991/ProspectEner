@@ -12,6 +12,7 @@ import {
   AVAILABILITY_SLOTS,
   contactSchema,
   DAY_LABELS,
+  formatFrenchPhone,
   SLOT_LABELS,
 } from "@/lib/validation/contact";
 import { readAcquisition } from "./acquisition";
@@ -23,6 +24,8 @@ export interface SubmitSuccess {
   channel: ChannelChoice;
   callbackDeadline: string | null;
   requestSentence: string;
+  /** Numéro ou adresse saisis, rappelés sur la confirmation (jamais conservés dans le navigateur). */
+  contactDisplay?: string;
 }
 
 interface Props {
@@ -144,6 +147,7 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
           channel: data.channel,
           callbackDeadline: data.callbackDeadline ?? null,
           requestSentence: data.requestSentence,
+          contactDisplay: contact.phone ? formatFrenchPhone(contact.phone) : contact.email || undefined,
         });
         return;
       }
