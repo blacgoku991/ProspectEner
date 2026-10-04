@@ -3,6 +3,8 @@
  * Aucun mot de passe n'est transmis : la personne choisit le sien puis active la double authentification.
  *
  * Usage : npm run admin:create -- --email prenom.nom@exemple.fr --name "Prénom Nom" [--role ADMIN|COLLABORATOR] [--reset]
+ *
+ * `--if-no-staff` : ne crée le compte que si l'équipe n'a encore aucun compte (premier déploiement automatisé).
  */
 import "dotenv/config";
 import { parseArgs } from "node:util";
@@ -17,6 +19,7 @@ async function main() {
       name: { type: "string" },
       role: { type: "string", default: "ADMIN" },
       reset: { type: "boolean", default: false },
+      "if-no-staff": { type: "boolean", default: false },
     },
   });
   const email = values.email?.trim().toLowerCase();
@@ -25,6 +28,10 @@ async function main() {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !name) {
     console.error('Usage : npm run admin:create -- --email prenom.nom@exemple.fr --name "Prénom Nom" [--role ADMIN|COLLABORATOR] [--reset]');
     process.exit(1);
+  }
+  if (values["if-no-staff"] && (await prisma.staffUser.count()) > 0) {
+    console.log("Un compte de l'équipe existe déjà : aucun compte créé.");
+    return;
   }
   const token = randomToken(32);
   const data = { setupTokenHash: hashToken(token), setupTokenExpiresAt: new Date(Date.now() + 72 * 3600 * 1000) };

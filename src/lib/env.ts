@@ -42,11 +42,22 @@ const schema = z.object({
 
 export type Env = z.infer<typeof schema>;
 
+/**
+ * Valeurs fournies par l'hébergeur quand elles ne sont pas définies explicitement :
+ * URL publique de production (Vercel) et base ajoutée depuis la Marketplace Vercel.
+ */
+export function withPlatformDefaults(raw: Record<string, string | undefined>): Record<string, string | undefined> {
+  const out = { ...raw };
+  if (!out.APP_URL && out.VERCEL_PROJECT_PRODUCTION_URL) out.APP_URL = `https://${out.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (!out.DATABASE_URL && out.POSTGRES_URL) out.DATABASE_URL = out.POSTGRES_URL;
+  return out;
+}
+
 let cached: Env | null = null;
 
 export function env(): Env {
   if (cached) return cached;
-  const parsed = schema.safeParse(process.env);
+  const parsed = schema.safeParse(withPlatformDefaults(process.env));
   if (!parsed.success) {
     const details = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
     throw new Error(`Configuration invalide : ${details}`);

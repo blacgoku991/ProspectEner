@@ -24,17 +24,18 @@ Ne jamais activer `ALLOW_DEMO_DATA` en production : l'application refuse de dém
 
 ## Option A — Vercel + PostgreSQL managé
 
-1. Créer une base PostgreSQL (Neon, Supabase, Scaleway, OVHcloud…), de préférence hébergée dans l'Union européenne. En environnement serverless, utiliser l'URL **avec regroupement de connexions** (pooler / PgBouncer) pour `DATABASE_URL`, et l'URL directe pour appliquer les migrations.
-2. Importer le dépôt dans Vercel et renseigner les variables d'environnement.
-3. Commande de build : `npm run build`. Les migrations sont appliquées à part, avant chaque mise en production : `DATABASE_URL=… npx prisma migrate deploy`, depuis un poste de confiance ou une étape CI.
-4. Initialiser :
+1. Importer le dépôt dans Vercel et renseigner `APP_SECRET`, `APP_ENCRYPTION_KEY`, `CRON_SECRET` et `TRUSTED_PROXY_HOPS=1`. `APP_URL` est facultative sur Vercel : à défaut, l'adresse de production du projet est utilisée (à définir dès qu'un nom de domaine est relié).
+2. Ajouter une base PostgreSQL au projet : **Storage → Create Database → Neon**, région Europe (Frankfurt), reliée aux environnements Production et Preview. Les variables `DATABASE_URL` (connexion avec regroupement, utilisée par l'application) et `DATABASE_URL_UNPOOLED` (connexion directe, utilisée pour les migrations) sont créées automatiquement. Une autre base PostgreSQL convient, à condition de renseigner ces variables.
+3. La commande de build est fixée par `vercel.json` : `scripts/vercel-build.sh`. Pour un déploiement de **production**, le script applique les migrations, puis l'initialisation (barème embarqué, paramètres vides, sans effet si elle a déjà eu lieu), puis compile. Les déploiements de prévisualisation ne modifient pas la base.
+4. Premier compte administrateur : définir `BOOTSTRAP_ADMIN_EMAIL` (et `BOOTSTRAP_ADMIN_NAME`) avant le premier déploiement de production. Le compte n'est créé que si l'équipe n'a encore aucun compte. Le lien d'activation (72 h, usage unique) apparaît dans le journal de build, visible des seuls membres du projet Vercel. Supprimer ensuite ces deux variables. À défaut, utiliser `npm run admin:create` depuis un poste de confiance :
 
    ```bash
-   DATABASE_URL=… npm run db:seed
    DATABASE_URL=… APP_URL=https://… npm run admin:create -- --email … --name "…"
    ```
 
-5. Tâche planifiée : `vercel.json` déclare `/api/cron`, une fois par jour (limite des offres gratuites). Vercel envoie automatiquement `Authorization: Bearer $CRON_SECRET`. Sur une offre payante, passer à `*/15 * * * *` pour relancer plus vite les notifications en échec. Elles sont de toute façon tentées immédiatement après chaque demande.
+5. Les fonctions s'exécutent à Francfort (`regions` dans `vercel.json`), au plus près de la base.
+6. Tâche planifiée : `vercel.json` déclare `/api/cron`, une fois par jour (limite des offres gratuites). Vercel envoie automatiquement `Authorization: Bearer $CRON_SECRET`. Sur une offre payante, passer à `*/15 * * * *` pour relancer plus vite les notifications en échec. Elles sont de toute façon tentées immédiatement après chaque demande.
+7. Tant que la check-list de mise en ligne n'est pas complète, les pages publiques portent `noindex` : le site n'est pas proposé aux moteurs de recherche.
 
 ## Option B — Serveur (VPS) avec reverse proxy
 
