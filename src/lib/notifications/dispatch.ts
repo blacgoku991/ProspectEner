@@ -8,7 +8,11 @@ import type { SiteSettings } from "../settings-schema";
 import { notificationTransport } from "./transports";
 import { webhookBody } from "./webhook-format";
 
-export type NotificationEvent = "NEW_REQUEST" | "REQUEST_CANCELLED";
+/**
+ * PARTNER_TO_INFORM : annulation, opposition ou effacement d'une demande déjà transmise à une
+ * entreprise partenaire, qui doit en être informée. Toujours envoyée (sans condition de paramètre).
+ */
+export type NotificationEvent = "NEW_REQUEST" | "REQUEST_CANCELLED" | "PARTNER_TO_INFORM";
 
 const MAX_ATTEMPTS = 6;
 const BACKOFF_MINUTES = [1, 5, 30, 120, 720, 1440];
@@ -58,22 +62,35 @@ export async function dispatchNotification(id: string): Promise<"SENT" | "FAILED
   const channelLabel = req.channel === "PHONE" ? "rappel téléphonique" : "réponse par e-mail";
   try {
     const t = notificationTransport();
+    // Entreprises à informer : noms enregistrés dans l'historique de la demande (aucune coordonnée de la personne).
+    const partnersText = n.event === "PARTNER_TO_INFORM" ? await partnersToInformText(req.id) : "";
     if (n.channel === "EMAIL") {
       const subject =
-        n.event === "NEW_REQUEST" ? `Nouvelle demande ${req.reference}` : `Demande ${req.reference} annulée par le visiteur`;
-      const lines =
         n.event === "NEW_REQUEST"
+          ? `Nouvelle demande ${req.reference}`
+          : n.event === "PARTNER_TO_INFORM"
+            ? `Demande ${req.reference} : entreprise partenaire à informer`
+            : `Demande ${req.reference} annulée par le visiteur`;
+      const lines =
+        n.event === "PARTNER_TO_INFORM"
           ? [
-              "Une nouvelle demande de contact a été enregistrée.",
+              `La demande ${req.reference} avait été transmise à ${partnersText}. Elle vient d'être annulée, ou la personne s'est opposée à tout contact ou a demandé l'effacement de ses données.`,
+              "Informez l'entreprise sans tarder (fin des appels, effacement de ses données si demandé), puis indiquez-le sur la fiche.",
               "",
-              `Référence : ${req.reference}`,
-              `Reçue le : ${frDate(req.createdAt)}`,
-              `Canal demandé : ${channelLabel}`,
-              ...(req.callbackDeadline ? [`Échéance de rappel : ${frDate(req.callbackDeadline)}`] : []),
-              "",
-              `Fiche (connexion requise) : ${link}`,
+              `Fiche : ${link}`,
             ]
-          : [`La demande ${req.reference} a été annulée par le visiteur. Ne pas le contacter.`, "", `Fiche : ${link}`];
+          : n.event === "NEW_REQUEST"
+            ? [
+                "Une nouvelle demande de contact a été enregistrée.",
+                "",
+                `Référence : ${req.reference}`,
+                `Reçue le : ${frDate(req.createdAt)}`,
+                `Canal demandé : ${channelLabel}`,
+                ...(req.callbackDeadline ? [`Échéance de rappel : ${frDate(req.callbackDeadline)}`] : []),
+                "",
+                `Fiche (connexion requise) : ${link}`,
+              ]
+            : [`La demande ${req.reference} a été annulée par le visiteur. Ne pas le contacter.`, "", `Fiche : ${link}`];
       lines.push("", "Ce message ne contient volontairement aucune donnée personnelle.");
       await t.sendEmail({ to: settings.notifications.emailRecipients, subject, text: lines.join("\n") });
     } else {
@@ -82,13 +99,15 @@ export async function dispatchNotification(id: string): Promise<"SENT" | "FAILED
       const text =
         n.event === "NEW_REQUEST"
           ? `Nouvelle demande ${req.reference} (${channelLabel})${req.callbackDeadline ? `, à traiter avant le ${frDate(req.callbackDeadline)}` : ""} : ${link}`
-          : `Demande ${req.reference} annulée par le visiteur : ne pas le contacter. ${link}`;
+          : n.event === "PARTNER_TO_INFORM"
+            ? `Demande ${req.reference} annulée, opposition ou effacement : informez ${partnersText}, qui l'avait reçue. ${link}`
+            : `Demande ${req.reference} annulée par le visiteur : ne pas le contacter. ${link}`;
       await t.postWebhook({
         url: settings.notifications.webhookUrl,
         body: webhookBody(
           settings.notifications.webhookUrl,
           {
-            event: n.event === "NEW_REQUEST" ? "request.created" : "request.cancelled",
+            event: n.event === "NEW_REQUEST" ? "request.created" : n.event === "PARTNER_TO_INFORM" ? "request.partner_to_inform" : "request.cancelled",
             reference: req.reference,
             requestId: req.id,
             kind: req.kind,
@@ -120,6 +139,18 @@ export async function dispatchNotification(id: string): Promise<"SENT" | "FAILED
     logger.warn("notification_failed", { event: n.event, channel: n.channel, attempts, code: errorCode(err) });
     return "FAILED";
   }
+}
+
+/** Entreprises nommées par le dernier événement « entreprise à informer » de la demande. */
+async function partnersToInformText(requestId: string): Promise<string> {
+  const e = await prisma.requestEvent.findFirst({
+    where: { requestId, type: "PARTNER_TO_INFORM" },
+    orderBy: { createdAt: "desc" },
+    select: { data: true },
+  });
+  const partners = (e?.data as { partners?: unknown } | null)?.partners;
+  const names = Array.isArray(partners) ? partners.filter((p): p is string => typeof p === "string") : [];
+  return names.length > 0 ? names.join(" ; ") : "l'entreprise partenaire";
 }
 
 /** Envoie les notifications en attente (ou à retenter). */

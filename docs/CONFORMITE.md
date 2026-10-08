@@ -36,8 +36,12 @@ Analyse (sans position officielle publiée à ce jour sur la génération de dem
 
 - **Une entreprise que la personne n'a pas nommée ne peut pas l'appeler** : son appel ne répond à aucune demande qui lui était adressée, c'est de la prospection interdite (L223-1). Un consentement générique « nos partenaires » ne suffit pas, ni pour le démarchage ni pour la CNIL (identité des destinataires due dès la collecte).
 - **Ce que fait le site** :
-  - quand la mise en relation est déclarée et qu'une entreprise partenaire active correspond aux réponses, la phrase de la demande la **nomme avant l'envoi** : « Je demande à être contacté(e) par [éditeur] et par [entreprise], l'entreprise qui réalise les travaux, par [canal], au sujet de mon projet de [travaux]. » Le choix de l'entreprise est fait dans le navigateur et refait par le serveur, qui refuse l'envoi si l'entreprise affichée n'est plus la bonne ;
-  - la demande peut alors être **transmise à cette seule entreprise** (export « demandes à transmettre ») ; la date de transmission est enregistrée et tracée dans l'historique ;
+  - quand la mise en relation est déclarée et qu'une entreprise partenaire active correspond aux réponses, la phrase de la demande la **nomme avant l'envoi** : « Je demande à être contacté(e) par [éditeur] et par l'entreprise partenaire [entreprise], par [canal], au sujet de mon projet de [travaux]. » Le choix de l'entreprise est fait dans le navigateur et refait par le serveur, qui refuse l'envoi si l'entreprise ou son nom affichés ne sont plus les bons (`PARTNER_CHANGED`) ;
+  - la demande peut alors être **transmise à cette seule entreprise**, par un administrateur, après confirmation (« Je transmets ces N demandes à … ») ; seules les demandes ouvertes, sans opposition (liste d'opposition comprise) et encore dans le délai de rappel de cinq jours ouvrables sont transmissibles ; la date de transmission est enregistrée et tracée dans l'historique ; le fichier porte une colonne « Conditions d'usage » ;
+  - une demande qui nomme une entreprise ne peut être confiée en rendez-vous qu'à elle, ou assurée par l'éditeur ; le nom d'une entreprise qui a déjà reçu des demandes ne peut plus être modifié (créer une nouvelle fiche pour une autre entreprise) ;
+  - annulation, opposition ou effacement d'une demande déjà transmise : alerte « entreprise à informer » sur la fiche et notification interne, jusqu'à confirmation par l'équipe (art. 19 RGPD) ; la politique de confidentialité l'annonce ;
+  - les entreprises reprises de l'ancienne liste libre sont désactivées tant que leurs critères n'ont pas été revus ; des critères illisibles excluent l'entreprise (« critères à revoir ») ;
+  - les critères des entreprises actives sont lisibles dans la page du questionnaire (le choix se fait dans le navigateur, pour que les réponses n'en sortent pas avant l'envoi) : à signaler aux entreprises dans le contrat ;
   - sans entreprise nommée, une entreprise ne reçoit la demande qu'avec l'accord explicite de la personne lors de l'échange, pour un rendez-vous convenu (accord coché et tracé). **Cette voie est moins sûre** que la demande nommant l'entreprise ;
   - la notice, la politique de confidentialité et les mentions légales annoncent la transmission à une seule entreprise et la **rémunération** de ces mises en relation (pratique commerciale trompeuse par omission sinon, art. L121-3) ;
   - les critères des entreprises servent uniquement au tri : ils ne modifient jamais le résultat affiché au visiteur.
@@ -120,7 +124,7 @@ Mesures implémentées :
   - Tranches de revenus plutôt que des montants.
   - Adresse du logement seulement si la personne la donne ; effacée à l'anonymisation.
 - **Conservation automatisée** (`/api/cron` et bouton dans Paramètres).
-  - Anonymisation : suppression des coordonnées, du commentaire, des notes et de la localisation fine.
+  - Anonymisation : suppression des coordonnées (adresse comprise), du commentaire, des notes et de la localisation fine ; surface chauffée, nombre de radiateurs, emplacement de la chaudière et taille du foyer effacés, année de construction ramenée à la décennie.
   - Puis purge des preuves.
   - Puis purge des journaux, oppositions expirées, statistiques, sessions et compteurs.
 - **Droits des personnes.**

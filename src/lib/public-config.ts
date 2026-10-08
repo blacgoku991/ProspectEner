@@ -39,7 +39,7 @@ export interface PublicConfig {
   quickCallbackOpen: boolean;
   /** Test d'éligibilité seul, ou test complet avec le détail du projet. */
   testMode: "ELIGIBILITE" | "PROJET";
-  /** Mise en relation déclarée : le rendez-vous est assuré par l'entreprise qui réalise les travaux. */
+  /** Mise en relation déclarée : la demande peut nommer une entreprise partenaire, ou un rendez-vous lui être confié. */
   referral: boolean;
   /**
    * Mise en relation : entreprises partenaires actives, parmi lesquelles le navigateur choisit celle

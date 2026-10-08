@@ -6,14 +6,8 @@ import { prisma } from "@/lib/db";
 import { HYDRAULIC_HEAT_PUMP_PRESET, referenceYearOf, selectPartnerForRequest } from "@/lib/leads/partners";
 import { listPartners } from "@/lib/leads/partners-db";
 import { requestLeadProfile } from "@/lib/leads/profile";
-import {
-  exportRequestedLeads,
-  markRequestedPartnerSent,
-  REQUESTED_PARTNER_SENT_EVENT,
-  requestedPartnerWhere,
-} from "@/lib/leads/requested-partner";
+import { buildRequestSentence } from "@/lib/legal/texts";
 import { toPublicConfig } from "@/lib/public-config";
-import { anonymizeRequest } from "@/lib/requests/anonymize";
 import { createContactRequest } from "@/lib/requests/create";
 import { getSettings, saveSettings } from "@/lib/settings";
 import type { SiteSettings } from "@/lib/settings-schema";
@@ -26,10 +20,9 @@ const ADMIN = { id: "00000000-0000-0000-0000-000000000000", role: "ADMIN" as con
 const REFERRAL_SETTINGS: SiteSettings = { ...TEST_SETTINGS, activity: { ...TEST_SETTINGS.activity, kinds: ["MISE_EN_RELATION"] } };
 
 const PARTNER = { name: "Chauffage Lyonnais", details: "Lyon, RGE", displayName: "Chauffage Lyonnais, Lyon, RGE" };
-const SENTENCE_WITH_PARTNER =
-  "Je demande à être contacté(e) par Entreprise Test et par Chauffage Lyonnais, Lyon, RGE, l'entreprise qui réalise les travaux, par téléphone, au sujet de mon projet de pompe à chaleur air/eau.";
-const SENTENCE_WITHOUT_PARTNER =
-  "Je demande à être contacté(e) par Entreprise Test, par téléphone, au sujet de mon projet de pompe à chaleur air/eau.";
+// Formulation de la phrase : voir src/lib/legal/texts.test.ts ; ici, seule compte l'entreprise nommée.
+const SENTENCE_WITH_PARTNER = buildRequestSentence("Entreprise Test", "PHONE", "pompe à chaleur air/eau", PARTNER.displayName);
+const SENTENCE_WITHOUT_PARTNER = buildRequestSentence("Entreprise Test", "PHONE", "pompe à chaleur air/eau");
 
 /**
  * Ce que fait le navigateur : configuration publique (entreprises actives), réponses élaguées comme
@@ -42,11 +35,11 @@ async function browserPartner(answers: Answers, referenceDate: string) {
   return selectPartnerForRequest(requestLeadProfile(pruned), config.partners, referenceYearOf(referenceDate));
 }
 
-/** Demande envoyée comme par le navigateur : l'entreprise affichée accompagne la demande. */
+/** Demande envoyée comme par le navigateur : l'entreprise affichée (identifiant et nom) accompagne la demande. */
 async function submit(answers: Answers = ANSWERS_ELIGIBLE, contact: Record<string, unknown> = {}) {
   const payload = await simulationPayload({ answers }, contact);
   const partner = await browserPartner(answers, payload.referenceDate);
-  const res = await createContactRequest({ ...payload, partnerId: partner?.id ?? null }, ctx());
+  const res = await createContactRequest({ ...payload, partnerId: partner?.id ?? null, partnerName: partner?.displayName ?? null }, ctx());
   if (!res.ok) throw new Error(`création impossible : ${res.code}`);
   return { res, partner, row: await prisma.contactRequest.findUniqueOrThrow({ where: { reference: res.reference }, include: { events: true } }) };
 }
@@ -85,7 +78,7 @@ describe("entreprise partenaire nommée dans la demande", () => {
 
     // Double envoi : même demande, même entreprise.
     const payload = await simulationPayload();
-    const body = { ...payload, partnerId: partner.id };
+    const body = { ...payload, partnerId: partner.id, partnerName: PARTNER.displayName };
     const first = await createContactRequest(body, ctx());
     const replay = await createContactRequest(body, ctx());
     expect(first.ok && replay.ok && replay.replay).toBe(true);
@@ -98,8 +91,16 @@ describe("entreprise partenaire nommée dans la demande", () => {
   it("refuse l'envoi si l'entreprise affichée n'est plus la bonne (PARTNER_CHANGED)", async () => {
     const partner = await prisma.partner.create({ data: { name: PARTNER.name, details: PARTNER.details, criteria: HYDRAULIC_HEAT_PUMP_PRESET } });
     const payload = await simulationPayload();
-    for (const partnerId of [undefined, null, randomUUID()]) {
-      const res = await createContactRequest({ ...payload, idempotencyKey: randomUUID(), partnerId }, ctx());
+    // Aucune entreprise affichée, une entreprise inconnue, ou la bonne sous un autre nom.
+    const shown: { partnerId?: string | null; partnerName?: string | null }[] = [
+      {},
+      { partnerId: null, partnerName: null },
+      { partnerId: randomUUID(), partnerName: PARTNER.displayName },
+      { partnerId: partner.id, partnerName: "Chauffage Lyonnais, Lyon" },
+    ];
+    for (const s of shown) {
+      const res = await createContactRequest({ ...payload, idempotencyKey: randomUUID(), ...s }, ctx());
+      const partnerId = JSON.stringify(s);
       expect(res.ok, String(partnerId)).toBe(false);
       if (res.ok) continue;
       expect(res.status).toBe(409);
@@ -108,7 +109,7 @@ describe("entreprise partenaire nommée dans la demande", () => {
     }
     // Entreprise désactivée entre l'affichage et l'envoi : la phrase lue ne correspond plus.
     await prisma.partner.update({ where: { id: partner.id }, data: { active: false } });
-    const stale = await createContactRequest({ ...payload, idempotencyKey: randomUUID(), partnerId: partner.id }, ctx());
+    const stale = await createContactRequest({ ...payload, idempotencyKey: randomUUID(), partnerId: partner.id, partnerName: PARTNER.displayName }, ctx());
     expect(!stale.ok && stale.code).toBe("PARTNER_CHANGED");
     expect(await prisma.contactRequest.count()).toBe(0);
     // Après rechargement de la configuration : plus d'entreprise nommée, l'envoi aboutit.
@@ -158,7 +159,7 @@ describe("entreprise partenaire nommée dans la demande", () => {
     expect(shown).toBeNull();
     expect(row.requestedPartnerId).toBeNull();
     expect(row.requestSentence).toBe(SENTENCE_WITHOUT_PARTNER);
-    const forged = await createContactRequest({ ...(await simulationPayload()), partnerId: partner.id }, ctx());
+    const forged = await createContactRequest({ ...(await simulationPayload()), partnerId: partner.id, partnerName: PARTNER.displayName }, ctx());
     expect(!forged.ok && forged.code).toBe("PARTNER_CHANGED");
   });
 
@@ -174,7 +175,7 @@ describe("entreprise partenaire nommée dans la demande", () => {
       noticeHash: base.noticeHash,
       formElapsedMs: 9000,
     };
-    const forged = await createContactRequest({ ...quick, partnerId: partner.id }, ctx());
+    const forged = await createContactRequest({ ...quick, partnerId: partner.id, partnerName: "Toutes Demandes" }, ctx());
     expect(!forged.ok && forged.code).toBe("PARTNER_CHANGED");
     const res = await createContactRequest({ ...quick, idempotencyKey: randomUUID(), partnerId: null }, ctx());
     expect(res.ok).toBe(true);
@@ -182,6 +183,25 @@ describe("entreprise partenaire nommée dans la demande", () => {
     const row = await prisma.contactRequest.findUniqueOrThrow({ where: { reference: res.reference } });
     expect(row.requestedPartnerId).toBeNull();
     expect(row.requestSentence).not.toContain("Toutes Demandes");
+  });
+
+  it("critères illisibles en base : l'entreprise n'est jamais nommée ni proposée au navigateur, ni retenue par le filtre", async () => {
+    // Valeur inconnue (travaux retirés du moteur, saisie manuelle) : lue « fermée », jamais « toutes les demandes ».
+    const broken = await prisma.partner.create({ data: { name: "Aaa Critères Anciens", criteria: { works: ["TRAVAUX_SUPPRIMES"] } } });
+    const valid = await prisma.partner.create({ data: { name: PARTNER.name, details: PARTNER.details, criteria: HYDRAULIC_HEAT_PUMP_PRESET } });
+    const listed = (await listPartners()).find((p) => p.id === broken.id)!;
+    expect(listed.criteria.needsReview).toBe(true);
+    expect(listed.criteria.works).toEqual([]);
+    const config = toPublicConfig(await getSettings(), await listPartners({ activeOnly: true }));
+    expect(config.partners.map((p) => p.id)).toEqual([valid.id]);
+    const { row } = await submit();
+    expect(row.requestedPartnerId).toBe(valid.id);
+    // Le filtre « partenaire » de la liste n'en retient aucune demande.
+    const { filters, partner } = await resolvePartnerFilter(parseListFilters({ partenaire: broken.id }));
+    expect(await prisma.contactRequest.count({ where: buildRequestWhere(filters, ADMIN, REFERRAL_SETTINGS, new Date(), partner?.criteria) })).toBe(0);
+    // Seule entreprise active, aux critères illisibles : aucune entreprise nommée.
+    await prisma.partner.update({ where: { id: valid.id }, data: { active: false } });
+    expect((await submit()).row.requestedPartnerId).toBeNull();
   });
 
   it("filtre de la liste : demandes qui nomment l'entreprise, ou correspondant à ses critères", async () => {
@@ -198,76 +218,5 @@ describe("entreprise partenaire nommée dans la demande", () => {
     expect(await ids({ partenaire: partner.id })).toEqual([named.row.id]);
     // Sans entreprise, l'option est ignorée.
     expect((await ids({ nommee: "1" })).sort()).toEqual([named.row.id, notNamed.row.id].sort());
-  });
-});
-
-describe("transmission des demandes à l'entreprise qu'elles nomment", () => {
-  beforeEach(async () => {
-    await resetDatabase();
-    await configure(REFERRAL_SETTINGS);
-  });
-
-  it("export : phrase de la demande et fiche, première transmission enregistrée et tracée, une seule fois", async () => {
-    const partner = await prisma.partner.create({ data: { name: PARTNER.name, details: PARTNER.details, criteria: HYDRAULIC_HEAT_PUMP_PRESET } });
-    const a = await submit(ANSWERS_ELIGIBLE, { firstName: "Alice", lastName: "Martin", streetAddress: "12 rue des Lilas" });
-    const b = await submit(ANSWERS_ELIGIBLE, { firstName: "Bruno", lastName: "Petit", channel: "EMAIL", email: "bruno@example.com" });
-    const cancelled = await submit(ANSWERS_ELIGIBLE, { lastName: "Annule" });
-    await prisma.contactRequest.update({ where: { id: cancelled.row.id }, data: { status: "CONTACT_ANNULE" } });
-    const anonymized = await submit();
-    await prisma.$transaction((tx) => anonymizeRequest(tx, anonymized.row.id, null, "test"));
-    const demo = await submit(ANSWERS_ELIGIBLE, { lastName: "Demo" });
-    await prisma.contactRequest.update({ where: { id: demo.row.id }, data: { isDemo: true } });
-    await submit({ ...ANSWERS_ELIGIBLE, heatedArea: 79 }, { lastName: "Autre" });
-
-    expect(await prisma.contactRequest.count({ where: requestedPartnerWhere(partner.id) })).toBe(2);
-    expect(await prisma.contactRequest.count({ where: requestedPartnerWhere(partner.id, { pendingOnly: true }) })).toBe(2);
-
-    const now = new Date("2026-10-08T10:00:00Z");
-    const first = await exportRequestedLeads({ partner, scope: {}, pendingOnly: true, actorId: null, now });
-    expect([first.count, first.newlySent]).toEqual([2, 2]);
-    const [header, ...lines] = first.csv.replace(/^﻿/, "").trim().split("\r\n");
-    expect(header!.split(";").slice(0, 7)).toEqual(['"Référence"', '"Date de la demande"', '"À rappeler avant le"', '"Canal demandé"', '"Phrase de la demande"', '"Nom"', '"Prénom"']);
-    expect(lines).toHaveLength(2);
-    const alice = lines.find((l) => l.includes("Alice"))!;
-    expect(alice).toContain(`"${a.row.reference}"`);
-    expect(alice).toContain('"Rappel téléphonique"');
-    expect(alice).toContain(`"${SENTENCE_WITH_PARTNER}"`);
-    expect(alice).toContain('"12 rue des Lilas"');
-    expect(alice).toMatch(/"\d{2}\/\d{2}\/\d{4}"/); // échéance de rappel (date, heure de Paris)
-    const bruno = lines.find((l) => l.includes("Bruno"))!;
-    expect(bruno).toContain('"Réponse par e-mail"');
-    expect(bruno).toContain('"bruno@example.com"');
-    expect(first.csv).not.toContain("Annule");
-    expect(first.csv).not.toContain("Demo");
-    expect(first.csv).not.toContain("Autre");
-
-    for (const id of [a.row.id, b.row.id]) {
-      const row = await prisma.contactRequest.findUniqueOrThrow({ where: { id }, include: { events: { orderBy: { createdAt: "asc" } } } });
-      expect(row.requestedPartnerSentAt?.toISOString()).toBe(now.toISOString());
-      const sent = row.events.filter((e) => e.type === REQUESTED_PARTNER_SENT_EVENT);
-      expect(sent.map((e) => e.data)).toEqual([{ partner: PARTNER.displayName }]);
-    }
-    expect(await prisma.contactRequest.count({ where: requestedPartnerWhere(partner.id, { pendingOnly: true }) })).toBe(0);
-
-    // Nouvel export des demandes à transmettre : vide. Export complet : les mêmes lignes, sans nouvelle transmission.
-    const again = await exportRequestedLeads({ partner, scope: {}, pendingOnly: true, actorId: null, now: new Date("2026-10-09T10:00:00Z") });
-    expect([again.count, again.newlySent]).toEqual([0, 0]);
-    const all = await exportRequestedLeads({ partner, scope: {}, pendingOnly: false, actorId: null, now: new Date("2026-10-09T10:00:00Z") });
-    expect([all.count, all.newlySent]).toEqual([2, 0]);
-    const aAfter = await prisma.contactRequest.findUniqueOrThrow({ where: { id: a.row.id } });
-    expect(aAfter.requestedPartnerSentAt?.toISOString()).toBe(now.toISOString());
-    expect(await prisma.requestEvent.count({ where: { type: REQUESTED_PARTNER_SENT_EVENT } })).toBe(2);
-  });
-
-  it("deux exports simultanés : chaque demande n'est marquée et tracée qu'une fois", async () => {
-    const partner = await prisma.partner.create({ data: { name: PARTNER.name, details: PARTNER.details, criteria: HYDRAULIC_HEAT_PUMP_PRESET } });
-    const ids = [(await submit()).row.id, (await submit()).row.id, (await submit()).row.id];
-    const results = await Promise.all([
-      markRequestedPartnerSent(ids, PARTNER.displayName, null, new Date("2026-10-08T10:00:00.001Z")),
-      markRequestedPartnerSent(ids, PARTNER.displayName, null, new Date("2026-10-08T10:00:00.002Z")),
-    ]);
-    expect(results[0] + results[1]).toBe(3);
-    expect(await prisma.requestEvent.count({ where: { type: REQUESTED_PARTNER_SENT_EVENT } })).toBe(3);
-    expect(await prisma.contactRequest.count({ where: requestedPartnerWhere(partner.id, { pendingOnly: true }) })).toBe(0);
   });
 });

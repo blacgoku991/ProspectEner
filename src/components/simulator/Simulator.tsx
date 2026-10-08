@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, ArrowRight, Check, CircleHelp, ExternalLink, Info, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CircleHelp, Info, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import HouseHero from "@/components/three/HouseHero";
@@ -22,7 +22,7 @@ import {
 } from "@/engine/questionnaire";
 import type { RuleSet } from "@/engine/ruleset-schema";
 import type { Answers } from "@/engine/types";
-import { FRANCE_RENOV_REDIRECT_URL, NO_STATE_DATA_NOTICE } from "@/lib/legal/texts";
+import { NO_STATE_DATA_NOTICE } from "@/lib/legal/texts";
 import type { PublicConfig } from "@/lib/public-config";
 import { trackStep } from "@/lib/funnel";
 import { incomeAcceptedFor } from "@/lib/settings-schema";
@@ -32,37 +32,7 @@ import { Confirmation } from "./Confirmation";
 import { ContactForm, type SubmitSuccess } from "./ContactForm";
 import { QuestionView, questionNeedsContinue } from "./QuestionView";
 import { ResultView } from "./ResultView";
-
-type Phase = "questions" | "result" | "contact" | "done";
-
-interface Persisted {
-  v: 1;
-  ruleSetVersion: string;
-  referenceDate: string;
-  answers: Answers;
-  current: QuestionId;
-  phase: Phase;
-  returnToResult: boolean;
-  done: SubmitSuccess | null;
-}
-
-const STORAGE_KEY = "pe-simulation";
-
-function loadPersisted(ruleSetVersion: string, referenceDate: string): Persisted | null {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const saved = JSON.parse(raw) as Persisted;
-    return saved.v === 1 && saved.ruleSetVersion === ruleSetVersion && saved.referenceDate === referenceDate ? saved : null;
-  } catch {
-    return null;
-  }
-}
-
-function withScope(answers: Answers, mode: PublicConfig["testMode"]): Answers {
-  const { scope: _previous, ...rest } = answers;
-  return mode === "ELIGIBILITE" ? { ...rest, scope: "PROFILE" } : rest;
-}
+import { loadPersisted, type Persisted, type Phase, restoreSession, showsResult, STORAGE_KEY, withScope } from "./session";
 
 function stepOf(q: QuestionId): StepId {
   return (STEPS.find((s) => s.questions.includes(q)) ?? STEPS[0]!).id;
@@ -113,16 +83,20 @@ export default function Simulator({
 }) {
   const ctx: QuestionContext = useMemo(() => ({ rules: ruleSet.data, referenceDate }), [ruleSet, referenceDate]);
   // Composant rendu uniquement dans le navigateur : la session est restaurée dès l'initialisation.
-  const [initial] = useState(() => loadPersisted(ruleSet.version, referenceDate));
-  // Portée du test choisie dans les paramètres (test complet par défaut) : elle prime sur une session restaurée.
-  const [answers, setAnswers] = useState<Answers>(() => withScope(initial?.answers ?? {}, config.testMode));
-  const [current, setCurrent] = useState<QuestionId>(initial?.current ?? "location");
-  const [phase, setPhase] = useState<Phase>(initial?.phase ?? "questions");
-  const [returnToResult, setReturnToResult] = useState(Boolean(initial?.returnToResult));
-  const [done, setDone] = useState<SubmitSuccess | null>(initial?.done ?? null);
+  const [initial] = useState(() => restoreSession(loadPersisted(ruleSet.version, referenceDate), ctx, config.testMode));
+  const [answers, setAnswers] = useState<Answers>(initial.answers);
+  const [current, setCurrent] = useState<QuestionId>(initial.current);
+  const [phase, setPhase] = useState<Phase>(initial.phase);
+  const [returnToResult, setReturnToResult] = useState(initial.returnToResult);
+  const [done, setDone] = useState<SubmitSuccess | null>(initial.done);
   const [direction, setDirection] = useState(1);
   const trackedSteps = useRef(new Set<string>());
   const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // Session rouverte sur le résultat mais incomplète : l'adresse suit la question affichée.
+  useEffect(() => {
+    if (initial.redirected) window.history.replaceState(null, "", `#q-${initial.current}`);
+  }, [initial]);
 
   useEffect(() => {
     try {
@@ -136,26 +110,52 @@ export default function Simulator({
   }, [answers, current, phase, returnToResult, done, ruleSet.version, referenceDate]);
 
   // ─── Historique du navigateur : le bouton « précédent » revient d'une question ──
-  const navigate = useCallback((nextPhase: Phase, nextQuestion: QuestionId, push = true) => {
+  // « replace » remplace l'entrée courante (redirection), sans en ajouter une.
+  const navigate = useCallback((nextPhase: Phase, nextQuestion: QuestionId, history: "push" | "replace" = "push") => {
     setPhase(nextPhase);
     setCurrent(nextQuestion);
     const hash = nextPhase === "questions" ? `#q-${nextQuestion}` : `#${nextPhase === "result" ? "resultat" : nextPhase === "contact" ? "contact" : "confirmation"}`;
-    if (push && window.location.hash !== hash) window.history.pushState(null, "", hash);
+    if (window.location.hash === hash) return;
+    if (history === "replace") window.history.replaceState(null, "", hash);
+    else window.history.pushState(null, "", hash);
   }, []);
+
+  /** Réponses incomplètes : première question sans réponse, puis retour au résultat une fois complété. */
+  const resumeAt = useCallback(
+    (missing: QuestionId, history: "push" | "replace") => {
+      setReturnToResult(true);
+      navigate("questions", missing, history);
+    },
+    [navigate],
+  );
+
+  const answersRef = useRef<Answers>(answers);
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+  const phaseRef = useRef<Phase>(phase);
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   useEffect(() => {
     const onPop = () => {
       const h = window.location.hash;
       setDirection(-1);
+      if (phaseRef.current === "done") return;
       if (h.startsWith("#q-")) {
-        setPhase((p) => (p === "done" ? p : "questions"));
+        setPhase("questions");
         setCurrent(h.slice(3) as QuestionId);
-      } else if (h === "#resultat") setPhase((p) => (p === "done" ? p : "result"));
-      else if (h === "#contact") setPhase((p) => (p === "done" ? p : "contact"));
+      } else if (h === "#resultat" || h === "#contact") {
+        // Ex. travaux modifiés puis « précédent » : le résultat attend les nouvelles questions.
+        const missing = firstUnanswered(answersRef.current, ctx);
+        if (missing) resumeAt(missing, "replace");
+        else setPhase(h === "#resultat" ? "result" : "contact");
+      }
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  }, [ctx, resumeAt]);
 
   // ─── Calculs dérivés ─────────────────────────────────────────────────────
   const visible = useMemo(() => visibleQuestions(answers, ctx), [answers, ctx]);
@@ -167,11 +167,23 @@ export default function Simulator({
   const answeredCount = estimated.filter((q) => isAnswered(q, answers)).length;
   const progress = phase === "questions" ? Math.round((answeredCount / Math.max(estimated.length, 1)) * 100) : 100;
   const pruned = useMemo(() => pruneAnswers(answers, ctx), [answers, ctx]);
+  const missing = useMemo(() => firstUnanswered(answers, ctx), [answers, ctx]);
+  // Le résultat (et le formulaire) ne s'affichent que sur un questionnaire complet : le verdict est
+  // celui du moteur sur toutes les réponses demandées, comme le recalcule le serveur.
+  const resultIncomplete = showsResult(phase) && missing !== null;
   const evaluation = useMemo(
-    () => (phase === "questions" ? null : evaluate(pruned, ruleSet, referenceDate)),
-    [phase, pruned, ruleSet, referenceDate],
+    () => (phase === "questions" || missing !== null ? null : evaluate(pruned, ruleSet, referenceDate)),
+    [phase, missing, pruned, ruleSet, referenceDate],
   );
-  const currentVisible = visible.includes(current) ? current : (firstUnanswered(answers, ctx) ?? visible[visible.length - 1] ?? "location");
+  // Filet de sécurité (la restauration, « précédent » et l'avancée du questionnaire le font déjà) :
+  // résultat demandé alors qu'une question visible reste sans réponse. L'état est ajusté pendant le
+  // rendu : la question manquante s'affiche directement, puis le résultat une fois complété.
+  if (resultIncomplete && missing) {
+    setPhase("questions");
+    setCurrent(missing);
+    setReturnToResult(true);
+  }
+  const currentVisible = visible.includes(current) ? current : (missing ?? visible[visible.length - 1] ?? "location");
   const stepId = stepOf(currentVisible);
   const visibleSteps = STEPS.filter((s) => s.questions.some((q) => estimated.includes(q)));
   // Catégorie de revenus non retenue (paramètres) : l'information est donnée dès la question suivante,
@@ -217,11 +229,6 @@ export default function Simulator({
     },
     [ctx, currentVisible, navigate, returnToResult],
   );
-
-  const answersRef = useRef<Answers>(answers);
-  useEffect(() => {
-    answersRef.current = answers;
-  }, [answers]);
 
   const update = useCallback(
     (patch: Partial<Answers>, advance = false) => {
@@ -326,6 +333,12 @@ export default function Simulator({
                   referenceDate={referenceDate}
                   locationLabel={location || "non précisé"}
                   worksText={worksTextForRequest("SIMULATION", pruned)}
+                  onIncompleteAnswers={() => {
+                    const first = firstUnanswered(answersRef.current, ctx);
+                    if (!first) return false;
+                    resumeAt(first, "push");
+                    return true;
+                  }}
                   onSuccess={(r) => {
                     setDone(r);
                     navigate("done", currentVisible);
@@ -344,7 +357,9 @@ export default function Simulator({
   const text = questionText(currentVisible, answers, ctx);
   const qIndex = visible.indexOf(currentVisible);
   const stepIndex = Math.max(0, visibleSteps.findIndex((s) => s.id === stepId));
-  const showIncomeNotice = !incomeAccepted && visible.includes("income") && qIndex > visible.indexOf("income");
+  // Information donnée une fois, sur la question qui suit celle des revenus (le résultat la reprend en détail).
+  const showIncomeNotice = !incomeAccepted && visible.includes("income") && qIndex === visible.indexOf("income") + 1;
+  const step = STEPS.find((s) => s.id === stepId);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
@@ -352,7 +367,7 @@ export default function Simulator({
         <div className="mb-5">
           <div className="mb-3 flex items-end justify-between gap-3 text-sm">
             <p className="min-w-0">
-              <span className="block font-semibold text-ink-800">{STEPS.find((s) => s.id === stepId)?.title}</span>
+              <span className="block font-semibold text-ink-800">{step?.title}</span>
               <span className="text-ink-500">
                 Étape {stepIndex + 1} sur {visibleSteps.length} · question {qIndex + 1} sur {estimated.length}
               </span>
@@ -407,21 +422,7 @@ export default function Simulator({
         {showIncomeNotice && (
           <div role="note" className="mb-4 flex gap-3 rounded-2xl bg-surface/70 px-4 py-3 text-sm text-ink-700 ring-1 ring-inset ring-ink-900/10">
             <Info className="mt-0.5 size-4 shrink-0 text-ink-500" aria-hidden />
-            <p>
-              Pour information : nous ne proposons pas de rendez-vous pour cette catégorie de revenus. Vous pouvez poursuivre le test pour
-              connaître les aides possibles. Le service public{" "}
-              <a
-                href={FRANCE_RENOV_REDIRECT_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-semibold text-ink-900 underline underline-offset-2"
-              >
-                France Rénov&apos;
-                <ExternalLink className="size-3.5" aria-hidden />
-                <span className="sr-only">(nouvel onglet, site du service public)</span>
-              </a>{" "}
-              peut aussi vous conseiller.
-            </p>
+            <p>Nous ne proposons pas de rendez-vous pour cette catégorie de revenus ; le test vous indique tout de même les aides possibles.</p>
           </div>
         )}
 
@@ -442,6 +443,12 @@ export default function Simulator({
                 <p className="mt-2 flex gap-2 text-sm leading-relaxed text-ink-600">
                   <CircleHelp className="mt-0.5 size-4 shrink-0 text-pine-600" aria-hidden />
                   {text.help}
+                </p>
+              )}
+              {step?.showSubtitle && (
+                <p className="mt-2 flex gap-2 text-sm leading-relaxed text-ink-600">
+                  <Info className="mt-0.5 size-4 shrink-0 text-pine-600" aria-hidden />
+                  {step.subtitle}
                 </p>
               )}
               <div className="mt-6">

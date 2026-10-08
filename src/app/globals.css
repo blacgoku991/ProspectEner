@@ -177,8 +177,9 @@
   .field-help {
     @apply mt-1.5 text-sm text-ink-500;
   }
+  /* red-700 : réaffecté en mode sombre (contraste AA sur les cartes), lisible aussi sur fond clair. */
   .field-error {
-    @apply mt-1.5 text-sm font-medium text-red-600;
+    @apply mt-1.5 text-sm font-medium text-red-700;
   }
 
   .badge {

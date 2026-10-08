@@ -20,7 +20,8 @@ export async function POST(request: Request) {
   try {
     const result = await cancelContactRequest(body, { ip: clientIpFromHeaders(h) });
     if (!result.ok) return NextResponse.json({ code: result.code, message: result.message }, { status: result.status });
-    if (!result.alreadyCancelled) {
+    // Annulation, ou effacement et opposition d'une demande déjà transmise : notifications à envoyer.
+    if (!result.alreadyCancelled || result.partnersToInform.length > 0) {
       after(async () => {
         try {
           await dispatchPendingNotifications({ requestId: result.requestId });
@@ -29,7 +30,8 @@ export async function POST(request: Request) {
         }
       });
     }
-    return NextResponse.json({ reference: result.reference, alreadyCancelled: result.alreadyCancelled });
+    // Entreprises qui avaient déjà reçu la demande : la personne sait qu'elles sont informées de son annulation.
+    return NextResponse.json({ reference: result.reference, alreadyCancelled: result.alreadyCancelled, partnersToInform: result.partnersToInform });
   } catch (err) {
     logger.error("cancel_route_error", { code: errorCode(err) });
     return NextResponse.json({ code: "SERVER_ERROR", message: "Une erreur technique est survenue. Merci de réessayer." }, { status: 500 });

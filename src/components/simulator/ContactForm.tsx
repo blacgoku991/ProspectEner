@@ -43,6 +43,11 @@ interface Props {
   worksText: string;
   /** Validation des champs propres au formulaire parent (rappel rapide). */
   validateExtra?: () => boolean;
+  /**
+   * Questionnaire incomplet selon le serveur : le parent ramène à la première question sans réponse
+   * (renvoie false s'il n'en trouve aucune ; le message du serveur est alors affiché).
+   */
+  onIncompleteAnswers?: () => boolean;
   onSuccess: (r: SubmitSuccess) => void;
 }
 
@@ -50,10 +55,25 @@ type FieldErrors = Partial<
   Record<"firstName" | "lastName" | "channel" | "email" | "phone" | "streetAddress" | "comment" | "confirmRequest" | "form", string>
 >;
 
-/** Le texte présenté (notice ou entreprise nommée) a changé : la configuration est rechargée et la demande relue. */
-const RELOAD_CODES = new Set(["NOTICE_CHANGED", "PARTNER_CHANGED"]);
+/**
+ * Configuration publique périmée : elle est rechargée. Texte présenté (notice ou entreprise nommée)
+ * modifié : la demande est à relire. Résultats ou catégories de revenus retenus modifiés : le formulaire
+ * laisse place à l'explication affichée avec le résultat.
+ */
+const RELOAD_CODES = new Set(["NOTICE_CHANGED", "PARTNER_CHANGED", "INCOME_NOT_ACCEPTED", "OUTCOME_NOT_ACCEPTED"]);
 
-export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDate, locationLabel, worksText, validateExtra, onSuccess }: Props) {
+export function ContactForm({
+  kind,
+  config,
+  answers,
+  ruleSetVersion,
+  referenceDate,
+  locationLabel,
+  worksText,
+  validateExtra,
+  onIncompleteAnswers,
+  onSuccess,
+}: Props) {
   const id = useId();
   const router = useRouter();
   const channelsAvailable = (["PHONE", "EMAIL"] as const).filter((c) => (c === "PHONE" ? config.channels.phone : config.channels.email));
@@ -97,7 +117,9 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
         : null,
     [kind, config.referral, config.partners, answers, referenceDate],
   );
-  const sentence = channel ? buildRequestSentence(config.companyName, channel, worksText, partner?.displayName) : null;
+  // Nom affiché dans la phrase, envoyé tel quel : le serveur refuse l'envoi s'il ne nomme plus la même entreprise.
+  const partnerName = partner?.displayName ?? null;
+  const sentence = channel ? buildRequestSentence(config.companyName, channel, worksText, partnerName) : null;
   const confirm = sentence !== null && confirmedSentence === sentence;
 
   const contactInput = () => ({
@@ -153,6 +175,7 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
       formElapsedMs: Math.round(performance.now() - (startedAt.current ?? performance.now())),
       ...(turnstileToken ? { turnstileToken } : {}),
       partnerId: partner?.id ?? null,
+      partnerName,
     };
     try {
       const res = await fetch("/api/requests", {
@@ -178,8 +201,9 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
         });
         return;
       }
+      if (data.code === "INCOMPLETE_ANSWERS" && onIncompleteAnswers?.()) return;
       if (data.code && RELOAD_CODES.has(data.code)) {
-        // Texte affiché périmé : nouvelle configuration publique, puis nouvelle confirmation de la phrase.
+        // Configuration périmée : nouvelle configuration publique, puis nouvelle confirmation de la phrase.
         setConfirmedSentence(null);
         router.refresh();
       }
@@ -352,7 +376,7 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
             onChange={(e) => { setConfirmedSentence(e.target.checked ? sentence : null); setErrors((x) => ({ ...x, confirmRequest: undefined })); }}
             className="mt-1 size-5 shrink-0 accent-pine-600" aria-describedby={errors.confirmRequest ? `${id}-cf-e` : undefined} />
           <span className="text-[15px] font-medium text-ink-900">
-            {sentence ?? requestSentencePreview(config.companyName, worksText, partner?.displayName)}
+            {sentence ?? requestSentencePreview(config.companyName, worksText, partnerName)}
           </span>
         </label>
         {errors.confirmRequest && <p id={`${id}-cf-e`} className="field-error pl-8">{errors.confirmRequest}</p>}

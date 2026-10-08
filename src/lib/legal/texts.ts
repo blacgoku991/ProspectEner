@@ -29,9 +29,10 @@ export const CHANNEL_LABELS: Record<ChannelChoice, string> = {
 
 /**
  * Demande explicite et ponctuelle : elle autorise une réponse à cette demande précise,
- * pas une prospection ultérieure. Mise en relation : l'entreprise partenaire qui réalise les
- * travaux est nommée avant l'envoi ; elle seule peut recevoir la demande sans autre accord
- * (art. L223-1 et R223-4 du Code de la consommation, destinataires identifiés dès la collecte).
+ * pas une prospection ultérieure. Mise en relation : l'entreprise partenaire est nommée avant
+ * l'envoi, sans lui prêter de rôle (la personne a parfois déjà choisi l'entreprise de ses travaux) ;
+ * elle seule peut recevoir la demande sans autre accord (art. L223-1 et R223-4 du Code de la
+ * consommation, destinataires identifiés dès la collecte).
  */
 export function buildRequestSentence(companyName: string, channel: ChannelChoice, worksText: string, partnerName?: string | null): string {
   return requestSentence(companyName, CHANNEL_LABELS[channel], worksText, partnerName);
@@ -43,7 +44,7 @@ export function requestSentencePreview(companyName: string, worksText: string, p
 }
 
 function requestSentence(companyName: string, channelLabel: string, worksText: string, partnerName?: string | null): string {
-  const by = partnerName ? `${companyName} et par ${partnerName}, l'entreprise qui réalise les travaux,` : `${companyName},`;
+  const by = partnerName ? `${companyName} et par l'entreprise partenaire ${partnerName},` : `${companyName},`;
   return `Je demande à être contacté(e) par ${by} par ${channelLabel}, au sujet de mon projet de ${worksText}.`;
 }
 
@@ -70,6 +71,54 @@ export function buildContactNotice(s: SiteSettings): string {
       : "Elles ne sont jamais vendues, ni utilisées pour une newsletter ou d'autres sollicitations : vous pouvez annuler votre demande à tout moment.",
     `Durée de conservation (${months(s.retention.requestMonths)} au plus), base légale et exercice de vos droits (accès, effacement, opposition, réclamation auprès de la CNIL) : ${PRIVACY_LINK_TEXT}.`,
   ].join("\n\n");
+}
+
+export interface FaqEntry {
+  q: string;
+  a: string;
+}
+
+/**
+ * Questions fréquentes de la page d'accueil, affichées et publiées telles quelles (données
+ * structurées FAQPage) : un seul tableau pour les deux. La réponse sur le devenir des réponses
+ * suit la notice d'information : avec la mise en relation, la transmission à une entreprise
+ * partenaire et la rémunération sont annoncées.
+ */
+export function homeFaq(s: SiteSettings): FaqEntry[] {
+  return [
+    {
+      q: "Le test est-il gratuit ?",
+      a: "Oui. Le test est gratuit, sans inscription et sans engagement. Il prend environ 3 minutes.",
+    },
+    {
+      q: "Est-ce un site officiel ?",
+      a: "Non. C'est un service privé indépendant, non affilié à l'État, à l'Anah ou à France Rénov'. Le service public d'information est accessible gratuitement sur france-renov.gouv.fr.",
+    },
+    {
+      q: "Le résultat vaut-il accord d'une aide ?",
+      a: "Non. Il s'agit d'une pré-éligibilité indicative, fondée sur vos réponses et sur les règles en vigueur à la date de la simulation. Seule l'instruction du dossier par l'organisme concerné décide de l'attribution.",
+    },
+    {
+      q: "Dois-je donner mes coordonnées pour voir le résultat ?",
+      a: "Non. Le résultat s'affiche directement. Vous pouvez ensuite, si vous le souhaitez, demander à être recontacté(e) pour une étude de votre projet.",
+    },
+    {
+      q: "Que deviennent mes réponses ?",
+      a: referralEnabled(s)
+        ? "Tant que vous n'envoyez pas de demande, vos réponses restent dans votre navigateur. Si vous envoyez une demande, elles sont jointes à celle-ci. Elles ne sont transmises qu'à l'entreprise partenaire nommée dans votre demande avant l'envoi ou, si vous acceptez un rendez-vous, à l'entreprise qui l'assure, dont le nom vous est indiqué avant. Ces mises en relation sont rémunérées par les entreprises partenaires."
+        : "Tant que vous n'envoyez pas de demande, vos réponses restent dans votre navigateur. Si vous envoyez une demande, elles sont jointes à celle-ci et ne sont transmises à aucun partenaire.",
+    },
+    {
+      q: "Me demanderez-vous des documents ?",
+      a: "Jamais de numéro fiscal, d'avis d'imposition, de pièce d'identité, de coordonnées bancaires ou d'identifiants FranceConnect sur ce site.",
+    },
+    {
+      q: "Puis-je annuler ma demande ?",
+      a: referralEnabled(s)
+        ? "Oui, à tout moment, grâce au lien d'annulation fourni après l'envoi, ou depuis la page « Annuler une demande ». Si votre demande a déjà été transmise à une entreprise partenaire, nous l'informons de votre annulation."
+        : "Oui, à tout moment, grâce au lien d'annulation fourni après l'envoi, ou depuis la page « Annuler une demande ».",
+    },
+  ];
 }
 
 /** Fin de la notice, affichée comme lien vers la politique de confidentialité. */

@@ -115,7 +115,19 @@ const common = {
    * Le serveur refait le choix et refuse l'envoi si l'entreprise affichée n'est plus la bonne.
    */
   partnerId: z.uuid().nullable().optional(),
+  /**
+   * Nom de cette entreprise tel qu'affiché dans la phrase (dénomination, puis précisions), obligatoire
+   * avec `partnerId` : la phrase enregistrée comme preuve doit être celle que la personne a lue.
+   */
+  partnerName: z.string().max(400).nullable().optional(),
 };
+
+/** Entreprise nommée : son nom affiché accompagne son identifiant (le serveur compare les deux). */
+function partnerNameWithId(v: { partnerId?: string | null; partnerName?: string | null }, ctx: z.RefinementCtx): void {
+  if (v.partnerId && v.partnerName == null) {
+    ctx.addIssue({ code: "custom", path: ["partnerName"], message: "Nom de l'entreprise partenaire manquant." });
+  }
+}
 
 export const simulationRequestSchema = z
   .object({
@@ -125,7 +137,8 @@ export const simulationRequestSchema = z
     referenceDate: z.iso.date(),
     ...common,
   })
-  .strict();
+  .strict()
+  .superRefine(partnerNameWithId);
 
 export const quickRequestSchema = z
   .object({
@@ -133,7 +146,8 @@ export const quickRequestSchema = z
     answers: quickAnswersSchema,
     ...common,
   })
-  .strict();
+  .strict()
+  .superRefine(partnerNameWithId);
 
 export const requestPayloadSchema = z.discriminatedUnion("kind", [simulationRequestSchema, quickRequestSchema]);
 

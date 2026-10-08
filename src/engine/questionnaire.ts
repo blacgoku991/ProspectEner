@@ -75,6 +75,8 @@ export interface StepDef {
   id: StepId;
   title: string;
   subtitle: string;
+  /** Sous-titre affiché avec chaque question de l'étape : il indique à quoi servent les réponses demandées. */
+  showSubtitle?: boolean;
   questions: QuestionId[];
 }
 
@@ -88,7 +90,10 @@ export const STEPS: StepDef[] = [
   {
     id: "foyer",
     title: "Le foyer",
-    subtitle: "D'après votre avis d'impôt : le barème des aides dépend du revenu et de la taille du foyer.",
+    // Finalités de la collecte (barème des aides, rendez-vous proposé ou non), dites là où les données sont demandées.
+    subtitle:
+      "D'après votre avis d'impôt : le barème de certaines aides en dépend, et votre catégorie de revenus nous indique si nous pouvons vous proposer un rendez-vous.",
+    showSubtitle: true,
     questions: ["householdSize", "income"],
   },
   {
@@ -338,8 +343,8 @@ export function questionText(id: QuestionId, answers: Answers, ctx: QuestionCont
       help: "Sa dépose peut être aidée lorsqu'elle accompagne le remplacement de la chaudière au fioul.",
     },
     heatEmitters: {
-      title: "Comment la chaleur est-elle diffusée dans le logement ?",
-      help: "Principalement. Une pompe à chaleur air/eau se raccorde à des radiateurs à eau ou à un plancher chauffant à eau.",
+      title: "Comment la chaleur est-elle principalement diffusée dans le logement ?",
+      help: "Si plusieurs systèmes coexistent, choisissez le principal. Une pompe à chaleur air/eau se raccorde à des radiateurs à eau ou à un plancher chauffant à eau.",
     },
     radiatorCount: { title: "Combien de radiateurs à eau y a-t-il ?", help: "Un nombre approximatif suffit." },
     heatedArea: { title: "Quelle est la surface chauffée du logement ?", help: "En mètres carrés, uniquement les pièces chauffées. Une estimation suffit." },
@@ -362,11 +367,13 @@ export function questionText(id: QuestionId, answers: Answers, ctx: QuestionCont
     },
     householdSize: {
       title: "Combien de personnes composent votre foyer ?",
-      help: "Toutes les personnes qui vivent dans le logement, vous compris : vous, votre conjoint, vos enfants ou autres personnes à charge. Si vous louez le logement, comptez votre propre foyer.",
+      // Le détail (qui compter, « nombre de parts ») est dans l'aide repliable « Qui compter dans le foyer ? ».
+      help: "Toutes les personnes qui vivent dans le logement, vous compris. Si vous louez le logement, comptez votre propre foyer.",
     },
     income: {
       title: "Quel est le revenu fiscal de référence du foyer ?",
-      help: `Il figure en première page de votre avis d'impôt, dans le cadre « Vos références ». Si plusieurs avis concernent le foyer, additionnez-les. ${ctx.rules.incomeCeilings.rfrNote} Aucun justificatif n'est demandé ici.`,
+      // Où le lire sur l'avis d'impôt : expliqué une seule fois, dans l'aide repliable affichée avant les tranches.
+      help: `${ctx.rules.incomeCeilings.rfrNote} Aucun justificatif n'est demandé ici.`,
     },
   };
   return texts[id];
@@ -636,51 +643,99 @@ export interface AnswerSummaryLine {
   value: string;
 }
 
+/**
+ * Résumé des réponses dans l'ordre où les questions ont été posées (ordre des étapes) :
+ * « Vos réponses » et la fiche de l'administration suivent le parcours du visiteur.
+ */
 export function summarizeAnswers(answers: Answers, ctx: QuestionContext): AnswerSummaryLine[] {
   const lines: AnswerSummaryLine[] = [];
   const add = (question: QuestionId, label: string, value: string | undefined) => {
     if (value) lines.push({ question, label, value });
   };
-  const visible = new Set(visibleQuestions(answers, ctx));
-  const v = (q: QuestionId) => visible.has(q);
 
-  if (v("location") && answers.postalCode) {
-    add("location", "Localisation", [answers.postalCode, answers.communeName].filter(Boolean).join(" "));
-  }
-  if (v("housingType")) add("housingType", "Type de logement", labelOf(HOUSING_OPTIONS, answers.housingType));
-  if (v("occupancy")) add("occupancy", "Situation", labelOf(OCCUPANCY_OPTIONS, answers.occupancy));
-  if (v("residence")) add("residence", "Usage du logement", labelOf(residenceOptions(answers.occupancy), answers.residence));
-  if (v("construction") && answers.construction) {
-    add("construction", "Construction", describeConstruction(answers.construction as ConstructionAnswer));
-  }
-  if (v("works")) {
-    add("works", "Travaux envisagés", (answers.works ?? []).map((w) => WORK_CATEGORY_LABELS[w]).join(", "));
-  }
-  const items = selectedWorkItems(answers).filter((i) => i !== "AUTRE_PROJET" && i !== "RENOVATION_GLOBALE" && i !== "DEPOSE_CUVE_FIOUL");
-  if (items.length) add("works", "Détail des travaux", items.map((i) => WORK_ITEMS[i].label).join(", "));
-  if (v("currentHeating")) add("currentHeating", "Chauffage actuel", labelOf(CURRENT_HEATING_OPTIONS, answers.currentHeating));
-  if (v("gasBoilerCondensing")) add("gasBoilerCondensing", "Chaudière à condensation", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.gasBoilerCondensing));
-  if (v("oilTankRemoval")) add("oilTankRemoval", "Dépose de la cuve à fioul", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.oilTankRemoval));
-  if (v("heatEmitters")) add("heatEmitters", "Diffusion de la chaleur", labelOf(HEAT_EMITTER_OPTIONS, answers.heatEmitters));
-  if (v("radiatorCount")) add("radiatorCount", "Radiateurs à eau", describeCount(answers.radiatorCount, ""));
-  if (v("heatedArea")) add("heatedArea", "Surface chauffée", describeCount(answers.heatedArea, " m²"));
-  if (v("boilerLocation")) add("boilerLocation", "Emplacement de la chaudière", labelOf(BOILER_LOCATION_OPTIONS, answers.boilerLocation));
-  if (v("dpe")) add("dpe", "Classe énergétique (DPE)", labelOf(DPE_OPTIONS, answers.dpe));
-  if (v("quoteSigned")) add("quoteSigned", "Devis signé", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.quoteSigned));
-  if (v("quoteSignedRecency")) {
-    const g = graceDays(ctx.rules);
-    if (g) add("quoteSignedRecency", "Signature du devis", labelOf(quoteRecencyOptions(g), answers.quoteSignedRecency));
-  }
-  if (v("worksStarted")) add("worksStarted", "Travaux commencés", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.worksStarted));
-  if (v("priorAidStatus")) add("priorAidStatus", "Aide déjà demandée ou obtenue", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.priorAidStatus));
-  if (v("priorAids")) add("priorAids", "Aides concernées", (answers.priorAids ?? []).map((p) => labelOf(PRIOR_AID_OPTIONS, p)).join(", "));
-  if (v("contractor")) add("contractor", "Entreprise", labelOf(CONTRACTOR_OPTIONS, answers.contractor));
-  if (v("householdSize") && answers.householdSize) {
-    add("householdSize", "Personnes dans le foyer", String(answers.householdSize));
-  }
-  if (v("income")) {
-    const opts = incomeOptions(answers, ctx);
-    if (opts) add("income", "Revenu fiscal de référence", labelOf(opts, answers.income));
+  for (const q of visibleQuestions(answers, ctx)) {
+    switch (q) {
+      case "location":
+        if (answers.postalCode) add(q, "Localisation", [answers.postalCode, answers.communeName].filter(Boolean).join(" "));
+        break;
+      case "housingType":
+        add(q, "Type de logement", labelOf(HOUSING_OPTIONS, answers.housingType));
+        break;
+      case "householdSize":
+        if (answers.householdSize) add(q, "Personnes dans le foyer", String(answers.householdSize));
+        break;
+      case "income": {
+        const opts = incomeOptions(answers, ctx);
+        if (opts) add(q, "Revenu fiscal de référence", labelOf(opts, answers.income));
+        break;
+      }
+      case "works": {
+        add(q, "Travaux envisagés", (answers.works ?? []).map((w) => WORK_CATEGORY_LABELS[w]).join(", "));
+        const items = selectedWorkItems(answers).filter((i) => i !== "AUTRE_PROJET" && i !== "RENOVATION_GLOBALE" && i !== "DEPOSE_CUVE_FIOUL");
+        if (items.length) add(q, "Détail des travaux", items.map((i) => WORK_ITEMS[i].label).join(", "));
+        break;
+      }
+      // Détail des travaux : déjà résumé avec les travaux envisagés.
+      case "insulationItems":
+      case "heatPumpType":
+      case "heatingTarget":
+      case "hotWaterTarget":
+      case "ventilationTarget":
+        break;
+      case "currentHeating":
+        add(q, "Chauffage actuel", labelOf(CURRENT_HEATING_OPTIONS, answers.currentHeating));
+        break;
+      case "heatEmitters":
+        add(q, "Diffusion de la chaleur", labelOf(HEAT_EMITTER_OPTIONS, answers.heatEmitters));
+        break;
+      case "radiatorCount":
+        add(q, "Radiateurs à eau", describeCount(answers.radiatorCount, ""));
+        break;
+      case "heatedArea":
+        add(q, "Surface chauffée", describeCount(answers.heatedArea, " m²"));
+        break;
+      case "boilerLocation":
+        add(q, "Emplacement de la chaudière", labelOf(BOILER_LOCATION_OPTIONS, answers.boilerLocation));
+        break;
+      case "gasBoilerCondensing":
+        add(q, "Chaudière à condensation", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.gasBoilerCondensing));
+        break;
+      case "oilTankRemoval":
+        add(q, "Dépose de la cuve à fioul", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.oilTankRemoval));
+        break;
+      case "dpe":
+        add(q, "Classe énergétique (DPE)", labelOf(DPE_OPTIONS, answers.dpe));
+        break;
+      case "occupancy":
+        add(q, "Situation", labelOf(OCCUPANCY_OPTIONS, answers.occupancy));
+        break;
+      case "residence":
+        add(q, "Usage du logement", labelOf(residenceOptions(answers.occupancy), answers.residence));
+        break;
+      case "construction":
+        if (answers.construction) add(q, "Construction", describeConstruction(answers.construction as ConstructionAnswer));
+        break;
+      case "quoteSigned":
+        add(q, "Devis signé", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.quoteSigned));
+        break;
+      case "quoteSignedRecency": {
+        const g = graceDays(ctx.rules);
+        if (g) add(q, "Signature du devis", labelOf(quoteRecencyOptions(g), answers.quoteSignedRecency));
+        break;
+      }
+      case "worksStarted":
+        add(q, "Travaux commencés", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.worksStarted));
+        break;
+      case "priorAidStatus":
+        add(q, "Aide déjà demandée ou obtenue", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.priorAidStatus));
+        break;
+      case "priorAids":
+        add(q, "Aides concernées", (answers.priorAids ?? []).map((p) => labelOf(PRIOR_AID_OPTIONS, p)).join(", "));
+        break;
+      case "contractor":
+        add(q, "Entreprise", labelOf(CONTRACTOR_OPTIONS, answers.contractor));
+        break;
+    }
   }
   return lines;
 }

@@ -4,6 +4,11 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { useId, useState } from "react";
 import { useHashParams } from "@/lib/use-browser";
 
+/** « A », « A et B », « A, B et C ». */
+function frenchList(items: string[]): string {
+  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} et ${items[items.length - 1]}`;
+}
+
 /** Annulation par le visiteur : référence + code issus du lien (fragment d'URL, jamais envoyé dans les journaux serveur). */
 export function CancelRequest() {
   const params = useHashParams();
@@ -21,6 +26,7 @@ function CancelForm({ initialRef, initialToken }: { initialRef: string; initialT
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [already, setAlready] = useState(false);
+  const [partners, setPartners] = useState<string[]>([]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,9 +39,10 @@ function CancelForm({ initialRef, initialToken }: { initialRef: string; initialT
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ reference: reference.trim().toUpperCase(), token: token.trim(), deleteData, oppose }),
       });
-      const data = (await res.json().catch(() => ({}))) as { message?: string; alreadyCancelled?: boolean };
+      const data = (await res.json().catch(() => ({}))) as { message?: string; alreadyCancelled?: boolean; partnersToInform?: unknown };
       if (res.ok) {
         setAlready(Boolean(data.alreadyCancelled));
+        setPartners(Array.isArray(data.partnersToInform) ? data.partnersToInform.filter((p): p is string => typeof p === "string") : []);
         setState("done");
         return;
       }
@@ -52,8 +59,14 @@ function CancelForm({ initialRef, initialToken }: { initialRef: string; initialT
         <CheckCircle2 className="size-10 text-pine-600" aria-hidden />
         <h2 className="mt-3 text-2xl font-bold text-ink-900">{already ? "Cette demande était déjà annulée" : "Votre demande est annulée"}</h2>
         <p className="mt-2 text-ink-600">
-          Vous ne serez pas contacté(e) au titre de cette demande.
-          {deleteData ? " Vos coordonnées ont été effacées ; seule une preuve non nominative de la demande est conservée pour la durée légale." : ""}
+          {partners.length > 0
+            ? // La demande avait déjà été transmise : l'entreprise est informée par l'équipe, la personne ne peut pas
+              // encore être assurée qu'elle ne l'appellera plus.
+              `Votre demande avait été transmise à ${frenchList(partners)} : nous ${partners.length > 1 ? "les " : "l'"}informons ${frenchList(
+                ["de votre annulation", deleteData ? "de votre demande d'effacement" : "", oppose ? "de votre opposition" : ""].filter(Boolean),
+              )}.`
+            : "Vous ne serez pas contacté(e) au titre de cette demande."}
+          {deleteData ? " Vos coordonnées ont été effacées de nos fichiers ; seule une preuve non nominative de la demande est conservée pour la durée légale." : ""}
           {oppose ? " Votre opposition à être recontacté(e) a été enregistrée." : ""}
         </p>
       </div>

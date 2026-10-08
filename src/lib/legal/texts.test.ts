@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, referralEnabled, type SiteSettings } from "../settings-schema";
-import { buildContactNotice, buildRequestSentence, noticeParagraphs, PRIVACY_LINK_TEXT } from "./texts";
+import { buildContactNotice, buildRequestSentence, homeFaq, noticeParagraphs, PRIVACY_LINK_TEXT, requestSentencePreview } from "./texts";
 
 const BASE: SiteSettings = {
   ...DEFAULT_SETTINGS,
@@ -50,12 +50,41 @@ describe("phrase de la demande de contact", () => {
     expect(buildRequestSentence("Rénovation Exemple", "PHONE", "pompe à chaleur air/eau", "")).toBe(expected);
   });
 
-  it("avec une entreprise partenaire : elle est nommée avant l'envoi, avec son rôle", () => {
+  it("avec une entreprise partenaire : elle est nommée avant l'envoi, sans lui prêter de rôle", () => {
     expect(buildRequestSentence("Rénovation Exemple", "PHONE", "pompe à chaleur air/eau", "Chauffage Lyonnais, Lyon, RGE")).toBe(
-      "Je demande à être contacté(e) par Rénovation Exemple et par Chauffage Lyonnais, Lyon, RGE, l'entreprise qui réalise les travaux, par téléphone, au sujet de mon projet de pompe à chaleur air/eau.",
+      "Je demande à être contacté(e) par Rénovation Exemple et par l'entreprise partenaire Chauffage Lyonnais, Lyon, RGE, par téléphone, au sujet de mon projet de pompe à chaleur air/eau.",
     );
     expect(buildRequestSentence("Rénovation Exemple", "EMAIL", "isolation des murs", "Isolation Sud")).toBe(
-      "Je demande à être contacté(e) par Rénovation Exemple et par Isolation Sud, l'entreprise qui réalise les travaux, par e-mail, au sujet de mon projet de isolation des murs.",
+      "Je demande à être contacté(e) par Rénovation Exemple et par l'entreprise partenaire Isolation Sud, par e-mail, au sujet de mon projet de isolation des murs.",
     );
+    // La personne a parfois déjà choisi l'entreprise de ses travaux : l'entreprise partenaire n'est pas présentée comme celle qui les réalise.
+    expect(buildRequestSentence("Rénovation Exemple", "PHONE", "isolation des murs", "Isolation Sud")).not.toMatch(/réalise/);
+    expect(requestSentencePreview("Rénovation Exemple", "isolation des murs", "Isolation Sud")).toBe(
+      "Je demande à être contacté(e) par Rénovation Exemple et par l'entreprise partenaire Isolation Sud, par [choisissez un canal ci-dessus], au sujet de mon projet de isolation des murs.",
+    );
+  });
+});
+
+describe("questions fréquentes de la page d'accueil", () => {
+  const answer = (s: SiteSettings, q: RegExp) => homeFaq(s).find((f) => q.test(f.q))?.a ?? "";
+
+  it("sans mise en relation : les réponses ne sont transmises à aucun partenaire", () => {
+    const s = withActivity({ kinds: ["ACCOMPAGNEMENT"] });
+    expect(answer(s, /Que deviennent mes réponses/)).toBe(
+      "Tant que vous n'envoyez pas de demande, vos réponses restent dans votre navigateur. Si vous envoyez une demande, elles sont jointes à celle-ci et ne sont transmises à aucun partenaire.",
+    );
+    expect(homeFaq(s).some((f) => /rémunérées/.test(f.a))).toBe(false);
+  });
+
+  it("avec mise en relation : la transmission à l'entreprise partenaire et la rémunération sont annoncées, comme dans la notice", () => {
+    const s = withActivity({ kinds: ["MISE_EN_RELATION"] });
+    const faq = homeFaq(s);
+    expect(faq.some((f) => /aucun partenaire/.test(f.a))).toBe(false);
+    const answers = answer(s, /Que deviennent mes réponses/);
+    expect(answers).toContain("Elles ne sont transmises qu'à l'entreprise partenaire nommée dans votre demande avant l'envoi");
+    expect(answers).toContain("Ces mises en relation sont rémunérées par les entreprises partenaires.");
+    expect(answer(s, /Puis-je annuler/)).toContain("nous l'informons de votre annulation");
+    // Mêmes questions dans les deux cas (liste affichée et données structurées FAQPage).
+    expect(faq.map((f) => f.q)).toEqual(homeFaq(BASE).map((f) => f.q));
   });
 });

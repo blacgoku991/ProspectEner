@@ -11,6 +11,7 @@ import { TrackStep } from "@/components/site/TrackStep";
 import { WORK_ITEMS } from "@/engine";
 import { parisToday } from "@/lib/business-days";
 import { ceeBonuses, frenchList, longDate } from "@/lib/guides";
+import { homeFaq } from "@/lib/legal/texts";
 import { getPublicConfig } from "@/lib/public-config";
 import { DEFAULT_DESCRIPTION, pageMetadata, siteUrl } from "@/lib/seo";
 import { missingIdentityFields } from "@/lib/settings-schema";
@@ -33,37 +34,6 @@ const STEPS = [
   },
 ];
 
-const FAQ = [
-  {
-    q: "Le test est-il gratuit ?",
-    a: "Oui. Le test est gratuit, sans inscription et sans engagement. Il prend environ 3 minutes.",
-  },
-  {
-    q: "Est-ce un site officiel ?",
-    a: "Non. C'est un service privé indépendant, non affilié à l'État, à l'Anah ou à France Rénov'. Le service public d'information est accessible gratuitement sur france-renov.gouv.fr.",
-  },
-  {
-    q: "Le résultat vaut-il accord d'une aide ?",
-    a: "Non. Il s'agit d'une pré-éligibilité indicative, fondée sur vos réponses et sur les règles en vigueur à la date de la simulation. Seule l'instruction du dossier par l'organisme concerné décide de l'attribution.",
-  },
-  {
-    q: "Dois-je donner mes coordonnées pour voir le résultat ?",
-    a: "Non. Le résultat s'affiche directement. Vous pouvez ensuite, si vous le souhaitez, demander à être recontacté(e) pour une étude de votre projet.",
-  },
-  {
-    q: "Que deviennent mes réponses ?",
-    a: "Tant que vous n'envoyez pas de demande, vos réponses restent dans votre navigateur. Si vous envoyez une demande, elles sont jointes à celle-ci et ne sont transmises à aucun partenaire.",
-  },
-  {
-    q: "Me demanderez-vous des documents ?",
-    a: "Jamais de numéro fiscal, d'avis d'imposition, de pièce d'identité, de coordonnées bancaires ou d'identifiants FranceConnect sur ce site.",
-  },
-  {
-    q: "Puis-je annuler ma demande ?",
-    a: "Oui, à tout moment, grâce au lien d'annulation fourni après l'envoi, ou depuis la page « Annuler une demande ».",
-  },
-];
-
 export default async function HomePage() {
   const [{ config, settings }, ruleSet] = await Promise.all([getPublicConfig(), publishedRules()]);
   const rules = ruleSet.data;
@@ -71,6 +41,8 @@ export default async function HomePage() {
   const bonuses = ceeBonuses(rules, parisToday()).filter((b) => b.current);
   const url = siteUrl();
   const identityComplete = missingIdentityFields(settings).length === 0;
+  // Même tableau pour la liste affichée et les données structurées FAQPage.
+  const faq = homeFaq(settings);
 
   return (
     <>
@@ -103,7 +75,7 @@ export default async function HomePage() {
           {
             "@context": "https://schema.org",
             "@type": "FAQPage",
-            mainEntity: FAQ.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+            mainEntity: faq.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
           },
         ]}
       />
@@ -256,7 +228,7 @@ export default async function HomePage() {
           Questions fréquentes
         </h2>
         <div className="divide-y divide-ink-900/[0.07] rounded-3xl border border-ink-900/[0.07] bg-surface">
-          {FAQ.map(({ q, a }) => (
+          {faq.map(({ q, a }) => (
             <details key={q} className="group px-5 sm:px-6">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-semibold text-ink-900">
                 {q}

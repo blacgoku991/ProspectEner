@@ -64,6 +64,22 @@ export function cleanFreeText(v: string): string {
   return v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim();
 }
 
+/**
+ * Caractères invisibles de mise en forme : espaces de largeur nulle, marques et contrôles de
+ * direction (bidi), indicateur d'ordre des octets. Ils peuvent maquiller un texte recopié
+ * (récapitulatif, export) sans rien changer à ce qui s'affiche.
+ */
+const INVISIBLE_FORMAT_CHARS = /[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/g;
+
+export function stripInvisibleChars(v: string): string {
+  return v.replace(INVISIBLE_FORMAT_CHARS, "");
+}
+
+/** Texte sur une seule ligne : contrôles et caractères invisibles retirés, espaces et retours à la ligne réduits à une espace. */
+export function cleanSingleLine(v: string): string {
+  return stripInvisibleChars(cleanFreeText(v)).replace(/\s+/g, " ").trim();
+}
+
 export const AVAILABILITY_DAYS = ["LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"] as const;
 export const AVAILABILITY_SLOTS = ["MATIN", "MIDI", "APRES_MIDI", "SOIR"] as const;
 
@@ -98,8 +114,11 @@ export const contactSchema = z
     /** Obligatoire pour une réponse par e-mail ; facultatif avec un rappel téléphonique. */
     email: z.union([z.literal(""), emailSchema]).optional(),
     phone: z.union([z.literal(""), phoneSchema]).optional(),
-    /** Adresse du logement, facultative (préparation de la visite technique). */
-    streetAddress: z.string().max(200, "200 caractères maximum.").transform(cleanFreeText).optional(),
+    /**
+     * Adresse du logement, facultative (préparation de la visite technique). Une seule ligne : elle est
+     * recopiée telle quelle dans le récapitulatif transmis à l'entreprise (« Adresse : … »).
+     */
+    streetAddress: z.string().max(200, "200 caractères maximum.").transform(cleanSingleLine).optional(),
     availability: availabilitySchema.optional(),
     comment: z.string().max(1000, "1 000 caractères maximum.").transform(cleanFreeText).optional(),
     /** Case de confirmation de la demande explicite (jamais pré-cochée). */

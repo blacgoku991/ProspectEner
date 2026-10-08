@@ -36,10 +36,11 @@ import { listPartners, partnerDisplayName } from "@/lib/leads/partners-db";
 import { REQUESTED_PARTNER_SENT_EVENT } from "@/lib/leads/requested-partner";
 import { leadProfileFromRow } from "@/lib/leads/profile";
 import { requestContext } from "@/lib/request-context";
+import { PARTNER_INFORMED_EVENT, PARTNER_TO_INFORM_EVENT, type PartnerInformData } from "@/lib/requests/cancel";
 import { CHANNEL_LONG_LABELS, KIND_LABELS, OUTCOME_LABELS, STATUS_LABELS, worksTextForRequest } from "@/lib/requests/shared";
 import { referralEnabled } from "@/lib/settings-schema";
 import { getPublishedRuleSet } from "@/lib/rulesets";
-import { DAY_LABELS, SLOT_LABELS } from "@/lib/validation/contact";
+import { cleanSingleLine, DAY_LABELS, SLOT_LABELS } from "@/lib/validation/contact";
 import {
   addNoteAction,
   anonymizeAction,
@@ -48,6 +49,7 @@ import {
   deleteAction,
   logContactAction,
   markNotEligibleAction,
+  markPartnerInformedAction,
   recordOppositionAction,
   updateStatusAction,
 } from "./actions";
@@ -72,6 +74,8 @@ const EVENT_LABELS: Record<string, string> = {
   APPOINTMENT_SENT: "Rendez-vous transmis à l'entreprise",
   [REQUESTED_PARTNER_SENT_EVENT]: "Demande transmise à l'entreprise nommée",
   QUALIFICATION_FAILED: "Non éligible après vérification",
+  [PARTNER_TO_INFORM_EVENT]: "Entreprise à informer",
+  [PARTNER_INFORMED_EVENT]: "Entreprise informée",
 };
 
 const CONTACT_OUTCOME_LABELS: Record<string, string> = {
@@ -91,6 +95,29 @@ const CHECK_ICON: Record<Exclude<CheckStatus, "OK">, React.ReactNode> = {
   KO: <CircleX className="mt-0.5 size-3.5 shrink-0 text-red-600" aria-label="Non rempli" />,
   UNKNOWN: <CircleHelp className="mt-0.5 size-3.5 shrink-0 text-amber-600" aria-label="Inconnu" />,
 };
+
+/** Noms d'entreprise comparés sans tenir compte des espaces (dénominations reprises de l'ancienne liste libre). */
+function sameDisplayName(a: string, b: string): boolean {
+  const norm = (v: string) => v.replace(/\s+/g, " ").trim();
+  return norm(a) === norm(b);
+}
+
+/** Entreprises d'un événement « entreprise à informer » ou « entreprise informée ». */
+function eventPartners(data: unknown): string[] {
+  const partners = (data as { partners?: unknown } | null)?.partners;
+  return Array.isArray(partners) ? partners.filter((p): p is string => typeof p === "string") : [];
+}
+
+/** Ce dont les entreprises doivent être informées : « de l'annulation de la demande et de l'opposition… ». */
+function partnerInformSubject(d: Partial<PartnerInformData>): string {
+  const parts = [
+    d.cancelled ? "de l'annulation de la demande" : null,
+    d.oppose ? "de l'opposition de la personne à tout nouveau contact" : null,
+    d.deleteData ? "de l'effacement des données de la personne" : null,
+  ].filter((p): p is string => p !== null);
+  if (parts.length === 0) return "de l'annulation de la demande";
+  return parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(", ")} et ${parts[parts.length - 1]}`;
+}
 
 /** Liste de définitions de la fiche ; une valeur absente s'affiche « — ». */
 function FieldList({ fields, render }: { fields: LeadField[]; render?: (f: LeadField) => React.ReactNode }) {
@@ -116,6 +143,8 @@ function eventDetail(type: string, data: unknown): string {
     return `${dtAppointment.format(new Date(d.at))} · ${APPOINTMENT_MODES[d.mode as AppointmentMode] ?? ""}${aids ? ` · ${aids}` : ""}${typeof d.partner === "string" ? ` · confié à ${d.partner}` : ""}`;
   }
   if ((type === "APPOINTMENT_SENT" || type === REQUESTED_PARTNER_SENT_EVENT) && typeof d.partner === "string") return d.partner;
+  if (type === PARTNER_TO_INFORM_EVENT) return `${eventPartners(d).join(" ; ")}, ${partnerInformSubject(d as Partial<PartnerInformData>)}`;
+  if (type === PARTNER_INFORMED_EVENT) return eventPartners(d).join(" ; ");
   if (type === "CREATED") {
     return `${KIND_LABELS[d.kind as keyof typeof KIND_LABELS] ?? ""}${typeof d.partner === "string" ? ` — entreprise nommée : ${d.partner}` : ""}${d.oppositionMatch ? " — contact présent dans la liste d'opposition" : ""}`;
   }
@@ -172,7 +201,22 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     .sort((a, b) => MATCH_ORDER[a.match.status] - MATCH_ORDER[b.match.status] || a.partner.name.localeCompare(b.partner.name, "fr"));
   const referral = referralEnabled(ctx.settings);
   // Entreprise nommée dans la demande (phrase validée avant l'envoi) : la demande peut lui être transmise, à elle seule.
-  const requestedMatch = r.requestedPartnerId ? partnerMatches.find((m) => m.partner.id === r.requestedPartnerId) : undefined;
+  // Par identifiant, ou par le nom affiché (entreprise recréée, dénomination reprise de l'ancienne liste libre).
+  const isRequested = (p: { id: string }, display: string) =>
+    (r.requestedPartnerId !== null && p.id === r.requestedPartnerId) || (r.requestedPartnerName !== null && sameDisplayName(display, r.requestedPartnerName));
+  const requestedMatch = partnerMatches.find((m) => isRequested(m.partner, m.display));
+  // Entreprise du rendez-vous : par identifiant, sinon par le nom enregistré (rendez-vous antérieurs).
+  const hasAppointment = (p: { id: string; name: string }, display: string) =>
+    r.appointmentPartner !== null &&
+    (r.appointmentPartnerId
+      ? r.appointmentPartnerId === p.id
+      : sameDisplayName(r.appointmentPartner, display) || sameDisplayName(r.appointmentPartner, p.name));
+
+  // Annulation, opposition ou effacement d'une demande déjà transmise : les entreprises qui l'ont reçue sont à informer.
+  const lastPartnerInform = r.events.find((e) => e.type === PARTNER_TO_INFORM_EVENT);
+  const partnerInform = lastPartnerInform ? (lastPartnerInform.data as Partial<PartnerInformData> | null) : null;
+  const partnersToInform = lastPartnerInform ? eventPartners(lastPartnerInform.data) : [];
+  const partnersToInformText = partnersToInform.length > 0 ? partnersToInform.join(" ; ") : "l'entreprise partenaire";
 
   // Récapitulatif pour l'entreprise partenaire : la fiche de la demande (coordonnées et réponses, y compris la
   // catégorie de revenus, sur laquelle les entreprises établissent leur offre : la notice annonce la transmission
@@ -184,7 +228,8 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             `Rendez-vous : ${dtAppointment.format(r.appointmentAt)}${r.appointmentMode ? ` (${(APPOINTMENT_MODES[r.appointmentMode as AppointmentMode] ?? r.appointmentMode).toLowerCase()})` : ""}`,
             `Référence : ${r.reference}`,
           ],
-          [...contactFields, ...profileFields].filter((f) => f.value !== null && f.value !== "").map((f) => `${f.label} : ${f.value}`),
+          // Une ligne par champ : retours à la ligne et caractères invisibles retirés (demandes enregistrées avant ce contrôle).
+          [...contactFields, ...profileFields].filter((f) => f.value !== null && f.value !== "").map((f) => `${f.label} : ${cleanSingleLine(f.value ?? "")}`),
           [
             qualification ? `Conditions confirmées pour : ${qualification.aids.map((a) => aidName(a)).join(", ")}` : null,
             r.appointmentNote ? `Précisions : ${r.appointmentNote}` : null,
@@ -218,6 +263,35 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </div>
+
+      {r.partnerInformRequiredAt &&
+        (r.partnerInformedAt ? (
+          <Alert tone="success">
+            {partnersToInformText} : informée{partnersToInform.length > 1 ? "s" : ""} {partnerInformSubject(partnerInform ?? {})} le{" "}
+            {dts.format(r.partnerInformedAt)}.
+          </Alert>
+        ) : (
+          <Alert tone="critical">
+            <p>
+              <strong>
+                Informer {partnersToInformText} {partnerInformSubject(partnerInform ?? {})}.
+              </strong>{" "}
+              {partnersToInform.length > 1
+                ? `La demande leur avait été transmise : elles ne doivent plus contacter la personne au titre de cette demande${partnerInform?.deleteData ? " et doivent effacer les données reçues" : ""}. Prévenez-les sans tarder, puis indiquez-le ici.`
+                : `La demande lui avait été transmise : elle ne doit plus contacter la personne au titre de cette demande${partnerInform?.deleteData ? " et doit effacer les données reçues" : ""}. Prévenez-la sans tarder, puis indiquez-le ici.`}
+            </p>
+            <form action={markPartnerInformedAction} className="mt-3">
+              <input type="hidden" name="id" value={r.id} />
+              <SubmitButton
+                variant="dark"
+                className="py-2 text-xs"
+                confirm={partnersToInform.length > 1 ? `Confirmer que ${partnersToInformText} ont été informées ?` : `Confirmer que ${partnersToInformText} a été informée ?`}
+              >
+                {partnersToInform.length > 1 ? "J'ai informé les entreprises" : "J'ai informé l'entreprise"}
+              </SubmitButton>
+            </form>
+          </Alert>
+        ))}
 
       {r.oppositionMatch && (
         <Alert tone="critical">
@@ -265,7 +339,9 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 <p className="mt-1 pl-6 text-xs text-ink-700">
                   {r.requestedPartnerSentAt
                     ? `Demande transmise à l'entreprise le ${dts.format(r.requestedPartnerSentAt)}.`
-                    : "Pas encore transmise : export « Demandes à transmettre » de l'entreprise (Partenaires)."}
+                    : isAdmin
+                      ? "Pas encore transmise : transmission depuis la fiche de l'entreprise (Partenaires)."
+                      : "Pas encore transmise : la transmission est faite par un administrateur."}
                   {!requestedMatch && " Entreprise désactivée ou supprimée depuis la demande."}
                 </p>
               </div>
@@ -292,12 +368,12 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                         </div>
                         <span className={`badge shrink-0 ${MATCH_BADGE[match.status].className}`}>{MATCH_BADGE[match.status].label}</span>
                       </div>
-                      {p.id === r.requestedPartnerId && (
+                      {isRequested(p, display) && (
                         <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-pine-700">
                           <Handshake className="size-3.5" aria-hidden /> Nommée dans la demande
                         </p>
                       )}
-                      {r.appointmentPartner && (r.appointmentPartner === display || r.appointmentPartner === p.name) && (
+                      {hasAppointment(p, display) && (
                         <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-pine-700">
                           <CalendarCheck className="size-3.5" aria-hidden /> Rendez-vous confié à cette entreprise
                         </p>
@@ -422,7 +498,8 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 requestId={r.id}
                 groups={groups}
                 referral={referral}
-                partners={partnerMatches.map((m) => ({ name: m.display, match: m.match.status, requested: m.partner.id === r.requestedPartnerId }))}
+                partners={partnerMatches.map((m) => ({ id: m.partner.id, name: m.display, match: m.match.status, requested: isRequested(m.partner, m.display) }))}
+                requestedName={r.requestedPartnerName}
               />
               <form action={markNotEligibleAction} className="mt-5 border-t border-ink-900/[0.06] pt-4">
                 <input type="hidden" name="id" value={r.id} />

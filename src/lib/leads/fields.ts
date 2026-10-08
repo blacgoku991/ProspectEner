@@ -49,7 +49,7 @@ export function leadProfileFields(p: LeadProfile): LeadField[] {
     { key: "householdSize", label: "Personnes au foyer", value: p.householdSize === null ? null : String(p.householdSize) },
     {
       key: "income",
-      label: "Revenus (déclaratif, à vérifier sur l'avis d'impôt)",
+      label: "Revenus (déclaratif, à confirmer oralement avec la personne)",
       value: p.incomeCategory === null ? null : INCOME_PROFILE[p.incomeCategory].label,
     },
   ];

@@ -224,9 +224,9 @@ export function QuestionView({ id, answers, ctx, update }: QuestionViewProps) {
         RADIATEURS_ELECTRIQUES: Zap,
         POELE_CHEMINEE: Flame,
         AUTRE: Circle,
-        INCONNU: CircleHelp,
       });
       const select = (v: HeatEmitter) => update({ heatEmitters: v }, true);
+      // « Je ne sais pas » n'est pas un mode de chauffage : choix à part, sous les deux groupes.
       return (
         <div className="space-y-5">
           <div>
@@ -245,11 +245,12 @@ export function QuestionView({ id, answers, ctx, update }: QuestionViewProps) {
             <SingleChoice
               label="Autres modes de chauffage"
               compact
-              options={options.filter((o) => !HYDRAULIC_EMITTERS.includes(o.value))}
+              options={options.filter((o) => !HYDRAULIC_EMITTERS.includes(o.value) && o.value !== "INCONNU")}
               value={answers.heatEmitters}
               onSelect={select}
             />
           </div>
+          <UnknownChoice selected={answers.heatEmitters === "INCONNU"} onSelect={() => select("INCONNU")} />
         </div>
       );
     }
@@ -361,9 +362,10 @@ export function QuestionView({ id, answers, ctx, update }: QuestionViewProps) {
       // Chaque tranche rappelle le profil de revenus (bleu, jaune, violet, rose) avec sa pastille.
       const options = (incomeOptions(answers, ctx) ?? []).map((o) => ({ ...o, hintDot: isIncomeCategory(o.value) ? INCOME_DOT_CLASS[o.value] : undefined }));
       return (
-        <div className="space-y-6">
-          <SingleChoice label="Revenu fiscal de référence" columns={1} options={options} value={answers.income} onSelect={(v) => update({ income: v }, true)} />
+        // L'aide de lecture de l'avis d'impôt précède les tranches, qui avancent dès qu'on en choisit une.
+        <div className="space-y-5">
           <AvisImpotHelp question="income" />
+          <SingleChoice label="Revenu fiscal de référence" columns={1} options={options} value={answers.income} onSelect={(v) => update({ income: v }, true)} />
         </div>
       );
     }
@@ -553,24 +555,34 @@ function NumberInput({
       </form>
       <div className="flex items-center gap-3">
         <span className="text-sm text-ink-500">ou</span>
-        <button
-          type="button"
-          aria-pressed={value === "INCONNU"}
-          onClick={() => {
+        <UnknownChoice
+          selected={value === "INCONNU"}
+          onSelect={() => {
             setText("");
             setTouched(false);
             onChange("INCONNU", true);
           }}
-          className={cn(
-            "inline-flex min-h-12 items-center gap-2 rounded-full border-2 px-5 py-2.5 text-sm font-semibold transition",
-            value === "INCONNU" ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-surface text-ink-700 hover:border-pine-300",
-          )}
-        >
-          <CircleHelp className="size-4" aria-hidden />
-          Je ne sais pas
-        </button>
+        />
       </div>
     </div>
+  );
+}
+
+/** Choix « Je ne sais pas » présenté à part des autres réponses. */
+function UnknownChoice({ selected, onSelect }: { selected: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        "inline-flex min-h-12 items-center gap-2 rounded-full border-2 px-5 py-2.5 text-sm font-semibold transition",
+        selected ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-surface text-ink-700 hover:border-pine-300",
+      )}
+    >
+      <CircleHelp className="size-4" aria-hidden />
+      Je ne sais pas
+    </button>
   );
 }
 

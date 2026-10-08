@@ -62,8 +62,22 @@ function Group({ legend, help, children, className }: { legend: string; help?: s
   );
 }
 
-/** Fiche d'une entreprise partenaire : identité publique et critères des demandes recherchées. */
-export function PartnerForm({ partnerId, initial, submitLabel }: { partnerId?: string; initial: PartnerFormValues; submitLabel: string }) {
+/**
+ * Fiche d'une entreprise partenaire : identité publique et critères des demandes recherchées.
+ * `nameLocked` : des demandes la nomment déjà ou des rendez-vous lui ont été confiés, sa dénomination
+ * ne peut plus changer (contrôlé aussi par le serveur).
+ */
+export function PartnerForm({
+  partnerId,
+  initial,
+  submitLabel,
+  nameLocked = false,
+}: {
+  partnerId?: string;
+  initial: PartnerFormValues;
+  submitLabel: string;
+  nameLocked?: boolean;
+}) {
   const [state, action] = useActionState<PartnerState, FormData>(savePartnerAction, {});
   const uid = useId();
   // Après une erreur, la saisie renvoyée par le serveur devient la valeur par défaut des champs.
@@ -77,8 +91,21 @@ export function PartnerForm({ partnerId, initial, submitLabel }: { partnerId?: s
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block text-sm text-ink-800">
             Dénomination *
-            <input name="name" required maxLength={NAME_MAX} defaultValue={v.name} autoComplete="off" className="field-input mt-1 py-2.5 text-sm" />
-            <span className="mt-1 block text-xs text-ink-500">Telle qu&apos;elle est annoncée à la personne avant son accord.</span>
+            <input
+              name="name"
+              required
+              maxLength={NAME_MAX}
+              defaultValue={v.name}
+              readOnly={nameLocked}
+              aria-describedby={`${uid}-name-hint`}
+              autoComplete="off"
+              className={nameLocked ? "field-input mt-1 bg-sand-100 py-2.5 text-sm text-ink-700" : "field-input mt-1 py-2.5 text-sm"}
+            />
+            <span id={`${uid}-name-hint`} className="mt-1 block text-xs text-ink-500">
+              {nameLocked
+                ? "Des demandes nomment déjà cette entreprise ou lui ont été confiées : sa dénomination ne peut plus changer. Pour une autre entreprise, créez une nouvelle fiche."
+                : "Telle qu'elle est annoncée à la personne, dans sa demande ou avant son accord pour un rendez-vous."}
+            </span>
           </label>
           <label className="block text-sm text-ink-800">
             Précisions
@@ -91,14 +118,16 @@ export function PartnerForm({ partnerId, initial, submitLabel }: { partnerId?: s
           <span>
             Entreprise active
             <span className="block text-xs text-ink-500">
-              Une entreprise active peut se voir confier des rendez-vous ; elle est citée dans la politique de confidentialité et les mentions légales.
+              Une entreprise active peut se voir confier des rendez-vous et peut être nommée dans la demande des visiteurs dont les réponses
+              correspondent à ses critères ; elle est citée dans la politique de confidentialité et les mentions légales.
             </span>
           </span>
         </label>
         {partnerId && (
           <p className="text-xs text-ink-500">
-            Les rendez-vous déjà confiés restent rattachés au nom annoncé à la personne lors de son accord : après un changement de dénomination ou de
-            précisions, ils ne sont plus comptés ni exportés depuis cette fiche.
+            Les demandes et les rendez-vous déjà confiés gardent le nom lu par la personne ; ils restent rattachés à cette fiche après un changement
+            de précisions. Une demande qui nomme l&apos;entreprise sous un autre nom est signalée dans l&apos;export (« Nom à la demande ≠ nom
+            actuel »).
           </p>
         )}
       </section>
@@ -107,8 +136,10 @@ export function PartnerForm({ partnerId, initial, submitLabel }: { partnerId?: s
         <div>
           <h2 id={`${uid}-criteria`} className="font-sans text-base font-semibold text-ink-900">Demandes recherchées</h2>
           <p className="mt-1 text-sm text-ink-600">
-            Ces critères servent uniquement à trier les demandes dans l&apos;administration. Un groupe sans case cochée ne filtre pas. Une réponse
-            « je ne sais pas » n&apos;écarte jamais une demande : elle reste « à vérifier » avec la personne.
+            Ces critères choisissent l&apos;entreprise nommée dans la demande du visiteur avant l&apos;envoi (une correspondance complète d&apos;abord,
+            sinon une à vérifier, puis l&apos;ordre alphabétique) et servent à trier les demandes. Une modification s&apos;applique immédiatement aux
+            visiteurs en cours. Un groupe sans case cochée ne filtre pas : sans aucun critère, l&apos;entreprise peut être nommée dans toutes les
+            demandes. Une réponse « je ne sais pas » n&apos;écarte jamais une demande : elle reste « à vérifier » avec la personne.
           </p>
         </div>
 
@@ -124,7 +155,7 @@ export function PartnerForm({ partnerId, initial, submitLabel }: { partnerId?: s
         </Group>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <Group legend="Revenus du foyer" help="Catégories France Rénov' déclarées par la personne, vérifiées ensuite sur son avis d'impôt.">
+          <Group legend="Revenus du foyer" help="Catégories France Rénov' déclarées par la personne, sans justificatif.">
             <Checks name="incomeCategories" choices={INCOME_CHOICES} selected={v.incomeCategories} />
           </Group>
           <Group legend="Type de logement">

@@ -21,6 +21,8 @@ export default async function ConfidentialitePage() {
   const r = s.retention;
   const rights = c.privacyContact || c.email;
   const referral = referralEnabled(s);
+  // Rendez-vous réservés à certaines catégories de revenus (paramètres) : usage annoncé dans la finalité.
+  const incomeGating = s.contact.acceptedIncomeCategories.length < 4;
   return (
     <LegalPage title="Politique de confidentialité" missing={[!c.name && "responsable du traitement", !rights && "contact pour exercer vos droits"].filter(Boolean) as string[]}>
       <h2>Responsable du traitement</h2>
@@ -48,8 +50,9 @@ export default async function ConfidentialitePage() {
             <th>Finalité</th>
             <td>
               Répondre à votre demande et étudier votre projet de rénovation énergétique
+              {incomeGating ? " ; vérifier, d'après la catégorie de revenus que vous déclarez, si un rendez-vous peut vous être proposé" : ""}
               {referral
-                ? " ; transmettre votre demande à l'entreprise partenaire qu'elle nomme, le cas échéant ; si vous l'acceptez, organiser votre rendez-vous avec l'entreprise qui réalise l'étude et les travaux."
+                ? " ; choisir, d'après vos réponses (dont votre catégorie de revenus), l'entreprise partenaire éventuellement nommée dans votre demande et lui transmettre celle-ci ; si vous l'acceptez, organiser votre rendez-vous avec une entreprise partenaire."
                 : "."}
             </td>
           </tr>
@@ -61,10 +64,13 @@ export default async function ConfidentialitePage() {
               {referral ? (
                 <>
                   Si votre demande nomme une entreprise partenaire (son nom figure dans la phrase que vous validez avant l&apos;envoi) : cette entreprise,
-                  et elle seule. Sinon, si vous acceptez un rendez-vous : une seule entreprise partenaire, celle qui réalise l&apos;étude et les travaux,
-                  dont le nom vous est indiqué avant{partners.length > 0 ? <> (entreprises concernées : {partners.join(" ; ")})</> : null}. Elle reçoit vos coordonnées, votre
-                  projet, les caractéristiques utiles du logement et votre catégorie de revenus. L&apos;éditeur est rémunéré par ses entreprises partenaires
-                  pour ces mises en relation. Aucune transmission à d&apos;autres entreprises.
+                  et elle seule. Sinon, si vous acceptez un rendez-vous : une seule entreprise partenaire, dont le nom vous est indiqué
+                  avant{partners.length > 0 ? <> (entreprises concernées : {partners.join(" ; ")})</> : null}. Elle reçoit vos coordonnées (y compris
+                  l&apos;e-mail et l&apos;adresse si vous les avez indiqués), votre projet, les caractéristiques utiles du logement et du chauffage, la taille
+                  de votre foyer et votre catégorie de revenus. Elle les traite ensuite en tant que responsable de traitement distinct, uniquement pour
+                  répondre à votre demande ; vous pouvez exercer vos droits auprès d&apos;elle ou auprès de nous, et nous l&apos;informons de toute
+                  annulation, opposition ou demande d&apos;effacement. L&apos;éditeur est rémunéré par ses entreprises partenaires pour ces mises en
+                  relation. Aucune transmission à d&apos;autres entreprises.
                 </>
               ) : (
                 "Aucune vente ni transmission à des partenaires."
@@ -108,6 +114,9 @@ export default async function ConfidentialitePage() {
       <p>
         Vous disposez des droits d&apos;accès, de rectification, d&apos;effacement, de limitation et d&apos;opposition. Écrivez à <Field value={rights} />.
         Vous pouvez aussi annuler votre demande et faire effacer vos coordonnées depuis la page <Link href="/annulation">Annuler une demande</Link>.
+        {referral
+          ? " Si votre demande a déjà été transmise à une entreprise partenaire, nous l'informons de votre annulation, de votre opposition ou de votre demande d'effacement."
+          : ""}{" "}
         En cas de difficulté, vous pouvez introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">www.cnil.fr</a>).
       </p>
 

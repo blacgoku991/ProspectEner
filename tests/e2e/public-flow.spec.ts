@@ -32,7 +32,7 @@ test.describe("parcours public complet", () => {
     // Le foyer est demandé juste après le type de logement, avec l'aide pour lire l'avis d'impôt.
     await expect(page.getByRole("heading", { name: /Combien de personnes composent votre foyer/ })).toBeVisible();
     await expect(page.getByText(/^Étape 2 sur \d+ · question 3 sur \d+$/)).toBeVisible();
-    await expect(page.getByText("Où trouver ces informations sur mon avis d'impôt ?")).toBeVisible();
+    await expect(page.getByText("Qui compter dans le foyer ?")).toBeVisible();
     await setHouseholdSize(page, 3);
     await next(page);
     await expect(page.getByRole("heading", { name: /revenu fiscal de référence/ })).toBeVisible();
@@ -79,7 +79,7 @@ test.describe("parcours public complet", () => {
     await page.getByLabel("Commentaire (facultatif)").fill("Portail vert au fond de l'impasse");
     // Mise en relation : l'entreprise partenaire qui correspond aux réponses est nommée dans la demande, avant l'envoi.
     const confirm = page.getByRole("checkbox", {
-      name: "Je demande à être contacté(e) par Rénovation Test E2E et par Chauffage Test E2E, Lyon, RGE, l'entreprise qui réalise les travaux, par téléphone, au sujet de mon projet de pompe à chaleur air/eau.",
+      name: "Je demande à être contacté(e) par Rénovation Test E2E et par l'entreprise partenaire Chauffage Test E2E, Lyon, RGE, par téléphone, au sujet de mon projet de pompe à chaleur air/eau.",
     });
     await expect(confirm).not.toBeChecked();
     // Information courte sous le formulaire, le détail étant dans la politique de confidentialité.
@@ -98,7 +98,7 @@ test.describe("parcours public complet", () => {
     await expect(page.getByText(/Aucun dossier d'aide n'a été déposé/)).toBeVisible();
     // L'entreprise nommée dans la demande est rappelée sur la confirmation.
     await expect(
-      page.getByText(/Votre demande est aussi transmise à Chauffage Test E2E, Lyon, RGE, l'entreprise qui réalise les travaux : elle pourra vous recontacter à ce sujet\./),
+      page.getByText(/Votre demande est également transmise à Chauffage Test E2E, Lyon, RGE, entreprise partenaire : elle pourra vous contacter, uniquement au sujet de ce projet\./),
     ).toBeVisible();
     const reference = (await page.locator("strong.font-mono").first().textContent())?.trim() ?? "";
     expect(reference).toMatch(/^PE-/);
@@ -118,7 +118,7 @@ test.describe("parcours public complet", () => {
     await expect(
       admin
         .getByText(
-          /Je demande à être contacté\(e\) par Rénovation Test E2E et par Chauffage Test E2E, Lyon, RGE, l'entreprise qui réalise les travaux, par téléphone, au sujet de mon projet de pompe à chaleur air\/eau\./,
+          /Je demande à être contacté\(e\) par Rénovation Test E2E et par l'entreprise partenaire Chauffage Test E2E, Lyon, RGE, par téléphone, au sujet de mon projet de pompe à chaleur air\/eau\./,
         )
         .first(),
     ).toBeVisible();
@@ -159,9 +159,9 @@ test.describe("parcours public complet", () => {
       await expect(card.getByText("80 m² ou plus")).toBeVisible();
       await expect(card.getByText("Demandes qui la nomment", { exact: true })).toBeVisible();
       await expect(card.getByText(/dont \d+ à transmettre/)).toBeVisible();
-      await expect(card.getByRole("link", { name: "Exporter les demandes à transmettre (CSV)" })).toHaveAttribute(
+      await expect(card.getByRole("link", { name: /^Transmettre (la nouvelle demande|les \d+ nouvelles demandes)$/ })).toHaveAttribute(
         "href",
-        /\/admin\/partenaires\/[0-9a-f-]{36}\/export\?type=demandes&nouvelles=1$/,
+        /\/admin\/partenaires\/[0-9a-f-]{36}#transmettre$/,
       );
       await card.getByRole("link", { name: "Voir ces demandes" }).click();
       await expect(admin).toHaveURL(/\/admin\/demandes\?partenaire=[0-9a-f-]{36}$/);
@@ -238,9 +238,8 @@ test.describe("parcours public complet", () => {
     const persona = { ...HYDRAULIC_ELIGIBLE, income: /profil rose/ };
     await answerQuestionnaire(page, persona, { until: /^Quels travaux envisagez-vous/ });
     // Information donnée dès la question suivante ; le test continue normalement.
-    const notice = page.getByRole("note").filter({ hasText: /nous ne proposons pas de rendez-vous pour cette catégorie de revenus/ });
+    const notice = page.getByRole("note").filter({ hasText: /Nous ne proposons pas de rendez-vous pour cette catégorie de revenus/ });
     await expect(notice).toBeVisible();
-    await expect(notice.getByRole("link", { name: /France Rénov'/ })).toHaveAttribute("href", "https://france-renov.gouv.fr/servicepublic");
     await answerQuestionnaire(page, persona, { restart: false });
     // Le résultat lui-même ne change pas ; seul le rendez-vous n'est pas proposé.
     await expect(page.getByRole("heading", { name: "Votre projet est potentiellement éligible" })).toBeVisible();

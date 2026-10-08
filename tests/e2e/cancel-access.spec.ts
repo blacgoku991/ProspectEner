@@ -85,8 +85,9 @@ test.describe("contrôle d'accès à l'administration", () => {
     expect(partners?.status()).toBe(404);
     const newPartner = await page.goto("/admin/partenaires/nouveau");
     expect(newPartner?.status()).toBe(404);
-    const partnerExport = await page.goto("/admin/partenaires/00000000-0000-0000-0000-000000000000/export");
-    expect(partnerExport?.status()).toBe(403);
+    // Réponse 404 sans contenu : lue par une requête (une navigation échouerait sans page à afficher).
+    const partnerExport = await page.request.get("/admin/partenaires/00000000-0000-0000-0000-000000000000/export", { maxRedirects: 0 });
+    expect(partnerExport.status()).toBe(404);
     const unknown = await page.goto("/admin/demandes/00000000-0000-0000-0000-000000000000");
     expect(unknown?.status()).toBe(404);
   });

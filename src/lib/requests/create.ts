@@ -91,6 +91,60 @@ async function existingReplay(idempotencyKey: string, payloadHash: string): Prom
 const PARTNER_CHANGED_MESSAGE =
   "Les informations sur l'entreprise partenaire ont été mises à jour : merci de relire votre demande avant de l'envoyer.";
 
+/**
+ * Coordonnées enregistrées : celle du canal choisi ; l'e-mail (avec un rappel) et l'adresse du logement
+ * seulement s'ils sont donnés. Aucun numéro n'est conservé pour une réponse par e-mail : seul le canal
+ * demandé peut être utilisé.
+ */
+function normalizedContact(payload: ParsedRequestPayload) {
+  const channel = payload.contact.channel;
+  return {
+    firstName: payload.contact.firstName,
+    lastName: payload.contact.lastName,
+    channel,
+    email: payload.contact.email || null,
+    phone: channel === "PHONE" ? payload.contact.phone || null : null,
+    streetAddress: payload.contact.streetAddress || null,
+    availability: payload.contact.availability ?? null,
+    comment: payload.contact.comment || null,
+  };
+}
+
+/** Empreinte du contenu de la demande (idempotence : un renvoi doit porter exactement le même contenu). */
+function payloadHashFor(payload: ParsedRequestPayload, answers: Answers): string {
+  const shownPartnerId = payload.partnerId ?? null;
+  return sha256Hex(
+    JSON.stringify({
+      kind: payload.kind,
+      answers,
+      contact: normalizedContact(payload),
+      ruleSetVersion: payload.kind === "SIMULATION" ? payload.ruleSetVersion : null,
+      referenceDate: payload.kind === "SIMULATION" ? payload.referenceDate : null,
+      // Absente sans entreprise nommée : empreinte inchangée pour les demandes sans mise en relation.
+      ...(shownPartnerId ? { partnerId: shownPartnerId, partnerName: payload.partnerName ?? null } : {}),
+    }),
+  );
+}
+
+/**
+ * Renvoi d'une demande déjà enregistrée (réponse perdue, double clic) : réponse idempotente, avant
+ * les contrôles des paramètres et des règles, qui ont pu changer depuis l'enregistrement. Les réponses
+ * sont élaguées avec la version de règles de la demande, comme à l'enregistrement.
+ */
+async function earlyReplay(payload: ParsedRequestPayload): Promise<CreateResult | null> {
+  const known = await prisma.contactRequest.findUnique({ where: { idempotencyKey: payload.idempotencyKey }, select: { id: true } });
+  if (!known) return null;
+  let answers: Answers;
+  if (payload.kind === "SIMULATION") {
+    const ruleSet = await getRuleSetByVersion(payload.ruleSetVersion);
+    if (!ruleSet) return null;
+    answers = pruneAnswers(payload.answers as Answers, { rules: ruleSet.data, referenceDate: payload.referenceDate });
+  } else {
+    answers = payload.answers as Answers;
+  }
+  return existingReplay(payload.idempotencyKey, payloadHashFor(payload, answers));
+}
+
 export async function createContactRequest(
   raw: unknown,
   ctx: { ip: string | null; userAgent: string | null; now?: Date },
@@ -125,6 +179,10 @@ export async function createContactRequest(
   if (!(await verifyTurnstile(payload.turnstileToken, ctx.ip))) {
     return fail(400, "CAPTCHA_FAILED", "La vérification anti-robot a échoué. Merci de réessayer.");
   }
+
+  // 3 bis. Demande déjà enregistrée avec cette clé : même réponse, quels que soient les paramètres actuels.
+  const known = await earlyReplay(payload);
+  if (known) return known;
 
   // 4. Paramètres et canaux ouverts.
   const settings = await getSettings();
@@ -180,36 +238,15 @@ export async function createContactRequest(
   }
   const { territory, departement } = resolveTerritory(answers);
 
-  // 7. Coordonnée du canal choisi ; e-mail (avec un rappel) et adresse du logement seulement s'ils sont donnés.
-  //    Aucun numéro n'est conservé pour une réponse par e-mail : seul le canal demandé peut être utilisé.
-  const email = payload.contact.email || null;
-  const phone = channel === "PHONE" ? payload.contact.phone || null : null;
-  const streetAddress = payload.contact.streetAddress || null;
-  const contactNormalized = {
-    firstName: payload.contact.firstName,
-    lastName: payload.contact.lastName,
-    channel,
-    email,
-    phone,
-    streetAddress,
-    availability: payload.contact.availability ?? null,
-    comment: payload.contact.comment || null,
-  };
+  // 7. Coordonnées enregistrées (canal choisi, e-mail et adresse s'ils sont donnés).
+  const contactNormalized = normalizedContact(payload);
+  const { email, phone, streetAddress } = contactNormalized;
 
   // Profil de la demande, calculé comme dans le navigateur (département déduit de la commune).
   const profile = requestLeadProfile(answers);
   const shownPartnerId = payload.partnerId ?? null;
-  const payloadHash = sha256Hex(
-    JSON.stringify({
-      kind: payload.kind,
-      answers,
-      contact: contactNormalized,
-      ruleSetVersion: payload.kind === "SIMULATION" ? payload.ruleSetVersion : null,
-      referenceDate: payload.kind === "SIMULATION" ? payload.referenceDate : null,
-      // Absente sans entreprise nommée : empreinte inchangée pour les demandes sans mise en relation.
-      ...(shownPartnerId ? { partnerId: shownPartnerId } : {}),
-    }),
-  );
+  const shownPartnerName = payload.partnerName ?? null;
+  const payloadHash = payloadHashFor(payload, answers);
 
   // 8. Idempotence : un double envoi renvoie la même demande.
   const replay = await existingReplay(payload.idempotencyKey, payloadHash);
@@ -218,13 +255,14 @@ export async function createContactRequest(
   // 8 bis. Mise en relation : entreprise nommée dans la phrase affichée, choisie dans le navigateur parmi
   //    les entreprises actives et refaite ici avec les mêmes réponses. La demande ne peut être transmise
   //    qu'à l'entreprise que la personne a lue avant d'envoyer (art. L223-1 et R223-4 du Code de la
-  //    consommation) : si la liste ou les critères ont changé depuis l'affichage, l'envoi est refusé.
+  //    consommation) : si la liste, les critères ou le nom affiché ont changé depuis l'affichage, l'envoi
+  //    est refusé (la phrase enregistrée comme preuve est exactement celle que la personne a cochée).
   //    Rappel rapide (sans test) ou mise en relation non déclarée : aucune entreprise nommée.
   const partner =
     payload.kind === "SIMULATION" && referralEnabled(settings)
       ? selectPartnerForRequest(profile, requestPartnerCandidates(await listPartners({ activeOnly: true })), referenceYearOf(payload.referenceDate))
       : null;
-  if ((partner?.id ?? null) !== shownPartnerId) {
+  if ((partner?.id ?? null) !== shownPartnerId || (partner?.displayName ?? null) !== shownPartnerName) {
     return fail(409, "PARTNER_CHANGED", PARTNER_CHANGED_MESSAGE);
   }
   const requestSentence = buildRequestSentence(settings.company.name, channel, worksTextForRequest(payload.kind, answers), partner?.displayName);

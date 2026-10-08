@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "../db";
-import { type PartnerCriteria, parsePartnerCriteria, type RequestPartnerCandidate } from "./partners";
+import { criteriaNeedReview, type PartnerCriteria, parsePartnerCriteria, type RequestPartnerCandidate } from "./partners";
 
 export interface PartnerRecord {
   id: string;
@@ -32,12 +32,21 @@ export function partnerDisplayName(p: { name: string; details: string | null }):
   return p.details ? `${p.name}, ${p.details}` : p.name;
 }
 
+/** Comparaison des noms d'entreprise : casse et espaces ignorés. */
+export function samePartnerName(a: string, b: string): boolean {
+  const norm = (v: string) => v.replace(/\s+/g, " ").trim().toLocaleLowerCase("fr");
+  return norm(a) === norm(b);
+}
+
 /**
  * Entreprises qui peuvent être nommées dans une demande (configuration publique et contrôle du
- * serveur) : entreprises actives, réduites à l'identifiant, au nom affiché et aux critères.
+ * serveur) : entreprises actives dont les critères sont lisibles, réduites à l'identifiant, au nom
+ * affiché et aux critères. Une entreprise aux critères à revoir n'est jamais nommée.
  */
 export function requestPartnerCandidates(partners: PartnerRecord[]): RequestPartnerCandidate[] {
-  return partners.filter((p) => p.active).map((p) => ({ id: p.id, displayName: partnerDisplayName(p), criteria: p.criteria }));
+  return partners
+    .filter((p) => p.active && !criteriaNeedReview(p.criteria))
+    .map((p) => ({ id: p.id, displayName: partnerDisplayName(p), criteria: p.criteria }));
 }
 
 export async function countActivePartners(): Promise<number> {

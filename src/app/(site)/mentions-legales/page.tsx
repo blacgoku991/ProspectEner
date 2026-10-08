@@ -57,10 +57,10 @@ export default async function MentionsLegalesPage() {
       {referralEnabled(s) && (
         <>
           <p>
-            Mise en relation : une demande n&apos;est transmise qu&apos;à l&apos;entreprise partenaire qui réalise les travaux et que la personne a
-            nommée dans sa demande, avant l&apos;envoi, ou, lorsqu&apos;une personne accepte un rendez-vous, à l&apos;entreprise qui l&apos;assure, dont le
-            nom lui est indiqué avant toute transmission de ses coordonnées. L&apos;éditeur est rémunéré par les entreprises partenaires pour ces mises
-            en relation (article L111-7 du Code de la consommation).
+            Mise en relation : une demande n&apos;est transmise qu&apos;à l&apos;entreprise partenaire nommée dans la demande, avant l&apos;envoi, ou, si la
+            demande n&apos;en nomme aucune et que la personne accepte un rendez-vous, à l&apos;entreprise partenaire qui l&apos;assure, dont le nom lui est
+            indiqué avant toute transmission de ses coordonnées. L&apos;éditeur est rémunéré par les entreprises partenaires pour ces mises en relation
+            (article L111-7 du Code de la consommation).
           </p>
           {partners.length > 0 ? (
             <ul>
@@ -70,7 +70,7 @@ export default async function MentionsLegalesPage() {
             </ul>
           ) : (
             <p>
-              Entreprises qui réalisent les travaux : <Field value="" />
+              Entreprises partenaires : <Field value="" />
             </p>
           )}
         </>

@@ -169,7 +169,7 @@ const ANSWERS: [RegExp, Answer][] = [
   ],
   [/^Quel type de pompe à chaleur/, (page, p) => choose(page, required(p.heatPumpType, "heatPumpType"))],
   [/^Comment le logement est-il chauffé/, (page, p) => choose(page, required(p.currentHeating, "currentHeating"))],
-  [/^Comment la chaleur est-elle diffusée/, (page, p) => choose(page, required(p.heatEmitters, "heatEmitters"))],
+  [/^Comment la chaleur est-elle principalement diffusée/, (page, p) => choose(page, required(p.heatEmitters, "heatEmitters"))],
   [/^Combien de radiateurs à eau/, (page, p) => fillNumber(page, "Nombre de radiateurs à eau", required(p.radiatorCount, "radiatorCount"))],
   [/^Quelle est la surface chauffée/, (page, p) => fillNumber(page, "Surface chauffée, en m²", required(p.heatedArea, "heatedArea"))],
   [/^Où se trouve la chaudière/, (page, p) => choose(page, required(p.boilerLocation, "boilerLocation"))],

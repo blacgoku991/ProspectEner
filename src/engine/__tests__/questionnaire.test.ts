@@ -7,6 +7,8 @@ import {
   isQuestionVisible,
   pruneAnswers,
   type QuestionContext,
+  questionText,
+  STEPS,
   summarizeAnswers,
   visibleQuestions,
 } from "../questionnaire";
@@ -179,6 +181,50 @@ describe("questionnaire conditionnel", () => {
     expect(heating.find((l) => l.question === "radiatorCount")?.value).toBe("8");
     expect(heating.find((l) => l.question === "heatedArea")?.value).toBe("Je ne sais pas");
     expect(heating.find((l) => l.question === "boilerLocation")?.value).toBe("À la cave ou au sous-sol");
+  });
+
+  it("résumé dans l'ordre du parcours (ordre des étapes), une ligne par réponse", () => {
+    const answers: Answers = { ...ELIGIBLE_PAC, heatEmitters: "RADIATEURS_FONTE", radiatorCount: 8, heatedArea: 120, boilerLocation: "CAVE_SOUS_SOL" };
+    const lines = summarizeAnswers(answers, ctx);
+    const order = visibleQuestions(answers, ctx);
+    const rank = lines.map((l) => order.indexOf(l.question));
+    expect(rank.every((r) => r >= 0)).toBe(true);
+    expect(rank).toEqual([...rank].sort((a, b) => a - b));
+    // Le foyer, demandé juste après le logement, n'est plus résumé en dernier.
+    expect(lines.slice(0, 4).map((l) => l.question)).toEqual(["location", "housingType", "householdSize", "income"]);
+    expect(lines.map((l) => l.label)).toEqual([
+      "Localisation",
+      "Type de logement",
+      "Personnes dans le foyer",
+      "Revenu fiscal de référence",
+      "Travaux envisagés",
+      "Détail des travaux",
+      "Chauffage actuel",
+      "Diffusion de la chaleur",
+      "Radiateurs à eau",
+      "Surface chauffée",
+      "Emplacement de la chaudière",
+      "Situation",
+      "Usage du logement",
+      "Construction",
+      "Devis signé",
+      "Travaux commencés",
+      "Aide déjà demandée ou obtenue",
+      "Entreprise",
+    ]);
+  });
+
+  it("textes : foyer (finalités), revenus (sans répéter l'aide repliable), émetteurs", () => {
+    const foyer = STEPS.find((s) => s.id === "foyer")!;
+    expect(foyer.showSubtitle).toBe(true);
+    expect(foyer.subtitle).toMatch(/barème de certaines aides/);
+    expect(foyer.subtitle).toMatch(/si nous pouvons vous proposer un rendez-vous/);
+    const income = questionText("income", ELIGIBLE_PAC, ctx);
+    expect(income.help).toBe(`${ctx.rules.incomeCeilings.rfrNote} Aucun justificatif n'est demandé ici.`);
+    expect(income.help).not.toMatch(/Vos références/);
+    const emitters = questionText("heatEmitters", ELIGIBLE_PAC, ctx);
+    expect(emitters.title).toBe("Comment la chaleur est-elle principalement diffusée dans le logement ?");
+    expect(emitters.help).toMatch(/^Si plusieurs systèmes coexistent, choisissez le principal\. /);
   });
 
   it("revenus : catégorie de couleur indiquée avec chaque tranche", () => {

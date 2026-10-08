@@ -35,12 +35,64 @@ export const partnerCriteriaSchema = z
   })
   .strict();
 
-export type PartnerCriteria = z.output<typeof partnerCriteriaSchema>;
+export type PartnerCriteria = z.output<typeof partnerCriteriaSchema> & {
+  /**
+   * Critères enregistrés illisibles (valeur inconnue, champ inattendu, JSON invalide) : l'entreprise
+   * n'est retenue pour aucune demande (jamais nommée, aucun tri) tant que sa fiche n'a pas été revue
+   * et enregistrée. Jamais enregistré en base : posé à la lecture seulement.
+   */
+  needsReview?: true;
+};
 
-/** Critères enregistrés en base (JSON) : relus avec les valeurs par défaut, jamais de plantage. */
+/** Valeurs admises dans chaque liste de critères (lecture champ par champ). */
+const LIST_ITEMS = {
+  works: workItemEnum,
+  incomeCategories: incomeEnum,
+  housingTypes: housingEnum,
+  occupancies: occupancyEnum,
+  currentHeating: heatingEnum,
+  heatEmitters: emitterEnum,
+  departements: z.string().regex(departementRe),
+} as const;
+type ListKey = keyof typeof LIST_ITEMS;
+const NUMBER_KEYS = ["minHeatedArea", "minBuildingAge"] as const;
+
+/**
+ * Critères enregistrés en base (JSON), sans jamais planter. En cas de valeur illisible, la lecture
+ * échoue « fermée » : les valeurs valides sont gardées pour la fiche (à corriger par l'équipe), mais
+ * l'entreprise est marquée `needsReview` et n'est retenue pour aucune demande. Une valeur inconnue
+ * retirée d'une liste pourrait sinon la vider, et une liste vide accepte toutes les demandes.
+ */
 export function parsePartnerCriteria(raw: unknown): PartnerCriteria {
-  const parsed = partnerCriteriaSchema.safeParse(raw ?? {});
-  return parsed.success ? parsed.data : partnerCriteriaSchema.parse({});
+  const whole = partnerCriteriaSchema.safeParse(raw);
+  if (whole.success) return whole.data;
+  const out: PartnerCriteria = { ...partnerCriteriaSchema.parse({}), needsReview: true };
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return out;
+  const record = raw as Record<string, unknown>;
+  for (const key of Object.keys(LIST_ITEMS) as ListKey[]) {
+    const value = record[key];
+    if (!Array.isArray(value)) continue;
+    const valid = [...new Set(value.filter((v) => LIST_ITEMS[key].safeParse(v).success))];
+    const field = partnerCriteriaSchema.shape[key].safeParse(valid);
+    if (field.success) Object.assign(out, { [key]: field.data });
+  }
+  for (const key of NUMBER_KEYS) {
+    const field = partnerCriteriaSchema.shape[key].safeParse(record[key]);
+    if (field.success) out[key] = field.data;
+  }
+  return out;
+}
+
+/** Critères illisibles en base, à revoir dans la fiche de l'entreprise. */
+export const criteriaNeedReview = (criteria: PartnerCriteria): boolean => criteria.needsReview === true;
+
+/** Aucun critère : l'entreprise correspond à toutes les demandes. */
+export function hasNoCriteria(criteria: PartnerCriteria): boolean {
+  return (
+    !criteria.needsReview &&
+    (Object.keys(LIST_ITEMS) as ListKey[]).every((k) => criteria[k].length === 0) &&
+    NUMBER_KEYS.every((k) => criteria[k] === null)
+  );
 }
 
 /** Critères proposés pour une entreprise de pompes à chaleur air/eau (chauffage central à eau). */
@@ -97,6 +149,10 @@ const UNKNOWN = "Non renseigné";
  * inconnus ; NO : au moins un critère n'est pas rempli.
  */
 export function matchPartner(profile: LeadProfile, criteria: PartnerCriteria, referenceYear: number): PartnerMatch {
+  // Critères illisibles : jamais retenue (jamais nommée, jamais proposée d'office).
+  if (criteria.needsReview) {
+    return { status: "NO", checks: [{ label: "Critères de l'entreprise", status: "KO", value: "—", expected: "Critères à revoir dans sa fiche" }] };
+  }
   const checks: CriterionCheck[] = [];
 
   if (criteria.works.length) {
@@ -171,7 +227,8 @@ const SELECTION_ORDER: Record<Exclude<MatchStatus, "NO">, number> = { MATCH: 0, 
 /**
  * Entreprise nommée dans la phrase de la demande, avant l'envoi : celle dont tous les critères sont
  * remplis, sinon celle dont aucun critère n'est contredit (réponse inconnue) ; à égalité, la
- * première par ordre alphabétique. Jamais une entreprise dont un critère n'est pas rempli.
+ * première par ordre alphabétique. Jamais une entreprise dont un critère n'est pas rempli, ni une
+ * entreprise dont les critères sont à revoir.
  * Fonction pure, exécutée à l'identique dans le navigateur (les réponses n'en sortent qu'à
  * l'envoi) et sur le serveur, qui refuse l'envoi si l'entreprise affichée n'est plus la bonne.
  */
@@ -206,6 +263,8 @@ export function referenceYearOf(referenceDate: string): number {
  * ou dont la correspondance reste à vérifier (réponse inconnue).
  */
 export function partnerWhere(criteria: PartnerCriteria, referenceYear: number): Prisma.ContactRequestWhereInput {
+  // Critères illisibles : aucune demande (même règle que matchPartner).
+  if (criteria.needsReview) return { id: { in: [] } };
   const and: Prisma.ContactRequestWhereInput[] = [];
   const inOrNull = (field: "incomeCategory" | "housingType" | "occupancy" | "currentHeating" | "heatEmitters" | "departement", values: string[]) => {
     if (values.length) and.push({ OR: [{ [field]: { in: values } }, { [field]: null }] });
@@ -227,6 +286,7 @@ export function partnerWhere(criteria: PartnerCriteria, referenceYear: number): 
 /** Résumé lisible des critères (liste des partenaires, export). */
 export function describeCriteria(criteria: PartnerCriteria): string[] {
   const lines: string[] = [];
+  if (criteria.needsReview) lines.push("Critères à revoir : valeurs enregistrées illisibles, entreprise retenue pour aucune demande");
   if (criteria.works.length) lines.push(`Travaux : ${list(criteria.works.map((w) => WORK_ITEMS[w].label))}`);
   if (criteria.incomeCategories.length) lines.push(`Revenus : ${list(criteria.incomeCategories.map((c) => INCOME_PROFILE[c].short))}`);
   if (criteria.housingTypes.length) lines.push(`Logement : ${list(criteria.housingTypes.map((h) => leadLabels.housingType(h) ?? h))}`);

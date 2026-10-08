@@ -413,6 +413,19 @@ function migrationStatement(re: RegExp): string {
 const BACKFILL_SQL = migrationStatement(/UPDATE "ContactRequest" SET[\s\S]*?WHERE jsonb_typeof\("answers"\) = 'object';/);
 const PARTNERS_SQL = migrationStatement(/INSERT INTO "Partner"[\s\S]*?ON CONFLICT \("name"\) DO NOTHING;/);
 
+// Migration suivante : rendez-vous rattachés par identifiant, entreprises reprises sans critère désactivées.
+const SAFEGUARDS_SQL = readFileSync(
+  path.resolve(import.meta.dirname, "../../prisma/migrations/20261008160000_partner_safeguards/migration.sql"),
+  "utf8",
+);
+function safeguardsStatement(re: RegExp): string {
+  const m = re.exec(SAFEGUARDS_SQL);
+  if (!m) throw new Error(`Instruction introuvable dans la migration : ${re}`);
+  return m[0];
+}
+const APPOINTMENT_PARTNER_ID_SQL = safeguardsStatement(/UPDATE "ContactRequest" r SET "appointmentPartnerId"[\s\S]*?;/);
+const DEACTIVATE_LEGACY_SQL = safeguardsStatement(/UPDATE "Partner" SET "active" = false[\s\S]*?;/);
+
 describe("migration du profil des demandes et des entreprises partenaires", () => {
   beforeEach(async () => {
     await resetDatabase();
@@ -481,16 +494,36 @@ describe("migration du profil des demandes et des entreprises partenaires", () =
     });
     await prisma.$executeRawUnsafe(PARTNERS_SQL);
     await prisma.$executeRawUnsafe(PARTNERS_SQL);
+    await prisma.$executeRawUnsafe(DEACTIVATE_LEGACY_SQL);
 
     const rows = await prisma.partner.findMany({ orderBy: { name: "asc" } });
     expect(rows.map((p) => p.name)).toEqual(["Chauffage Test, Lyon, RGE", "Isolation Existante", "Ventilation Sud"]);
     const existing = rows.find((p) => p.name === "Isolation Existante")!;
     expect(existing.details).toBe("Déjà créée");
+    expect(existing.active).toBe(true);
     expect(parsePartnerCriteria(existing.criteria)).toEqual(HYDRAULIC_HEAT_PUMP_PRESET);
-    // Entreprises reprises : actives, sans critère (toutes les demandes).
+    // Entreprises reprises : sans critère, donc désactivées par la migration suivante (jamais nommées
+    // d'office dans toutes les demandes) ; la page Partenaires invite à les revoir puis à les réactiver.
     for (const p of rows.filter((r) => r.name !== "Isolation Existante")) {
-      expect(p.active).toBe(true);
+      expect(p.active, p.name).toBe(false);
       expect(parsePartnerCriteria(p.criteria)).toEqual(partnerCriteriaSchema.parse({}));
     }
+    expect((await listPartners({ activeOnly: true })).map((p) => p.name)).toEqual(["Isolation Existante"]);
+  });
+
+  it("rattache les rendez-vous déjà confiés à l'entreprise par son nom annoncé", async () => {
+    const notice = await noticeId();
+    const acme = await prisma.partner.create({ data: { name: "Acme", details: "Lille, RGE", criteria: {} } });
+    const plain = await prisma.partner.create({ data: { name: "Thermo Nord", criteria: {} } });
+    const rows = [
+      await insertRequest(notice, 1, { appointmentPartner: "Acme, Lille, RGE" }),
+      await insertRequest(notice, 2, { appointmentPartner: "Acme" }),
+      await insertRequest(notice, 3, { appointmentPartner: "Thermo Nord" }),
+      await insertRequest(notice, 4, { appointmentPartner: "Entreprise Supprimée" }),
+      await insertRequest(notice, 5, {}),
+    ];
+    await prisma.$executeRawUnsafe(APPOINTMENT_PARTNER_ID_SQL);
+    const after = await prisma.contactRequest.findMany({ where: { id: { in: rows.map((r) => r.id) } }, select: { id: true, appointmentPartnerId: true } });
+    expect(rows.map((r) => after.find((a) => a.id === r.id)!.appointmentPartnerId)).toEqual([acme.id, acme.id, plain.id, null, null]);
   });
 });

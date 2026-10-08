@@ -45,6 +45,13 @@ export function Confirmation({
   const byPhone = result.channel === "PHONE";
   // Entreprise nommée dans la demande, telle qu'enregistrée par le serveur (aucune coordonnée conservée ici).
   const partner = result.partnerName || null;
+  // Suite donnée par le conseiller. L'entreprise nommée n'est pas présentée comme celle qui réalise les
+  // travaux : la personne a parfois déjà choisi la sienne.
+  const nextStep = !config.referral
+    ? "Le conseiller vous présente ensuite le détail des aides adaptées à votre projet."
+    : partner
+      ? "Le conseiller prépare ensuite avec vous, si vous le souhaitez, un rendez-vous avec l'entreprise partenaire."
+      : "Le conseiller organise ensuite votre rendez-vous avec l'entreprise qui réalise les travaux.";
 
   return (
     <div className="mx-auto max-w-5xl space-y-6" role="status" aria-live="polite">
@@ -85,27 +92,24 @@ export function Confirmation({
                   </span>
                 )}
               </li>
+              <li className="flex gap-3">
+                <ChevronRight className="mt-0.5 size-5 shrink-0 text-pine-600" aria-hidden />
+                <span>Le conseiller vérifie avec vous les conditions des aides, sans engagement.</span>
+              </li>
+              <li className="flex gap-3">
+                <ChevronRight className="mt-0.5 size-5 shrink-0 text-pine-600" aria-hidden />
+                <span>{nextStep}</span>
+              </li>
+              {/* L'entreprise nommée vient après le conseiller : qui appelle, puis qui d'autre peut appeler. */}
               {partner && (
                 <li className="flex gap-3">
                   <ChevronRight className="mt-0.5 size-5 shrink-0 text-pine-600" aria-hidden />
                   <span>
-                    Votre demande est aussi transmise à <strong className="text-ink-950">{partner}</strong>, l&apos;entreprise qui réalise les travaux :
-                    elle pourra vous recontacter à ce sujet.
+                    Votre demande est également transmise à <strong className="text-ink-950">{partner}</strong>, entreprise partenaire : elle
+                    pourra vous contacter, uniquement au sujet de ce projet.
                   </span>
                 </li>
               )}
-              <li className="flex gap-3">
-                <ChevronRight className="mt-0.5 size-5 shrink-0 text-pine-600" aria-hidden />
-                <span>Il vérifie avec vous les conditions des aides, sans engagement.</span>
-              </li>
-              <li className="flex gap-3">
-                <ChevronRight className="mt-0.5 size-5 shrink-0 text-pine-600" aria-hidden />
-                <span>
-                  {config.referral
-                    ? "Il organise ensuite votre rendez-vous avec l'entreprise qui réalise les travaux."
-                    : "Il vous présente ensuite le détail des aides adaptées à votre projet."}
-                </span>
-              </li>
             </ul>
             <p className="mt-6 text-sm text-ink-500">
               Référence de votre demande : <strong className="font-mono text-base tracking-wider text-ink-900">{result.reference}</strong>
@@ -144,7 +148,11 @@ export function Confirmation({
                 {[
                   "Validation de votre éligibilité aux aides",
                   "Précision de votre projet et de vos besoins",
-                  config.referral ? "Rendez-vous avec l'entreprise qui réalise les travaux" : "Présentation des aides adaptées à votre projet",
+                  !config.referral
+                    ? "Présentation des aides adaptées à votre projet"
+                    : partner
+                      ? `Rendez-vous avec ${partner}, si vous le souhaitez`
+                      : "Rendez-vous avec l'entreprise qui réalise les travaux",
                 ].map((t) => (
                   <li key={t} className="flex gap-2.5">
                     <ChevronRight className="mt-0.5 size-4 shrink-0 text-pine-600" aria-hidden />

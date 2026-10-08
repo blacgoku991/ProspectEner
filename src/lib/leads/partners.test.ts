@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Answers } from "@/engine/types";
 import {
+  criteriaNeedReview,
   describeCriteria,
+  hasNoCriteria,
   HYDRAULIC_HEAT_PUMP_PRESET,
   matchPartner,
   type PartnerCriteria,
@@ -98,9 +100,31 @@ describe("correspondance avec une entreprise partenaire", () => {
     expect(describeCriteria(none)).toEqual(["Toutes les demandes"]);
   });
 
-  it("critères illisibles en base : relus sans erreur, comme « toutes les demandes »", () => {
-    expect(parsePartnerCriteria({ works: ["INCONNU_XYZ"] })).toEqual(parsePartnerCriteria({}));
-    expect(parsePartnerCriteria(null).works).toEqual([]);
+  it("critères illisibles en base : relus sans erreur, mais l'entreprise n'est retenue pour aucune demande", () => {
+    // Une valeur inconnue retirée d'une liste la viderait, et une liste vide accepte toutes les demandes :
+    // la lecture échoue « fermée ».
+    const unknownWork = parsePartnerCriteria({ works: ["INCONNU_XYZ"] });
+    expect(unknownWork.needsReview).toBe(true);
+    expect(criteriaNeedReview(unknownWork)).toBe(true);
+    expect(unknownWork.works).toEqual([]);
+    expect(match(HYDRAULIC, unknownWork).status).toBe("NO");
+    expect(match({ postalCode: "69003" }, unknownWork).status).toBe("NO");
+    expect(partnerWhere(unknownWork, YEAR)).toEqual({ id: { in: [] } });
+    expect(describeCriteria(unknownWork)[0]).toMatch(/^Critères à revoir : /);
+    expect(hasNoCriteria(unknownWork)).toBe(false);
+    for (const raw of [null, undefined, "{}", [], { minHeatedArea: "80" }, { departements: ["69"], plafond: 3 }]) {
+      expect(parsePartnerCriteria(raw).needsReview, JSON.stringify(raw)).toBe(true);
+    }
+  });
+
+  it("critères illisibles : les valeurs valides sont gardées pour la fiche, à corriger", () => {
+    const partial = parsePartnerCriteria({ ...HYDRAULIC_HEAT_PUMP_PRESET, works: ["PAC_AIR_EAU", "TRAVAUX_SUPPRIMES"], minHeatedArea: -3 });
+    expect(partial).toEqual({ ...HYDRAULIC_HEAT_PUMP_PRESET, works: ["PAC_AIR_EAU"], minHeatedArea: null, needsReview: true });
+    // Critères lisibles : aucun marqueur.
+    expect(parsePartnerCriteria(HYDRAULIC_HEAT_PUMP_PRESET)).toEqual(HYDRAULIC_HEAT_PUMP_PRESET);
+    expect("needsReview" in parsePartnerCriteria(HYDRAULIC_HEAT_PUMP_PRESET)).toBe(false);
+    expect(hasNoCriteria(parsePartnerCriteria({}))).toBe(true);
+    expect(hasNoCriteria(HYDRAULIC_HEAT_PUMP_PRESET)).toBe(false);
   });
 
   it("résumé lisible des critères du préréglage « PAC air/eau »", () => {
@@ -134,6 +158,12 @@ describe("entreprise nommée dans la demande, avant l'envoi", () => {
 
   it("aucune entreprise : personne n'est nommé", () => {
     expect(select(HYDRAULIC, [])).toBeNull();
+  });
+
+  it("jamais une entreprise dont les critères sont à revoir", () => {
+    const broken = parsePartnerCriteria({ works: ["TRAVAUX_SUPPRIMES"] });
+    expect(select(HYDRAULIC, [candidate("old", "Aaa Ancienne", broken)])).toBeNull();
+    expect(select(HYDRAULIC, [candidate("old", "Aaa Ancienne", broken), candidate("p1", "Chauffage Lyonnais", HYDRAULIC_HEAT_PUMP_PRESET)])?.id).toBe("p1");
   });
 
   it("une entreprise dont tous les critères sont remplis est nommée, avec son nom affiché", () => {

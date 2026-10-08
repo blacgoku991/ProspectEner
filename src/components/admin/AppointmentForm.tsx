@@ -9,6 +9,8 @@ import type { MatchStatus } from "@/lib/leads/partners";
 
 /** Entreprise partenaire active, proposée pour assurer le rendez-vous. */
 export interface PartnerChoice {
+  /** Identifiant de l'entreprise (envoyé au serveur, qui retrouve l'entreprise active). */
+  id: string;
   /** Nom annoncé à la personne (dénomination, puis précisions) : c'est lui qui est enregistré sur la demande. */
   name: string;
   /** Correspondance de la demande avec les critères de l'entreprise. */
@@ -27,12 +29,15 @@ const MATCH_SUFFIX: Record<MatchStatus, string> = {
 /**
  * Qualification puis rendez-vous : le conseiller confirme chaque critère avec la personne.
  * Le bouton ne s'active que lorsqu'une aide au moins est entièrement confirmée (contrôlé aussi côté serveur).
+ * Une demande qui nomme une entreprise partenaire ne peut être confiée qu'à elle, ou assurée par l'entreprise
+ * qui édite le site (contrôlé aussi côté serveur).
  */
 export function AppointmentForm({
   requestId,
   groups,
   referral = false,
   partners = [],
+  requestedName = null,
 }: {
   requestId: string;
   groups: QualificationGroup[];
@@ -40,22 +45,29 @@ export function AppointmentForm({
   referral?: boolean;
   /** Entreprises partenaires actives (contrôlées aussi côté serveur). */
   partners?: PartnerChoice[];
+  /** Entreprise nommée dans la demande (nom affiché), même si elle n'est plus active. */
+  requestedName?: string | null;
 }) {
   const uid = useId();
   const [state, action] = useActionState<AppointmentState, FormData>(bookAppointmentAction, {});
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const requested = partners.find((p) => p.requested);
+  // Demande qui nomme une entreprise : seule cette entreprise (si elle est encore active) peut assurer le rendez-vous.
+  const restricted = Boolean(requestedName) || Boolean(requested);
   const choices = useMemo(
-    () => [...partners].sort((a, b) => MATCH_ORDER[a.match ?? "TO_CHECK"] - MATCH_ORDER[b.match ?? "TO_CHECK"] || a.name.localeCompare(b.name, "fr")),
-    [partners],
+    () =>
+      restricted
+        ? partners.filter((p) => p.requested)
+        : [...partners].sort((a, b) => MATCH_ORDER[a.match ?? "TO_CHECK"] - MATCH_ORDER[b.match ?? "TO_CHECK"] || a.name.localeCompare(b.name, "fr")),
+    [partners, restricted],
   );
   // Entreprise nommée dans la demande, sinon la seule qui correspond à tous les critères : proposée d'office
   // (l'accord pour le rendez-vous reste à cocher).
-  const matching = choices.filter((p) => p.match === "MATCH");
-  const requested = choices.find((p) => p.requested);
-  const suggested = !referral ? "" : requested ? requested.name : matching.length === 1 ? (matching[0]?.name ?? "") : "";
-  const [partner, setPartner] = useState(suggested);
+  const matching = restricted ? [] : choices.filter((p) => p.match === "MATCH");
+  const suggested = !referral ? "" : requested ? requested.id : matching.length === 1 ? (matching[0]?.id ?? "") : "";
+  const [partnerId, setPartnerId] = useState(suggested);
   const [consent, setConsent] = useState(false);
-  const partnerName = partner.trim();
+  const partner = choices.find((p) => p.id === partnerId) ?? null;
   const qualified = useMemo(() => qualifiedAids(groups, checked), [groups, checked]);
   const toggle = (key: string) =>
     setChecked((prev) => {
@@ -65,8 +77,24 @@ export function AppointmentForm({
       return next;
     });
 
+  // Raison pour laquelle le rendez-vous ne peut pas encore être fixé : lue avec le bouton, qui reste atteignable au clavier.
+  const blockedReason =
+    qualified.length === 0
+      ? "Le bouton s'active quand une aide est entièrement qualifiée."
+      : partner && !consent
+        ? "Cochez l'accord de la personne pour la transmission, ou choisissez « Votre entreprise »."
+        : null;
+  const submitHintId = `${uid}-submit-hint`;
+  const partnerHintId = `${uid}-partner-hint`;
+
   return (
-    <form action={action} className="space-y-5">
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (blockedReason) e.preventDefault();
+      }}
+      className="space-y-5"
+    >
       <input type="hidden" name="id" value={requestId} />
       <p className="text-sm text-ink-600">
         Confirmez chaque point avec la personne. Un rendez-vous ne peut être fixé que si tous les critères d&apos;au moins une aide sont confirmés.
@@ -134,46 +162,51 @@ export function AppointmentForm({
         <div className="space-y-3 rounded-xl border border-ink-900/10 p-4">
           {choices.length === 0 ? (
             <p className="text-sm text-ink-600">
-              Aucune entreprise partenaire active : le rendez-vous est assuré par votre entreprise. Les entreprises se déclarent dans « Partenaires ».
+              {requestedName
+                ? `La demande nomme ${requestedName}, qui n'est plus une entreprise partenaire active : le rendez-vous ne peut être assuré que par votre entreprise.`
+                : "Aucune entreprise partenaire active : le rendez-vous est assuré par votre entreprise. Les entreprises se déclarent dans « Partenaires »."}
             </p>
           ) : (
             <>
               <label className="block text-sm text-ink-800">
                 Entreprise qui assure le rendez-vous
                 <select
-                  name="partner"
-                  value={partner}
+                  name="partnerId"
+                  value={partnerId}
                   onChange={(e) => {
-                    setPartner(e.target.value);
+                    setPartnerId(e.target.value);
                     setConsent(false);
                   }}
-                  aria-describedby={requested || matching.length > 0 ? `${uid}-partner-hint` : undefined}
+                  aria-describedby={restricted || matching.length > 0 ? partnerHintId : undefined}
                   className="field-input mt-1 py-2.5 text-sm"
                 >
                   <option value="">Votre entreprise (pas de mise en relation)</option>
                   {choices.map((p) => (
-                    <option key={p.name} value={p.name}>
-                      {p.name}
-                      {p.requested ? " — nommée dans la demande" : p.match ? ` — ${MATCH_SUFFIX[p.match]}` : ""}
+                    // Entreprise nommée dans la demande : son nom seul, le rappel figure sous la liste.
+                    <option key={p.id} value={p.id}>
+                      {!restricted && p.match ? `${p.name} — ${MATCH_SUFFIX[p.match]}` : p.name}
                     </option>
                   ))}
                 </select>
               </label>
-              {requested ? (
-                <p id={`${uid}-partner-hint`} className="text-xs text-ink-500">
-                  La personne a nommé {requested.name} dans sa demande : entreprise proposée. Détail dans « Entreprises partenaires ».
+              {restricted ? (
+                <p id={partnerHintId} className="text-xs text-ink-500">
+                  La personne a nommé {requested?.name ?? requestedName} dans sa demande : le rendez-vous ne peut être confié qu&apos;à cette entreprise,
+                  ou assuré par votre entreprise. Détail dans « Entreprises partenaires ».
                 </p>
-              ) : matching.length > 0 && (
-                <p id={`${uid}-partner-hint`} className="text-xs text-ink-500">
-                  {matching.length === 1
-                    ? `La demande correspond à tous les critères de ${matching[0]?.name} : entreprise proposée.`
-                    : `La demande correspond à tous les critères de ${matching.length} entreprises : choisissez celle qui assure le rendez-vous.`}{" "}
-                  Détail dans « Entreprises partenaires ».
-                </p>
+              ) : (
+                matching.length > 0 && (
+                  <p id={partnerHintId} className="text-xs text-ink-500">
+                    {matching.length === 1
+                      ? `La demande correspond à tous les critères de ${matching[0]?.name} : entreprise proposée.`
+                      : `La demande correspond à tous les critères de ${matching.length} entreprises : choisissez celle qui assure le rendez-vous.`}{" "}
+                    Détail dans « Entreprises partenaires ».
+                  </p>
+                )
               )}
             </>
           )}
-          {partnerName && (
+          {partner && (
             <label className="flex cursor-pointer gap-2.5 text-sm">
               <input
                 type="checkbox"
@@ -183,7 +216,7 @@ export function AppointmentForm({
                 className="mt-0.5 size-4 shrink-0 accent-pine-600"
               />
               <span>
-                La personne a accepté que ses coordonnées et ses réponses (logement, chauffage, revenus) soient transmises à <strong>{partnerName}</strong>{" "}
+                La personne a accepté que ses coordonnées et ses réponses (logement, chauffage, revenus) soient transmises à <strong>{partner.name}</strong>{" "}
                 pour ce rendez-vous.
               </span>
             </label>
@@ -195,15 +228,23 @@ export function AppointmentForm({
           {state.error}
         </p>
       )}
-      <button type="submit" disabled={qualified.length === 0 || (partnerName !== "" && !consent)} className="btn-primary py-3">
-        <CalendarCheck className="size-4" aria-hidden />
-        Fixer le rendez-vous
-      </button>
-      {qualified.length === 0 ? (
-        <p className="text-xs text-ink-500">Le bouton s&apos;active quand une aide est entièrement qualifiée.</p>
-      ) : partnerName !== "" && !consent ? (
-        <p className="text-xs text-ink-500">Cochez l&apos;accord de la personne pour la transmission, ou choisissez « Votre entreprise ».</p>
-      ) : null}
+      <div className="space-y-2">
+        <p id={submitHintId} aria-live="polite" className="text-xs text-ink-500">
+          {blockedReason}
+        </p>
+        <button
+          type="submit"
+          aria-disabled={blockedReason ? true : undefined}
+          aria-describedby={blockedReason ? submitHintId : undefined}
+          onClick={(e) => {
+            if (blockedReason) e.preventDefault();
+          }}
+          className="btn-primary py-3 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+        >
+          <CalendarCheck className="size-4" aria-hidden />
+          Fixer le rendez-vous
+        </button>
+      </div>
     </form>
   );
 }

@@ -1,32 +1,48 @@
-import { ChevronDown, ReceiptText } from "lucide-react";
+import { ChevronDown, ReceiptText, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /**
- * Aide repliable des questions « foyer » et « revenus » : où lire le revenu fiscal de référence
- * sur l'avis d'impôt. Le schéma est volontairement générique (aucun logo, aucune mise en page
- * officielle) et ne sert qu'à repérer le cadre « Vos références ». Aucun document n'est demandé.
+ * Aides repliables des questions « foyer » et « revenus ».
+ * - Foyer : qui compter, et pourquoi le « nombre de parts » de l'avis n'est pas le nombre de personnes.
+ * - Revenus : où lire le revenu fiscal de référence sur l'avis d'impôt. Le schéma est volontairement
+ *   générique (aucun logo, aucune mise en page officielle) et ne sert qu'à repérer le cadre
+ *   « Vos références ». Aucun document n'est demandé.
  */
 export function AvisImpotHelp({ question, className }: { question: "householdSize" | "income"; className?: string }) {
+  const household = question === "householdSize";
+  const Icon = household ? Users : ReceiptText;
   return (
     <details className={cn("group rounded-2xl border border-ink-900/10 bg-sand-50", className)}>
       <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-ink-800 transition hover:text-ink-950 [&::-webkit-details-marker]:hidden">
-        <ReceiptText className="size-5 shrink-0 text-pine-600" aria-hidden />
-        <span className="flex-1">Où trouver ces informations sur mon avis d&apos;impôt ?</span>
+        <Icon className="size-5 shrink-0 text-pine-600" aria-hidden />
+        <span className="flex-1">{household ? "Qui compter dans le foyer ?" : "Où trouver le revenu fiscal de référence ?"}</span>
         <ChevronDown className="size-4 shrink-0 text-ink-500 transition group-open:rotate-180" aria-hidden />
       </summary>
       <div className="space-y-4 border-t border-ink-900/[0.06] px-4 pb-5 pt-4 text-sm leading-relaxed text-ink-700">
-        <p>
-          Le revenu fiscal de référence figure en première page de votre avis d&apos;impôt, dans le cadre « Vos références ». Prenez le
-          dernier avis reçu ; si plusieurs avis concernent le foyer (couple non marié, enfant majeur qui fait sa propre déclaration…),
-          additionnez leurs revenus fiscaux de référence. Aucun document n&apos;est demandé ici.
-        </p>
-        {question === "householdSize" && (
-          <p>Attention : le « nombre de parts » indiqué sur l&apos;avis n&apos;est pas le nombre de personnes du foyer.</p>
+        {household ? (
+          <>
+            <p>
+              Comptez chaque personne qui vit avec vous, quel que soit son âge : conjoint ou partenaire, enfants, autres personnes à
+              charge… Celles qui font leur propre déclaration de revenus (couple non marié, enfant majeur) comptent aussi.
+            </p>
+            <p>
+              Attention : le « nombre de parts » de l&apos;avis d&apos;impôt n&apos;est pas le nombre de personnes. Un couple marié avec un
+              enfant a 2,5 parts, mais compte 3 personnes.
+            </p>
+          </>
+        ) : (
+          <>
+            <p>
+              Il figure en première page de votre avis d&apos;impôt, dans le cadre « Vos références ». Prenez le dernier avis reçu ; si
+              plusieurs avis concernent le foyer (couple non marié, enfant majeur qui fait sa propre déclaration…), additionnez leurs
+              revenus fiscaux de référence.
+            </p>
+            <figure className="mx-auto max-w-md">
+              <AvisSchema />
+              <figcaption className="mt-2 text-center text-xs text-ink-500">Exemple simplifié, sans valeur officielle</figcaption>
+            </figure>
+          </>
         )}
-        <figure className="mx-auto max-w-md">
-          <AvisSchema />
-          <figcaption className="mt-2 text-center text-xs text-ink-500">Exemple simplifié, sans valeur officielle</figcaption>
-        </figure>
       </div>
     </details>
   );

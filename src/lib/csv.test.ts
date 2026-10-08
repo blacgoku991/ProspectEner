@@ -11,6 +11,12 @@ describe("export CSV", () => {
     expect(csvCell("  =1")).toBe("\"'  =1\"");
   });
 
+  it("retire les caractères invisibles (largeur nulle, direction du texte) qui maquillent une cellule", () => {
+    expect(csvCell("12 rue\u202E des Lilas\u200B")).toBe('"12 rue des Lilas"');
+    expect(csvCell("\u2066=1+1\u2069")).toBe("\"'=1+1\"");
+    expect(csvCell("\uFEFFDupont")).toBe('"Dupont"');
+  });
+
   it("échappe les guillemets et gère les valeurs vides", () => {
     expect(csvCell('Dupont "Jo"')).toBe('"Dupont ""Jo"""');
     expect(csvCell(null)).toBe('""');
