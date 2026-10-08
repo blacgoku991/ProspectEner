@@ -13,6 +13,11 @@ export const ANSWERS_ELIGIBLE: Answers = {
   works: ["PAC"],
   heatPumpType: "PAC_AIR_EAU",
   currentHeating: "CHAUDIERE_FIOUL",
+  // Installation actuelle (chauffage central à eau) : questions posées pour un projet de chauffage.
+  heatEmitters: "RADIATEURS_FONTE",
+  radiatorCount: 9,
+  heatedArea: 120,
+  boilerLocation: "GARAGE",
   oilTankRemoval: "NON",
   quoteSigned: "NON",
   worksStarted: "NON",
@@ -44,7 +49,7 @@ export const TEST_SETTINGS: SiteSettings = {
 export async function resetDatabase(): Promise<void> {
   const { prisma } = await import("@/lib/db");
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "Notification", "RequestEvent", "InternalNote", "ContactRequest", "TextVersion", "Opposition", "AcquisitionChannel", "AuditLog", "RateLimitBucket", "FunnelDailyStat", "StaffSession", "StaffUser", "SiteSettings", "RuleSet" RESTART IDENTITY CASCADE',
+    'TRUNCATE "Notification", "RequestEvent", "InternalNote", "ContactRequest", "TextVersion", "Opposition", "AcquisitionChannel", "AuditLog", "RateLimitBucket", "FunnelDailyStat", "StaffSession", "StaffUser", "SiteSettings", "RuleSet", "Partner" RESTART IDENTITY CASCADE',
   );
 }
 

@@ -1,24 +1,45 @@
-import { ArrowLeft, CalendarCheck, CalendarClock, CircleAlert, Clock, Mail, MessageSquare, Phone, PhoneOff, ShieldBan } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarCheck,
+  CalendarClock,
+  CircleAlert,
+  CircleCheck,
+  CircleHelp,
+  CircleX,
+  Clock,
+  Handshake,
+  Mail,
+  MessageSquare,
+  Phone,
+  PhoneOff,
+  ShieldBan,
+} from "lucide-react";
 import Link from "next/link";
 import { EligibilitySummary } from "@/components/evaluation/EligibilitySummary";
 import { EvaluationDetails } from "@/components/evaluation/EvaluationDetails";
 import { AppointmentForm } from "@/components/admin/AppointmentForm";
 import { HandoffRecap } from "@/components/admin/HandoffRecap";
+import { IncomeBadge } from "@/components/admin/IncomeBadge";
 import { SubmitButton } from "@/components/admin/SubmitButton";
 import { Alert, Panel } from "@/components/admin/ui";
 import { summarizeAnswers, validateRuleSetData, WORK_CATEGORY_LABELS, type Answers, type Evaluation } from "@/engine";
 import type { WorkCategory } from "@/engine/types";
 import { aidName, APPOINTMENT_MODES, type AppointmentMode, qualificationGroups, type StoredQualification } from "@/lib/admin/qualification";
-import { callbackState } from "@/lib/admin/requests";
+import { callbackState, parisYear } from "@/lib/admin/requests";
 import { audit } from "@/lib/audit";
 import { getAccessibleRequestId, requireStaff } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db";
 import { noticeParagraphs } from "@/lib/legal/texts";
+import { type LeadField, leadContactFields, leadProfileFields } from "@/lib/leads/fields";
+import { type CheckStatus, type MatchStatus, matchPartner } from "@/lib/leads/partners";
+import { listPartners, partnerDisplayName } from "@/lib/leads/partners-db";
+import { REQUESTED_PARTNER_SENT_EVENT } from "@/lib/leads/requested-partner";
+import { leadProfileFromRow } from "@/lib/leads/profile";
 import { requestContext } from "@/lib/request-context";
 import { CHANNEL_LONG_LABELS, KIND_LABELS, OUTCOME_LABELS, STATUS_LABELS, worksTextForRequest } from "@/lib/requests/shared";
-import { partnerList, referralEnabled } from "@/lib/settings-schema";
+import { referralEnabled } from "@/lib/settings-schema";
 import { getPublishedRuleSet } from "@/lib/rulesets";
-import { DAY_LABELS, formatFrenchPhone, SLOT_LABELS } from "@/lib/validation/contact";
+import { DAY_LABELS, SLOT_LABELS } from "@/lib/validation/contact";
 import {
   addNoteAction,
   anonymizeAction,
@@ -49,6 +70,7 @@ const EVENT_LABELS: Record<string, string> = {
   APPOINTMENT_BOOKED: "Rendez-vous fixé",
   APPOINTMENT_CANCELLED: "Rendez-vous annulé",
   APPOINTMENT_SENT: "Rendez-vous transmis à l'entreprise",
+  [REQUESTED_PARTNER_SENT_EVENT]: "Demande transmise à l'entreprise nommée",
   QUALIFICATION_FAILED: "Non éligible après vérification",
 };
 
@@ -59,6 +81,31 @@ const CONTACT_OUTCOME_LABELS: Record<string, string> = {
   PROSPECT_REPLIED: "réponse de la personne",
 };
 
+const MATCH_BADGE: Record<MatchStatus, { label: string; className: string }> = {
+  MATCH: { label: "Correspond", className: "bg-pine-100 text-pine-800" },
+  TO_CHECK: { label: "À vérifier", className: "bg-amber-100 text-amber-900" },
+  NO: { label: "Ne correspond pas", className: "bg-ink-900/[0.06] text-ink-700" },
+};
+const MATCH_ORDER: Record<MatchStatus, number> = { MATCH: 0, TO_CHECK: 1, NO: 2 };
+const CHECK_ICON: Record<Exclude<CheckStatus, "OK">, React.ReactNode> = {
+  KO: <CircleX className="mt-0.5 size-3.5 shrink-0 text-red-600" aria-label="Non rempli" />,
+  UNKNOWN: <CircleHelp className="mt-0.5 size-3.5 shrink-0 text-amber-600" aria-label="Inconnu" />,
+};
+
+/** Liste de définitions de la fiche ; une valeur absente s'affiche « — ». */
+function FieldList({ fields, render }: { fields: LeadField[]; render?: (f: LeadField) => React.ReactNode }) {
+  return (
+    <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+      {fields.map((f) => (
+        <div key={f.key} className={f.key === "streetAddress" || f.key === "works" ? "sm:col-span-2" : undefined}>
+          <dt className="text-ink-500">{f.label}</dt>
+          <dd className="font-medium text-ink-900">{f.value === null ? <span className="font-normal text-ink-400">—</span> : (render?.(f) ?? f.value)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function eventDetail(type: string, data: unknown): string {
   const d = (data ?? {}) as Record<string, unknown>;
   if (type === "STATUS_CHANGED") return `${STATUS_LABELS[d.from as keyof typeof STATUS_LABELS] ?? d.from} → ${STATUS_LABELS[d.to as keyof typeof STATUS_LABELS] ?? d.to}`;
@@ -68,8 +115,10 @@ function eventDetail(type: string, data: unknown): string {
     const aids = Array.isArray(d.aids) ? d.aids.map((a) => aidName(String(a))).join(", ") : "";
     return `${dtAppointment.format(new Date(d.at))} · ${APPOINTMENT_MODES[d.mode as AppointmentMode] ?? ""}${aids ? ` · ${aids}` : ""}${typeof d.partner === "string" ? ` · confié à ${d.partner}` : ""}`;
   }
-  if (type === "APPOINTMENT_SENT" && typeof d.partner === "string") return d.partner;
-  if (type === "CREATED") return `${KIND_LABELS[d.kind as keyof typeof KIND_LABELS] ?? ""}${d.oppositionMatch ? " — contact présent dans la liste d'opposition" : ""}`;
+  if ((type === "APPOINTMENT_SENT" || type === REQUESTED_PARTNER_SENT_EVENT) && typeof d.partner === "string") return d.partner;
+  if (type === "CREATED") {
+    return `${KIND_LABELS[d.kind as keyof typeof KIND_LABELS] ?? ""}${typeof d.partner === "string" ? ` — entreprise nommée : ${d.partner}` : ""}${d.oppositionMatch ? " — contact présent dans la liste d'opposition" : ""}`;
+  }
   return "";
 }
 
@@ -106,26 +155,47 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const works = r.projectTypes.map((p) => WORK_CATEGORY_LABELS[p as WorkCategory] ?? p).join(", ");
   const groups = qualificationGroups(evaluation);
   const qualification = r.qualification as unknown as StoredQualification | null;
-  // Récapitulatif pour l'entreprise partenaire : le strict nécessaire au rendez-vous (ni revenus, ni composition du foyer).
-  const HANDOFF_EXCLUDED = new Set(["location", "householdSize", "income"]);
+
+  // Fiche de la demande, dans l'ordre attendu par les entreprises partenaires.
+  const profile = leadProfileFromRow(r);
+  const contactFields = leadContactFields(r);
+  const worksFallback = worksTextForRequest(r.kind, answers);
+  const profileFields = leadProfileFields(profile).map((f) =>
+    // Rappel rapide : pas de travaux précis, seulement les familles de travaux demandées.
+    f.key === "works" && f.value === null ? { ...f, value: worksFallback.charAt(0).toUpperCase() + worksFallback.slice(1) } : f,
+  );
+
+  // Entreprises partenaires actives : correspondance de la demande avec leurs critères.
+  const year = parisYear();
+  const partnerMatches = (await listPartners({ activeOnly: true }))
+    .map((p) => ({ partner: p, display: partnerDisplayName(p), match: matchPartner(profile, p.criteria, year) }))
+    .sort((a, b) => MATCH_ORDER[a.match.status] - MATCH_ORDER[b.match.status] || a.partner.name.localeCompare(b.partner.name, "fr"));
+  const referral = referralEnabled(ctx.settings);
+  // Entreprise nommée dans la demande (phrase validée avant l'envoi) : la demande peut lui être transmise, à elle seule.
+  const requestedMatch = r.requestedPartnerId ? partnerMatches.find((m) => m.partner.id === r.requestedPartnerId) : undefined;
+
+  // Récapitulatif pour l'entreprise partenaire : la fiche de la demande (coordonnées et réponses, y compris la
+  // catégorie de revenus, sur laquelle les entreprises établissent leur offre : la notice annonce la transmission
+  // de « vos réponses »), le rendez-vous et les aides confirmées. Jamais le commentaire libre ni les notes internes.
   const handoffRecap =
     r.status === "RDV_FIXE" && r.appointmentAt && r.appointmentPartner && !r.anonymizedAt
       ? [
-          `Rendez-vous : ${dtAppointment.format(r.appointmentAt)}${r.appointmentMode ? ` (${(APPOINTMENT_MODES[r.appointmentMode as AppointmentMode] ?? r.appointmentMode).toLowerCase()})` : ""}`,
-          `Client : ${name}`,
-          r.phone ? `Téléphone : ${formatFrenchPhone(r.phone)}` : null,
-          r.email ? `E-mail : ${r.email}` : null,
-          `Commune : ${[r.postalCode, r.communeName].filter(Boolean).join(" ") || "—"}`,
-          `Projet : ${worksTextForRequest(r.kind, answers)}`,
-          ...summary.filter((l) => !HANDOFF_EXCLUDED.has(l.question)).map((l) => `${l.label} : ${l.value}`),
-          qualification ? `Conditions confirmées pour : ${qualification.aids.map((a) => aidName(a)).join(", ")}` : null,
-          r.appointmentNote ? `Précisions : ${r.appointmentNote}` : null,
-          `Référence : ${r.reference}`,
-          "",
-          `Coordonnées transmises avec l'accord de la personne${r.partnerConsentAt ? ` (${dts.format(r.partnerConsentAt)})` : ""}, pour ce rendez-vous uniquement : elles ne doivent servir à aucune autre sollicitation.`,
+          [
+            `Rendez-vous : ${dtAppointment.format(r.appointmentAt)}${r.appointmentMode ? ` (${(APPOINTMENT_MODES[r.appointmentMode as AppointmentMode] ?? r.appointmentMode).toLowerCase()})` : ""}`,
+            `Référence : ${r.reference}`,
+          ],
+          [...contactFields, ...profileFields].filter((f) => f.value !== null && f.value !== "").map((f) => `${f.label} : ${f.value}`),
+          [
+            qualification ? `Conditions confirmées pour : ${qualification.aids.map((a) => aidName(a)).join(", ")}` : null,
+            r.appointmentNote ? `Précisions : ${r.appointmentNote}` : null,
+          ].filter((l): l is string => l !== null),
+          [
+            `Coordonnées et réponses transmises avec l'accord de la personne${r.partnerConsentAt ? ` (${dts.format(r.partnerConsentAt)})` : ""}, pour ce rendez-vous uniquement : elles ne doivent servir à aucune autre sollicitation.`,
+          ],
         ]
-          .filter((l): l is string => l !== null)
-          .join("\n")
+          .filter((section) => section.length > 0)
+          .map((section) => section.join("\n"))
+          .join("\n\n")
       : null;
 
   return (
@@ -155,6 +225,114 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
           situation avant tout contact.
         </Alert>
       )}
+
+      <div className={r.anonymizedAt ? undefined : "grid gap-6 lg:grid-cols-[1.4fr_1fr]"}>
+        <Panel title="Fiche de la demande" actions={<IncomeBadge category={profile.incomeCategory} long />}>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-500">Contact</h3>
+          {r.anonymizedAt ? (
+            <p className="text-sm text-ink-500">Coordonnées effacées le {dts.format(r.anonymizedAt)}.</p>
+          ) : (
+            <FieldList
+              fields={contactFields}
+              render={(f) =>
+                f.key === "phone" && r.phone ? (
+                  callAllowed ? (
+                    <a className="text-pine-700 underline" href={`tel:${r.phone}`}>{f.value}</a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-ink-500"><PhoneOff className="size-4" aria-hidden />{f.value} (appel non autorisé)</span>
+                  )
+                ) : f.key === "email" && r.email ? (
+                  <a className="text-pine-700 underline" href={`mailto:${r.email}`}>{f.value}</a>
+                ) : undefined
+              }
+            />
+          )}
+          <h3 className="mb-3 mt-6 border-t border-ink-900/[0.06] pt-4 text-xs font-semibold uppercase tracking-wide text-ink-500">Logement, chauffage et foyer</h3>
+          <FieldList fields={profileFields} />
+        </Panel>
+
+        {!r.anonymizedAt && (
+          <Panel
+            title="Entreprises partenaires"
+            actions={isAdmin ? <Link href="/admin/partenaires" className="text-sm font-semibold text-pine-700">Gérer</Link> : undefined}
+          >
+            {r.requestedPartnerName && (
+              <div className="mb-4 rounded-xl bg-pine-50 px-4 py-3 text-sm ring-1 ring-inset ring-pine-600/20">
+                <p className="flex items-start gap-2 font-semibold text-pine-950">
+                  <Handshake className="mt-0.5 size-4 shrink-0 text-pine-700" aria-hidden />
+                  <span>Entreprise nommée dans la demande : {r.requestedPartnerName}</span>
+                </p>
+                <p className="mt-1 pl-6 text-xs text-ink-700">
+                  {r.requestedPartnerSentAt
+                    ? `Demande transmise à l'entreprise le ${dts.format(r.requestedPartnerSentAt)}.`
+                    : "Pas encore transmise : export « Demandes à transmettre » de l'entreprise (Partenaires)."}
+                  {!requestedMatch && " Entreprise désactivée ou supprimée depuis la demande."}
+                </p>
+              </div>
+            )}
+            {!referral && (
+              <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-950 ring-1 ring-inset ring-amber-300">
+                Mise en relation non activée (Paramètres → Activité) : aucun rendez-vous ne peut être confié à une entreprise.
+              </p>
+            )}
+            {partnerMatches.length === 0 ? (
+              <p className="text-sm text-ink-500">Aucune entreprise partenaire active.</p>
+            ) : (
+              <ul className="space-y-3">
+                {partnerMatches.map(({ partner: p, display, match }) => {
+                  const open = match.checks.filter((c) => c.status !== "OK").sort((a, b) => (a.status === "KO" ? 0 : 1) - (b.status === "KO" ? 0 : 1));
+                  return (
+                    <li key={p.id} className="rounded-xl border border-ink-900/10 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-ink-900">
+                            {isAdmin ? <Link href={`/admin/partenaires/${p.id}`} className="hover:underline">{p.name}</Link> : p.name}
+                          </p>
+                          {p.details && <p className="text-xs text-ink-500">{p.details}</p>}
+                        </div>
+                        <span className={`badge shrink-0 ${MATCH_BADGE[match.status].className}`}>{MATCH_BADGE[match.status].label}</span>
+                      </div>
+                      {p.id === r.requestedPartnerId && (
+                        <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-pine-700">
+                          <Handshake className="size-3.5" aria-hidden /> Nommée dans la demande
+                        </p>
+                      )}
+                      {r.appointmentPartner && (r.appointmentPartner === display || r.appointmentPartner === p.name) && (
+                        <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-pine-700">
+                          <CalendarCheck className="size-3.5" aria-hidden /> Rendez-vous confié à cette entreprise
+                        </p>
+                      )}
+                      {open.length > 0 ? (
+                        <ul className="mt-2 space-y-1.5 text-xs text-ink-700">
+                          {open.map((c) => (
+                            <li key={c.label} className="flex gap-1.5">
+                              {CHECK_ICON[c.status as Exclude<CheckStatus, "OK">]}
+                              <span>
+                                <strong className="font-semibold text-ink-900">{c.label}</strong> : {c.value}
+                                <span className="block text-ink-500">Attendu : {c.expected}</span>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-600">
+                          <CircleCheck className="size-3.5 text-pine-600" aria-hidden />
+                          {match.checks.length === 0
+                            ? "Aucun critère : l'entreprise accepte toutes les demandes."
+                            : `${match.checks.length} critère${match.checks.length > 1 ? "s" : ""} rempli${match.checks.length > 1 ? "s" : ""}.`}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <p className="mt-3 text-xs text-ink-500">
+              Correspondance calculée sur les réponses au test : confirmez les points inconnus avec la personne avant de lui proposer l&apos;entreprise.
+            </p>
+          </Panel>
+        )}
+      </div>
 
       {r.channel === "PHONE" && !r.anonymizedAt && (
         <Panel title="Rappel téléphonique — cadre de la demande">
@@ -240,7 +418,12 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             <p className="text-sm text-ink-600">D&apos;après le test, aucune aide n&apos;est accessible : pas de rendez-vous à proposer.</p>
           ) : (
             <>
-              <AppointmentForm requestId={r.id} groups={groups} referral={referralEnabled(ctx.settings)} partners={partnerList(ctx.settings)} />
+              <AppointmentForm
+                requestId={r.id}
+                groups={groups}
+                referral={referral}
+                partners={partnerMatches.map((m) => ({ name: m.display, match: m.match.status, requested: m.partner.id === r.requestedPartnerId }))}
+              />
               <form action={markNotEligibleAction} className="mt-5 border-t border-ink-900/[0.06] pt-4">
                 <input type="hidden" name="id" value={r.id} />
                 <SubmitButton variant="ghost" className="py-2 text-xs">
@@ -254,41 +437,26 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-6">
-          <Panel title="Coordonnées et demande">
-            {r.anonymizedAt ? (
-              <p className="text-sm text-ink-500">Coordonnées effacées le {dts.format(r.anonymizedAt)}.</p>
-            ) : (
-              <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-                <div><dt className="text-ink-500">Nom</dt><dd className="font-medium text-ink-900">{name}</dd></div>
-                <div><dt className="text-ink-500">Canal demandé</dt><dd className="font-medium text-ink-900">{CHANNEL_LONG_LABELS[r.channel]}</dd></div>
-                {r.phone && (
-                  <div>
-                    <dt className="text-ink-500">Téléphone</dt>
-                    <dd className="font-medium text-ink-900">
-                      {callAllowed ? <a className="text-pine-700 underline" href={`tel:${r.phone}`}>{formatFrenchPhone(r.phone)}</a> : (
-                        <span className="inline-flex items-center gap-1.5 text-ink-500"><PhoneOff className="size-4" aria-hidden />{formatFrenchPhone(r.phone)} (appel non autorisé)</span>
-                      )}
-                    </dd>
-                  </div>
-                )}
-                {r.email && (
-                  <div><dt className="text-ink-500">E-mail</dt><dd className="font-medium"><a className="text-pine-700 underline" href={`mailto:${r.email}`}>{r.email}</a></dd></div>
-                )}
-                <div><dt className="text-ink-500">Logement</dt><dd className="font-medium text-ink-900">{[r.postalCode, r.communeName].filter(Boolean).join(" ") || "—"} ({r.departement ?? "—"})</dd></div>
-                <div><dt className="text-ink-500">Projet</dt><dd className="font-medium text-ink-900">{works || "—"}</dd></div>
-                {availability && (availability.days?.length || availability.slots?.length) ? (
-                  <div className="sm:col-span-2">
-                    <dt className="text-ink-500">Disponibilités</dt>
-                    <dd className="font-medium text-ink-900">
-                      {[...(availability.days ?? []).map((x) => DAY_LABELS[x]), ...(availability.slots ?? []).map((x) => SLOT_LABELS[x])].join(", ")}
-                    </dd>
-                  </div>
-                ) : null}
-                {r.comment && (
-                  <div className="sm:col-span-2"><dt className="text-ink-500">Commentaire</dt><dd className="whitespace-pre-line text-ink-900">{r.comment}</dd></div>
-                )}
-              </dl>
-            )}
+          <Panel title="Demande">
+            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+              <div><dt className="text-ink-500">Canal demandé</dt><dd className="font-medium text-ink-900">{CHANNEL_LONG_LABELS[r.channel]}</dd></div>
+              <div><dt className="text-ink-500">Projet</dt><dd className="font-medium text-ink-900">{works || "—"}</dd></div>
+              <div>
+                <dt className="text-ink-500">Localisation</dt>
+                <dd className="font-medium text-ink-900">{[r.postalCode, r.communeName].filter(Boolean).join(" ") || "—"} ({r.departement ?? "—"})</dd>
+              </div>
+              {!r.anonymizedAt && availability && (availability.days?.length || availability.slots?.length) ? (
+                <div className="sm:col-span-2">
+                  <dt className="text-ink-500">Disponibilités</dt>
+                  <dd className="font-medium text-ink-900">
+                    {[...(availability.days ?? []).map((x) => DAY_LABELS[x]), ...(availability.slots ?? []).map((x) => SLOT_LABELS[x])].join(", ")}
+                  </dd>
+                </div>
+              ) : null}
+              {!r.anonymizedAt && r.comment && (
+                <div className="sm:col-span-2"><dt className="text-ink-500">Commentaire</dt><dd className="whitespace-pre-line text-ink-900">{r.comment}</dd></div>
+              )}
+            </dl>
           </Panel>
 
           {evaluation ? (

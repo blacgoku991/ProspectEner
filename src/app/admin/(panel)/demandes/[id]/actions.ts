@@ -9,6 +9,7 @@ import { qualificationGroups, qualifiedAids, type StoredQualification } from "@/
 import { audit } from "@/lib/audit";
 import { getAccessibleRequestId, requireAdmin, requireStaff } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db";
+import { listPartners, partnerDisplayName } from "@/lib/leads/partners-db";
 import { requestContext } from "@/lib/request-context";
 import { parseParisLocalDateTime } from "@/lib/business-days";
 import { anonymizeRequest } from "@/lib/requests/anonymize";
@@ -218,9 +219,9 @@ export async function bookAppointmentAction(_prev: AppointmentState, formData: F
   const mode = z.enum(["DOMICILE", "VISIO", "TELEPHONE"]).safeParse(formData.get("mode"));
   if (!mode.success) return { error: "Choisissez le mode du rendez-vous." };
   const note = String(formData.get("note") ?? "").trim().slice(0, 1000);
-  // Mise en relation : le rendez-vous peut être confié à une entreprise partenaire, annoncée par la notice
-  // d'information et acceptée par la personne pendant l'échange.
-  const partner = String(formData.get("partner") ?? "").trim().replace(/\s+/g, " ").slice(0, 120);
+  // Mise en relation : le rendez-vous peut être confié à une entreprise partenaire active (Partenaires),
+  // annoncée par la notice d'information et acceptée par la personne pendant l'échange.
+  const partner = String(formData.get("partner") ?? "").trim().replace(/\s+/g, " ").slice(0, 400);
   if (partner) {
     if (!referralEnabled(ctx.settings)) {
       return {
@@ -228,8 +229,12 @@ export async function bookAppointmentAction(_prev: AppointmentState, formData: F
           "Pour confier un rendez-vous à une autre entreprise, cochez d'abord « Mise en relation avec des professionnels » dans Paramètres → Activité : la notice d'information doit l'annoncer aux visiteurs.",
       };
     }
+    const active = await listPartners({ activeOnly: true });
+    if (!active.some((p) => partnerDisplayName(p) === partner)) {
+      return { error: "Entreprise partenaire inconnue ou désactivée : choisissez une entreprise de la liste." };
+    }
     if (formData.get("partnerConsent") !== "on") {
-      return { error: "Cochez l'accord de la personne pour la transmission de ses coordonnées et de son projet à cette entreprise." };
+      return { error: "Cochez l'accord de la personne pour la transmission de ses coordonnées et de ses réponses à cette entreprise." };
     }
   }
   const validKeys = new Set(groups.flatMap((g) => g.items.map((i) => i.key)));

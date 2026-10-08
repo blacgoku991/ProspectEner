@@ -8,7 +8,20 @@ export interface ChoiceOption<T extends string> {
   value: T;
   label: string;
   hint?: string;
+  /** Pastille de couleur (classe Tailwind) devant l'indication, ex. profil de revenus. Décorative : le texte porte l'information. */
+  hintDot?: string;
   icon?: LucideIcon;
+}
+
+/** Indication sous le libellé d'un choix, avec une éventuelle pastille de couleur. */
+function OptionHint({ hint, dot }: { hint?: string; dot?: string }) {
+  if (!hint) return null;
+  return (
+    <span className="mt-0.5 flex items-start gap-1.5 text-sm text-ink-500">
+      {dot && <span aria-hidden className={cn("mt-[5px] size-2.5 shrink-0 rounded-full", dot)} />}
+      {hint}
+    </span>
+  );
 }
 
 interface SingleProps<T extends string> {
@@ -55,7 +68,7 @@ export function SingleChoice<T extends string>({ options, value, onSelect, label
             )}
             <span className="min-w-0 flex-1">
               <span className="block font-semibold text-ink-900">{o.label}</span>
-              {o.hint && <span className="mt-0.5 block text-sm text-ink-500">{o.hint}</span>}
+              <OptionHint hint={o.hint} dot={o.hintDot} />
             </span>
             <span
               aria-hidden
@@ -118,7 +131,7 @@ export function MultiChoice<T extends string>({ options, values, onChange, label
             )}
             <span className="min-w-0 flex-1">
               <span className="block font-semibold text-ink-900">{o.label}</span>
-              {o.hint && <span className="mt-0.5 block text-sm text-ink-500">{o.hint}</span>}
+              <OptionHint hint={o.hint} dot={o.hintDot} />
             </span>
             <span
               aria-hidden

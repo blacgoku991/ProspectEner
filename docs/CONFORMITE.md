@@ -25,6 +25,32 @@ Les références réglementaires ci-dessous ont été vérifiées le 4 octobre 2
 - **L223-8** (loi n° 2025-594 du 30 juin 2025). La même interdiction couvre les SMS et messageries, l'e-mail et les réseaux sociaux.
 - **Opt-in généralisé au 11 août 2026** pour la prospection téléphonique (loi n° 2025-594, décret n° 2026-662). Un consentement générique **ne lève pas** l'interdiction sectorielle.
 - **R223-4** (décret n° 2026-662). Un appel n'est pas de la prospection s'il répond à une **demande explicite et prouvée**, intervient **dans les cinq jours ouvrables suivant la demande** et porte **uniquement sur l'objet demandé**. Les justificatifs sont conservés 3 ans.
+  - Mise à jour du 8 octobre 2026 (résumés de recherche, Légifrance non consultable directement) : l'article s'ouvrirait par « pour l'application du cinquième alinéa de l'article L. 223-1 », c'est-à-dire l'interdiction propre à la rénovation énergétique. Il viserait donc précisément le rappel d'une personne qui l'a demandé, dans ce secteur.
+  - Le décret fait l'objet d'un recours devant le Conseil d'État (23 septembre 2026), sans suspension connue à cette date.
+- **Sanctions** (L242-16 et L242-16-1) : jusqu'à 75 000 € pour une personne physique et 375 000 € pour une personne morale, par manquement et cumulables ; contrat conclu à la suite d'un démarchage illicite nul. Exemples récents dans le secteur : 801 020 €, 440 600 €, 376 080 €, 366 930 €.
+- **Entreprise qui profite d'un démarchage illicite** : présumée responsable, même si les appels sont sous-traités ; la preuve de la demande incombe à celui qui appelle.
+
+### Revente de demandes à des entreprises partenaires (mise en relation rémunérée)
+
+Analyse (sans position officielle publiée à ce jour sur la génération de demandes) :
+
+- **Une entreprise que la personne n'a pas nommée ne peut pas l'appeler** : son appel ne répond à aucune demande qui lui était adressée, c'est de la prospection interdite (L223-1). Un consentement générique « nos partenaires » ne suffit pas, ni pour le démarchage ni pour la CNIL (identité des destinataires due dès la collecte).
+- **Ce que fait le site** :
+  - quand la mise en relation est déclarée et qu'une entreprise partenaire active correspond aux réponses, la phrase de la demande la **nomme avant l'envoi** : « Je demande à être contacté(e) par [éditeur] et par [entreprise], l'entreprise qui réalise les travaux, par [canal], au sujet de mon projet de [travaux]. » Le choix de l'entreprise est fait dans le navigateur et refait par le serveur, qui refuse l'envoi si l'entreprise affichée n'est plus la bonne ;
+  - la demande peut alors être **transmise à cette seule entreprise** (export « demandes à transmettre ») ; la date de transmission est enregistrée et tracée dans l'historique ;
+  - sans entreprise nommée, une entreprise ne reçoit la demande qu'avec l'accord explicite de la personne lors de l'échange, pour un rendez-vous convenu (accord coché et tracé). **Cette voie est moins sûre** que la demande nommant l'entreprise ;
+  - la notice, la politique de confidentialité et les mentions légales annoncent la transmission à une seule entreprise et la **rémunération** de ces mises en relation (pratique commerciale trompeuse par omission sinon, art. L121-3) ;
+  - les critères des entreprises servent uniquement au tri : ils ne modifient jamais le résultat affiché au visiteur.
+- **Règles d'usage à respecter par l'éditeur et ses partenaires** (non vérifiables par le site) :
+  - l'entreprise rappelle **dans les cinq jours ouvrables suivant la demande** (pas suivant sa transmission) : transmettre les demandes sans attendre ; l'export indique la date limite ;
+  - l'appel porte **uniquement sur l'objet demandé** (pas de proposition d'isolation à une demande de pompe à chaleur) ;
+  - jamais de revente ou de réattribution à une autre entreprise ; une nouvelle entreprise suppose une nouvelle demande de la personne ;
+  - aucun SMS, e-mail ou message de relance commerciale (L223-8) : seulement les messages qui répondent à la demande (confirmation, rendez-vous) ;
+  - créneaux d'appel lun.-ven. 10h-13h / 14h-20h, 4 tentatives au plus sur 30 jours (D223-9), arrêt immédiat en cas d'opposition ;
+  - **contrat avec chaque entreprise** : usage des données limité à la demande, pas de cession, rappel dans le délai ou pas du tout, information de la personne au premier contact (art. 14 RGPD, en citant l'éditeur comme source), conservation, sécurité, synchronisation des oppositions ; engagement sur la qualification RGE et l'information sur la sous-traitance (loi n° 2025-594) ;
+  - une entreprise ajoutée plus tard ne reçoit pas les demandes collectées avant son ajout.
+- **Publicité** : aucune offre « à 1 € », « gratuite » ou « reste à charge 0 € » (pratique trompeuse, art. L121-4 19°). Les aides par geste sont plafonnées (90 % / 75 % / 60 % du coût TTC selon les revenus), donc un reste à charge demeure en général. Le site n'affiche aucun montant.
+- **Avis d'impôt** : le site ne demande ni l'avis, ni le numéro fiscal, ni les identifiants FranceConnect ou impots.gouv (risque de fraude signalé par France Rénov'). Il demande la taille du foyer et la tranche de revenu fiscal de référence, déclaratives ; l'entreprise vérifie l'avis au moment du dossier.
 
 ### Mesures implémentées
 
@@ -39,7 +65,8 @@ Les références réglementaires ci-dessous ont été vérifiées le 4 octobre 2
   - Il est fixé pendant l'échange demandé, après confirmation des critères d'au moins une aide. Le serveur le contrôle.
   - Il ne crée **aucune autorisation de sollicitation ultérieure** : en dehors du rendez-vous convenu, les règles ci-dessus continuent de s'appliquer.
   - Le champ « Projet et précisions » est facultatif et limité à 1 000 caractères. Il est effacé à l'anonymisation.
-- **Coordonnée minimale.** Seule la coordonnée du canal choisi est conservée (téléphone **ou** e-mail).
+- **Coordonnées.** Seule la coordonnée du canal choisi est obligatoire. Avec un rappel téléphonique, une adresse e-mail peut être ajoutée ; l'adresse du logement est facultative (visite technique). Aucun numéro n'est conservé pour une réponse par e-mail.
+- **Catégories de revenus.** Le rendez-vous n'est proposé qu'aux catégories retenues dans les paramètres (bleu et jaune par défaut ; « je ne sais pas » toujours accepté). Le serveur refuse les autres (`INCOME_NOT_ACCEPTED`). Le résultat affiché reste celui du moteur, avec un renvoi vers France Rénov'.
 - **Échéance de rappel.**
   - Calcul : 5 jours ouvrables suivant la demande, jour de la demande exclu, samedis comptés, dimanches et jours fériés légaux exclus, Alsace-Moselle en option, fin de journée heure de Paris. Le délai est paramétrable, avec 5 au maximum.
   - Dans l'administration : compte à rebours, alerte « délai dépassé » et **blocage de l'enregistrement d'un appel** après l'échéance sans premier contact.
@@ -60,7 +87,7 @@ Les références réglementaires ci-dessous ont été vérifiées le 4 octobre 2
 
 La fiche DGCCRF « Conseils pour réussir la rénovation énergétique de son logement » indique : « *le fait de rappeler un consommateur qui aurait laissé ses coordonnées sur un site ou simulateur en ligne n'est pas considéré comme conforme à cette loi, même si celui-ci y aurait consenti* ».
 
-Son articulation avec l'article R223-4 (en vigueur depuis le 11 août 2026) n'a pas pu être clarifiée sur source officielle.
+Cette fiche est antérieure à l'article R223-4 (en vigueur depuis le 11 août 2026), qui semble viser précisément le rappel demandé dans ce secteur et devrait prévaloir. Aucune position officielle ne l'a encore confirmé, et le décret est contesté devant le Conseil d'État.
 
 C'est pourquoi le canal téléphonique est **désactivé par défaut**. Son activation exige :
 
@@ -74,7 +101,7 @@ C'est pourquoi le canal téléphonique est **désactivé par défaut**. Son acti
 | Traitement | Données | Base légale (proposée) | Conservation (par défaut, paramétrable) |
 |---|---|---|---|
 | Simulation | Réponses gardées **dans le navigateur** ; code postal envoyé pour la recherche de commune (non enregistré) | — (pas de fiche avant l'envoi) | Session du navigateur |
-| Demande de contact | Identité, coordonnée du canal choisi, commune, réponses utiles, résultat, commentaire et disponibilités facultatifs, origine de campagne | Mesures précontractuelles (6.1.b) | 3 ans depuis la demande ou le dernier échange avec la personne ; 30 jours après une annulation |
+| Demande de contact | Identité, coordonnée du canal choisi, e-mail complémentaire et adresse du logement facultatifs, commune, réponses utiles (dont taille du foyer, tranche de revenu et installation de chauffage), résultat, entreprise partenaire nommée dans la demande, commentaire et disponibilités facultatifs, origine de campagne | Mesures précontractuelles (6.1.b) | 3 ans depuis la demande ou le dernier échange avec la personne ; 30 jours après une annulation |
 | Preuve de la demande | Horodatage, texte validé, version de la notice, empreintes HMAC (IP, téléphone, e-mail) | Obligation de preuve (R223-4) / intérêt légitime | 3 ans |
 | Liste d'opposition | Empreinte non réversible + valeur masquée | Respect des droits / intérêt légitime | 3 ans minimum |
 | Journal de sécurité | Connexions, consultations de fiches, exports, modifications, avec empreinte d'IP | Intérêt légitime (sécurité) | 12 mois |
@@ -88,10 +115,10 @@ Mesures implémentées :
   - Le texte exact affiché est conservé avec chaque demande (version et empreinte).
   - L'adresse et l'identité légale de l'entreprise figurent dans les mentions légales et le pied de page, pas dans le formulaire.
 - **Minimisation.**
-  - Questions conditionnelles et réponses devenues inutiles **supprimées** avant l'enregistrement.
+  - Questions conditionnelles et réponses devenues inutiles **supprimées** avant l'enregistrement. La taille du foyer et la tranche de revenu sont demandées à tous : elles orientent la demande vers l'entreprise concernée.
   - Aucune donnée fiscale, pièce d'identité, coordonnée bancaire ni identifiant FranceConnect.
   - Tranches de revenus plutôt que des montants.
-  - Adresse complète non demandée.
+  - Adresse du logement seulement si la personne la donne ; effacée à l'anonymisation.
 - **Conservation automatisée** (`/api/cron` et bouton dans Paramètres).
   - Anonymisation : suppression des coordonnées, du commentaire, des notes et de la localisation fine.
   - Puis purge des preuves.
@@ -111,13 +138,13 @@ Mesures implémentées :
   - Aucune réponse au questionnaire transmise à une plateforme publicitaire.
   - Cloudflare Turnstile est optionnel et désactivé par défaut. **S'il est activé**, le mentionner dans la politique de confidentialité.
 - **Transmission à une entreprise partenaire : uniquement en mise en relation déclarée, et avec l'accord de la personne.**
-  - Par défaut, la notice indique qu'aucune donnée n'est vendue ni transmise à des partenaires.
+  - Par défaut, la notice indique qu'aucune donnée n'est vendue ni transmise à des partenaires. En mise en relation, elle annonce au contraire la transmission à une seule entreprise et la rémunération : la mention « jamais vendues » disparaît.
   - Si l'administrateur coche « Mise en relation avec des professionnels » (Paramètres → Activité), plusieurs textes l'annoncent : la notice, la politique de confidentialité et les mentions légales. Un rendez-vous accepté peut alors être assuré par une entreprise partenaire, dont le nom est donné avant toute transmission. Les entreprises déclarées y sont listées.
   - Pour confier un rendez-vous à une entreprise, il faut cocher l'accord de la personne. Le serveur refuse sinon, et refuse toute entreprise tant que la mise en relation n'est pas déclarée. L'accord, sa date et la première transmission du récapitulatif sont tracés.
-  - Le récapitulatif se limite au rendez-vous : identité, coordonnées, commune, projet et aides confirmées. Il exclut les revenus et la composition du foyer, et rappelle que les coordonnées ne servent qu'à ce rendez-vous.
-  - Aucune vente de contacts : seul un rendez-vous accepté par la personne est transmis, à une seule entreprise.
+  - Le récapitulatif et les exports pour l'entreprise reprennent la fiche de la demande : identité, coordonnées, installation, logement, catégorie de revenus déclarative (annoncée dans la politique de confidentialité), sans commentaire libre ni note interne. Ils rappellent que les coordonnées ne servent qu'à cette demande.
+  - Une demande n'est transmise qu'à une seule entreprise : celle que la personne a nommée dans sa demande, ou celle du rendez-vous qu'elle a accepté.
   - **À valider juridiquement** :
-    - le cas échéant, les obligations d'information des opérateurs de plateforme en ligne (art. L111-7 du Code de la consommation), notamment sur la relation contractuelle et l'éventuelle rémunération ;
+    - l'application de l'article L111-7 (places de marché et comparateurs depuis la loi SREN) : probablement pas pour un site qui transmet une demande à une seule entreprise sans comparaison, mais la rémunération est annoncée dans tous les cas ; si le site compare ou classe un jour plusieurs entreprises, les articles D111-6 à D111-8 s'appliquent ;
     - le contrat avec chaque partenaire : usage des données limité au rendez-vous, sécurité, durée de conservation ;
     - les contacts du partenaire avec la personne en dehors du rendez-vous convenu, qui restent soumis à l'interdiction de prospection (L223-1, L223-8).
 

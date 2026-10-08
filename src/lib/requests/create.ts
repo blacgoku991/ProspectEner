@@ -11,7 +11,17 @@ import { enqueueNotifications } from "../notifications/dispatch";
 import { rateLimit } from "../ratelimit";
 import { getRuleSetByVersion } from "../rulesets";
 import { getSettings } from "../settings";
-import { contactAcceptedFor, emailReplyAvailable, phoneCallbackAvailable, submissionsOpen } from "../settings-schema";
+import { referenceYearOf, selectPartnerForRequest } from "../leads/partners";
+import { listPartners, requestPartnerCandidates } from "../leads/partners-db";
+import { leadProfileColumns, requestLeadProfile } from "../leads/profile";
+import {
+  contactAcceptedFor,
+  emailReplyAvailable,
+  incomeAcceptedFor,
+  phoneCallbackAvailable,
+  referralEnabled,
+  submissionsOpen,
+} from "../settings-schema";
 import { verifyTurnstile } from "../turnstile";
 import { type ParsedRequestPayload, requestPayloadSchema } from "../validation/request";
 import { cancelTokenFor, generateReference } from "./reference";
@@ -28,6 +38,8 @@ export type CreateResult =
       channel: "PHONE" | "EMAIL";
       callbackDeadline: string | null;
       requestSentence: string;
+      /** Entreprise partenaire nommée dans la demande (nom affiché), ou null. */
+      partnerName: string | null;
     }
   | { ok: false; status: 400 | 403 | 409 | 422 | 429 | 503; code: string; message: string; fieldErrors?: Record<string, string> };
 
@@ -55,7 +67,7 @@ function isUniqueViolation(err: unknown): boolean {
 async function existingReplay(idempotencyKey: string, payloadHash: string): Promise<CreateResult | null> {
   const existing = await prisma.contactRequest.findUnique({
     where: { idempotencyKey },
-    select: { id: true, reference: true, payloadHash: true, channel: true, callbackDeadline: true, requestSentence: true },
+    select: { id: true, reference: true, payloadHash: true, channel: true, callbackDeadline: true, requestSentence: true, requestedPartnerName: true },
   });
   if (!existing) return null;
   if (existing.payloadHash !== payloadHash) {
@@ -71,8 +83,13 @@ async function existingReplay(idempotencyKey: string, payloadHash: string): Prom
     channel: existing.channel,
     callbackDeadline: existing.callbackDeadline?.toISOString() ?? null,
     requestSentence: existing.requestSentence,
+    partnerName: existing.requestedPartnerName,
   };
 }
+
+/** Message commun au navigateur : il recharge la configuration publique et fait relire la demande. */
+const PARTNER_CHANGED_MESSAGE =
+  "Les informations sur l'entreprise partenaire ont été mises à jour : merci de relire votre demande avant de l'envoyer.";
 
 export async function createContactRequest(
   raw: unknown,
@@ -154,25 +171,34 @@ export async function createContactRequest(
         "D'après vos réponses, les conditions des aides évaluées ne semblent pas remplies : nous ne pouvons pas vous proposer de rendez-vous.",
       );
     }
+    // Catégories de revenus retenues dans les paramètres (bleu et jaune par défaut ; « je ne sais pas » toujours accepté).
+    if (!incomeAcceptedFor(settings.contact.acceptedIncomeCategories, answers.income)) {
+      return fail(403, "INCOME_NOT_ACCEPTED", "Nous ne proposons pas de rendez-vous pour cette catégorie de revenus.");
+    }
   } else {
     answers = payload.answers as Answers;
   }
   const { territory, departement } = resolveTerritory(answers);
 
-  // 7. Coordonnées strictement nécessaires au canal choisi.
-  const email = channel === "EMAIL" ? payload.contact.email || null : null;
+  // 7. Coordonnée du canal choisi ; e-mail (avec un rappel) et adresse du logement seulement s'ils sont donnés.
+  //    Aucun numéro n'est conservé pour une réponse par e-mail : seul le canal demandé peut être utilisé.
+  const email = payload.contact.email || null;
   const phone = channel === "PHONE" ? payload.contact.phone || null : null;
+  const streetAddress = payload.contact.streetAddress || null;
   const contactNormalized = {
     firstName: payload.contact.firstName,
     lastName: payload.contact.lastName,
     channel,
     email,
     phone,
+    streetAddress,
     availability: payload.contact.availability ?? null,
     comment: payload.contact.comment || null,
   };
 
-  const requestSentence = buildRequestSentence(settings.company.name, channel, worksTextForRequest(payload.kind, answers));
+  // Profil de la demande, calculé comme dans le navigateur (département déduit de la commune).
+  const profile = requestLeadProfile(answers);
+  const shownPartnerId = payload.partnerId ?? null;
   const payloadHash = sha256Hex(
     JSON.stringify({
       kind: payload.kind,
@@ -180,12 +206,28 @@ export async function createContactRequest(
       contact: contactNormalized,
       ruleSetVersion: payload.kind === "SIMULATION" ? payload.ruleSetVersion : null,
       referenceDate: payload.kind === "SIMULATION" ? payload.referenceDate : null,
+      // Absente sans entreprise nommée : empreinte inchangée pour les demandes sans mise en relation.
+      ...(shownPartnerId ? { partnerId: shownPartnerId } : {}),
     }),
   );
 
   // 8. Idempotence : un double envoi renvoie la même demande.
   const replay = await existingReplay(payload.idempotencyKey, payloadHash);
   if (replay) return replay;
+
+  // 8 bis. Mise en relation : entreprise nommée dans la phrase affichée, choisie dans le navigateur parmi
+  //    les entreprises actives et refaite ici avec les mêmes réponses. La demande ne peut être transmise
+  //    qu'à l'entreprise que la personne a lue avant d'envoyer (art. L223-1 et R223-4 du Code de la
+  //    consommation) : si la liste ou les critères ont changé depuis l'affichage, l'envoi est refusé.
+  //    Rappel rapide (sans test) ou mise en relation non déclarée : aucune entreprise nommée.
+  const partner =
+    payload.kind === "SIMULATION" && referralEnabled(settings)
+      ? selectPartnerForRequest(profile, requestPartnerCandidates(await listPartners({ activeOnly: true })), referenceYearOf(payload.referenceDate))
+      : null;
+  if ((partner?.id ?? null) !== shownPartnerId) {
+    return fail(409, "PARTNER_CHANGED", PARTNER_CHANGED_MESSAGE);
+  }
+  const requestSentence = buildRequestSentence(settings.company.name, channel, worksTextForRequest(payload.kind, answers), partner?.displayName);
 
   // 9. Liste d'opposition (signalement interne, la demande explicite reste enregistrée).
   const phoneHash = phone ? hashPhone(phone) : null;
@@ -242,6 +284,7 @@ export async function createContactRequest(
             lastName: contactNormalized.lastName,
             email,
             phone,
+            streetAddress,
             channel,
             availability: (contactNormalized.availability ?? undefined) as Prisma.InputJsonValue | undefined,
             comment: contactNormalized.comment,
@@ -252,6 +295,7 @@ export async function createContactRequest(
             territory,
             answers: answers as unknown as Prisma.InputJsonValue,
             projectTypes: answers.works ?? [],
+            ...leadProfileColumns(profile),
             evaluation: (evaluation ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
             overallOutcome: evaluation ? evaluation.outcome : "NOT_EVALUATED",
             engineVersion: evaluation?.engineVersion ?? null,
@@ -259,6 +303,8 @@ export async function createContactRequest(
             ruleSetId,
             evaluatedAt: evaluation ? now : null,
             requestSentence,
+            requestedPartnerId: partner?.id ?? null,
+            requestedPartnerName: partner?.displayName ?? null,
             noticeTextId: text.id,
             submittedAt: now,
             ipHash: hashIp(ctx.ip),
@@ -282,7 +328,14 @@ export async function createContactRequest(
           data: {
             requestId: request.id,
             type: "CREATED",
-            data: { kind: payload.kind, channel, outcome: evaluation?.outcome ?? "NOT_EVALUATED", oppositionMatch: Boolean(opposition) },
+            data: {
+              kind: payload.kind,
+              channel,
+              outcome: evaluation?.outcome ?? "NOT_EVALUATED",
+              oppositionMatch: Boolean(opposition),
+              // Nom de l'entreprise nommée dans la demande (aucune coordonnée).
+              ...(partner ? { partner: partner.displayName } : {}),
+            },
           },
         });
         await enqueueNotifications(tx, request.id, "NEW_REQUEST", settings);
@@ -299,6 +352,7 @@ export async function createContactRequest(
         channel,
         callbackDeadline: callbackDeadline?.toISOString() ?? null,
         requestSentence,
+        partnerName: partner?.displayName ?? null,
       };
     } catch (err) {
       if (isUniqueViolation(err)) {

@@ -95,8 +95,11 @@ export const contactSchema = z
     firstName: nameSchema,
     lastName: nameSchema,
     channel: z.enum(["PHONE", "EMAIL"]),
+    /** Obligatoire pour une réponse par e-mail ; facultatif avec un rappel téléphonique. */
     email: z.union([z.literal(""), emailSchema]).optional(),
     phone: z.union([z.literal(""), phoneSchema]).optional(),
+    /** Adresse du logement, facultative (préparation de la visite technique). */
+    streetAddress: z.string().max(200, "200 caractères maximum.").transform(cleanFreeText).optional(),
     availability: availabilitySchema.optional(),
     comment: z.string().max(1000, "1 000 caractères maximum.").transform(cleanFreeText).optional(),
     /** Case de confirmation de la demande explicite (jamais pré-cochée). */

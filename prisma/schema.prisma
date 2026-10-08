@@ -138,6 +138,8 @@ model ContactRequest {
   lastName     String?
   email        String?
   phone        String?
+  /// Adresse du logement, facultative (visite technique) — effacée à l'anonymisation.
+  streetAddress String?
   channel      ContactChannel
   availability Json?
   comment      String?
@@ -153,6 +155,8 @@ model ContactRequest {
   // Questionnaire & pré-éligibilité
   answers        Json
   projectTypes   String[]
+  /// Travaux précis (identifiants du moteur), pour le tri par entreprise partenaire.
+  workItems      String[]       @default([])
   evaluation     Json?
   overallOutcome OverallOutcome
   engineVersion  String?
@@ -160,6 +164,23 @@ model ContactRequest {
   ruleSetId      String?        @db.Uuid
   ruleSet        RuleSet?       @relation(fields: [ruleSetId], references: [id])
   evaluatedAt    DateTime?
+
+  // Profil de la demande, copié des réponses à la création (tri, entreprises partenaires).
+  // Valeurs du moteur ; null = réponse inconnue ou question non posée.
+  /// TRES_MODESTE | MODESTE | INTERMEDIAIRE | SUPERIEUR (bleu, jaune, violet, rose)
+  incomeCategory      String?
+  householdSize       Int?
+  housingType         String?
+  occupancy           String?
+  currentHeating      String?
+  heatEmitters        String?
+  radiatorCount       Int?
+  /// Surface chauffée (m²).
+  heatedArea          Int?
+  boilerLocation      String?
+  /// Années d'achèvement possibles du logement (bornes incluses ; null = inconnue).
+  constructionYearMin Int?
+  constructionYearMax Int?
 
   // Preuve de la demande
   /// Phrase exacte de demande de contact présentée et validée par le visiteur.
@@ -214,6 +235,15 @@ model ContactRequest {
   partnerConsentAt   DateTime?
   /// Première transmission du récapitulatif du rendez-vous à cette entreprise.
   partnerSentAt      DateTime?
+
+  // Entreprise nommée dans la demande (mise en relation), avant l'envoi
+  /// Entreprise partenaire nommée dans la phrase de la demande (sans clé étrangère : l'entreprise peut être supprimée).
+  requestedPartnerId     String?   @db.Uuid
+  /// Nom de l'entreprise tel qu'affiché dans la phrase de la demande (dénomination, puis précisions).
+  requestedPartnerName   String?
+  /// Première transmission de la demande à cette entreprise (export « demandes à transmettre »).
+  requestedPartnerSentAt DateTime?
+
   assignedToId     String?    @db.Uuid
   assignedTo       StaffUser? @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
   anonymizedAt     DateTime?
@@ -234,6 +264,8 @@ model ContactRequest {
   @@index([callbackDeadline])
   @@index([lastActivityAt])
   @@index([appointmentAt])
+  @@index([incomeCategory])
+  @@index([requestedPartnerId])
 }
 
 enum TextKind {
@@ -350,6 +382,20 @@ model SiteSettings {
   data        Json
   updatedAt   DateTime @updatedAt
   updatedById String?  @db.Uuid
+}
+
+/// Entreprise partenaire (mise en relation) et demandes qui l'intéressent.
+model Partner {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// Dénomination, telle qu'annoncée aux visiteurs (politique de confidentialité, mentions légales).
+  name      String   @unique
+  /// Précisions publiques facultatives : ville, qualification RGE…
+  details   String?
+  active    Boolean  @default(true)
+  /// Critères des demandes recherchées (voir src/lib/leads/partners.ts).
+  criteria  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Opposition {

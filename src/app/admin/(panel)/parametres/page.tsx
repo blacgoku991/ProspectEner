@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { retentionPreview } from "@/lib/retention";
 import { notificationTransports } from "@/lib/settings";
 import { launchChecklist } from "@/lib/settings-schema";
+import { countActivePartners } from "@/lib/leads/partners-db";
 import { ActivityForm, CompanyForm, ContactForm, LaunchForm, NotificationsForm, RetentionForm, SecurityForm } from "./SettingsForms";
 
 export const metadata = { title: "Paramètres" };
@@ -16,7 +17,7 @@ export default async function SettingsPage() {
     retentionPreview(settings),
     prisma.notification.findMany({ where: { status: "FAILED" }, orderBy: { createdAt: "desc" }, take: 10, include: { request: { select: { reference: true } } } }),
   ]);
-  const checklist = launchChecklist(settings, transports);
+  const checklist = launchChecklist(settings, transports, await countActivePartners());
   return (
     <>
       <PageHeader title="Paramètres" subtitle="Réservé aux administrateurs. Chaque modification est journalisée." />

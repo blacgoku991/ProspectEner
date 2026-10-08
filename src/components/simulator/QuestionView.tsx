@@ -1,15 +1,19 @@
 "use client";
 
 import {
+  ArrowDownToLine,
   BadgeCheck,
   Building,
   Building2,
   CalendarRange,
+  Car,
   Check,
   CircleHelp,
+  CookingPot,
   Fan,
   Flame,
   Fuel,
+  Heater,
   Home,
   Key,
   KeyRound,
@@ -23,7 +27,10 @@ import {
   Sparkles,
   TreePalm,
   TreePine,
+  Trees,
   Users,
+  WashingMachine,
+  Waves,
   Wind,
   X,
   Zap,
@@ -33,16 +40,20 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useId, useState } from "react";
 import {
+  BOILER_LOCATION_OPTIONS,
   CONTRACTOR_OPTIONS,
   CURRENT_HEATING_OPTIONS,
   constructionPeriods,
   DPE_OPTIONS,
+  HEAT_EMITTER_OPTIONS,
   HEAT_PUMP_OPTIONS,
   HEATING_TARGET_OPTIONS,
   HOT_WATER_OPTIONS,
   HOUSING_OPTIONS,
+  HYDRAULIC_EMITTERS,
   incomeOptions,
   INSULATION_OPTIONS,
+  NUMBER_QUESTIONS,
   OCCUPANCY_OPTIONS,
   type Option,
   PRIOR_AID_OPTIONS,
@@ -55,8 +66,9 @@ import {
   YES_NO_UNKNOWN_OPTIONS,
 } from "@/engine/questionnaire";
 import { MAX_HOUSEHOLD_SIZE } from "@/engine/income";
-import type { Answers, ConstructionAnswer, WorkItem } from "@/engine/types";
+import type { Answers, ConstructionAnswer, CountAnswer, HeatEmitter, IncomeAnswer, IncomeCategory, WorkItem } from "@/engine/types";
 import { cn } from "@/lib/cn";
+import { AvisImpotHelp } from "./AvisImpotHelp";
 import { type ChoiceOption, MultiChoice, SingleChoice } from "./ChoiceCards";
 import { LocationField } from "./LocationField";
 
@@ -64,6 +76,16 @@ const withIcons = <T extends string>(options: Option<T>[], icons: Partial<Record
   options.map((o) => ({ ...o, icon: icons[o.value] }));
 
 const YNU_ICONS = { OUI: Check, NON: X, INCONNU: CircleHelp } as const;
+
+/** Pastilles des profils de revenus (bleu, jaune, violet, rose), lisibles sur fond clair comme sombre. */
+export const INCOME_DOT_CLASS: Record<IncomeCategory, string> = {
+  TRES_MODESTE: "bg-blue-400",
+  MODESTE: "bg-yellow-300",
+  INTERMEDIAIRE: "bg-violet-400",
+  SUPERIEUR: "bg-pink-400",
+};
+
+const isIncomeCategory = (v: IncomeAnswer): v is IncomeCategory => v !== "INCONNU";
 
 export interface QuestionViewProps {
   id: QuestionId;
@@ -75,7 +97,7 @@ export interface QuestionViewProps {
 
 /** Les questions à choix unique avancent automatiquement ; les autres affichent « Continuer ». */
 export function questionNeedsContinue(id: QuestionId): boolean {
-  return ["location", "works", "insulationItems", "priorAids", "construction", "householdSize"].includes(id);
+  return ["location", "works", "insulationItems", "priorAids", "construction", "householdSize", "radiatorCount", "heatedArea"].includes(id);
 }
 
 export function QuestionView({ id, answers, ctx, update }: QuestionViewProps) {
@@ -193,6 +215,82 @@ export function QuestionView({ id, answers, ctx, update }: QuestionViewProps) {
           onSelect={(v) => update({ oilTankRemoval: v }, true)}
         />
       );
+    case "heatEmitters": {
+      // Les émetteurs à eau (compatibles avec une PAC air/eau ou une chaudière) sont regroupés en tête.
+      const options = withIcons(HEAT_EMITTER_OPTIONS, {
+        RADIATEURS_FONTE: Heater,
+        RADIATEURS_ACIER_ALU: Heater,
+        PLANCHER_CHAUFFANT_EAU: Waves,
+        RADIATEURS_ELECTRIQUES: Zap,
+        POELE_CHEMINEE: Flame,
+        AUTRE: Circle,
+        INCONNU: CircleHelp,
+      });
+      const select = (v: HeatEmitter) => update({ heatEmitters: v }, true);
+      return (
+        <div className="space-y-5">
+          <div>
+            <p aria-hidden className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-500">Chauffage central à eau</p>
+            <SingleChoice
+              label="Chauffage central à eau"
+              columns={1}
+              compact
+              options={options.filter((o) => HYDRAULIC_EMITTERS.includes(o.value))}
+              value={answers.heatEmitters}
+              onSelect={select}
+            />
+          </div>
+          <div>
+            <p aria-hidden className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-500">Autres modes de chauffage</p>
+            <SingleChoice
+              label="Autres modes de chauffage"
+              compact
+              options={options.filter((o) => !HYDRAULIC_EMITTERS.includes(o.value))}
+              value={answers.heatEmitters}
+              onSelect={select}
+            />
+          </div>
+        </div>
+      );
+    }
+    case "radiatorCount":
+      return (
+        <NumberInput
+          key={id}
+          label="Nombre de radiateurs à eau"
+          bounds={NUMBER_QUESTIONS.radiatorCount!}
+          value={answers.radiatorCount}
+          onChange={(v, advance) => update({ radiatorCount: v }, advance)}
+        />
+      );
+    case "heatedArea":
+      return (
+        <NumberInput
+          key={id}
+          label="Surface chauffée, en m²"
+          bounds={NUMBER_QUESTIONS.heatedArea!}
+          value={answers.heatedArea}
+          onChange={(v, advance) => update({ heatedArea: v }, advance)}
+        />
+      );
+    case "boilerLocation":
+      return (
+        <SingleChoice
+          label="Emplacement de la chaudière"
+          compact
+          options={withIcons(BOILER_LOCATION_OPTIONS, {
+            CUISINE: CookingPot,
+            GARAGE: Car,
+            CAVE_SOUS_SOL: ArrowDownToLine,
+            BUANDERIE_CELLIER: WashingMachine,
+            EXTERIEUR: Trees,
+            AUTRE: Circle,
+            INCONNU: CircleHelp,
+          })}
+          value={answers.boilerLocation}
+          onSelect={(v) => update({ boilerLocation: v }, true)}
+        />
+      );
     case "dpe":
       return <DpeInput value={answers.dpe} onSelect={(v) => update({ dpe: v }, true)} />;
     case "quoteSigned":
@@ -253,10 +351,21 @@ export function QuestionView({ id, answers, ctx, update }: QuestionViewProps) {
         />
       );
     case "householdSize":
-      return <HouseholdInput value={answers.householdSize} onChange={(n) => update({ householdSize: n, income: undefined })} />;
+      return (
+        <div className="space-y-6">
+          <HouseholdInput value={answers.householdSize} onChange={(n) => update({ householdSize: n, income: undefined })} />
+          <AvisImpotHelp question="householdSize" />
+        </div>
+      );
     case "income": {
-      const options = incomeOptions(answers, ctx) ?? [];
-      return <SingleChoice label="Revenu fiscal de référence" columns={1} options={options} value={answers.income} onSelect={(v) => update({ income: v }, true)} />;
+      // Chaque tranche rappelle le profil de revenus (bleu, jaune, violet, rose) avec sa pastille.
+      const options = (incomeOptions(answers, ctx) ?? []).map((o) => ({ ...o, hintDot: isIncomeCategory(o.value) ? INCOME_DOT_CLASS[o.value] : undefined }));
+      return (
+        <div className="space-y-6">
+          <SingleChoice label="Revenu fiscal de référence" columns={1} options={options} value={answers.income} onSelect={(v) => update({ income: v }, true)} />
+          <AvisImpotHelp question="income" />
+        </div>
+      );
     }
   }
 }
@@ -369,6 +478,98 @@ function HouseholdInput({ value, onChange }: { value: number | undefined; onChan
       >
         <Plus className="size-5" aria-hidden />
       </button>
+    </div>
+  );
+}
+
+/**
+ * Saisie d'un nombre entier borné (nombre de radiateurs, surface), avec « Je ne sais pas ».
+ * Seule une valeur valide est enregistrée : « Continuer » reste inactif tant que la saisie est hors bornes.
+ * Entrée valide la saisie ; « Je ne sais pas » passe directement à la question suivante.
+ */
+function NumberInput({
+  label,
+  bounds,
+  value,
+  onChange,
+}: {
+  label: string;
+  bounds: { min: number; max: number; unit: string; placeholder: string };
+  value: CountAnswer | undefined;
+  onChange: (v: CountAnswer | undefined, advance?: boolean) => void;
+}) {
+  const id = useId();
+  const { min, max, unit, placeholder } = bounds;
+  const [text, setText] = useState(typeof value === "number" ? String(value) : "");
+  const [touched, setTouched] = useState(false);
+  const n = text === "" ? null : Number(text);
+  const inRange = n !== null && Number.isInteger(n) && n >= min && n <= max;
+  const fmt = (x: number) => x.toLocaleString("fr-FR");
+  // Message affiché dès qu'il ne peut plus être corrigé en ajoutant des chiffres, sinon en quittant le champ.
+  const showError = n !== null && !inRange && (touched || n > max || text.length >= String(min).length);
+  const error = showError ? `Indiquez un nombre entre ${fmt(min)} et ${fmt(max)}.` : null;
+  const unitLabel = n === 1 && unit.endsWith("s") ? unit.slice(0, -1) : unit;
+
+  return (
+    <div className="space-y-5">
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          setTouched(true);
+          if (inRange) onChange(n, true);
+        }}
+      >
+        <label htmlFor={`${id}-n`} className="field-label">
+          {label}
+        </label>
+        <div className="relative max-w-[17rem]">
+          <input
+            id={`${id}-n`}
+            inputMode="numeric"
+            enterKeyHint="next"
+            autoComplete="off"
+            maxLength={String(max).length}
+            value={text}
+            placeholder={placeholder}
+            aria-invalid={Boolean(error)}
+            aria-describedby={`${id}-h`}
+            className={cn("field-input h-16 font-display text-2xl font-semibold tabular-nums", unit.length > 3 ? "pr-28" : "pr-14")}
+            onChange={(e) => {
+              const v = e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, String(max).length);
+              setText(v);
+              const x = v === "" ? null : Number(v);
+              onChange(x !== null && x >= min && x <= max ? x : undefined);
+            }}
+            onBlur={() => text && setTouched(true)}
+          />
+          <span aria-hidden className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-base font-medium text-ink-500">
+            {unitLabel}
+          </span>
+        </div>
+        <p id={`${id}-h`} className={error ? "field-error" : "field-help"} aria-live="polite">
+          {error ?? `Entre ${fmt(min)} et ${fmt(max)} ${unit}.`}
+        </p>
+      </form>
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-ink-500">ou</span>
+        <button
+          type="button"
+          aria-pressed={value === "INCONNU"}
+          onClick={() => {
+            setText("");
+            setTouched(false);
+            onChange("INCONNU", true);
+          }}
+          className={cn(
+            "inline-flex min-h-12 items-center gap-2 rounded-full border-2 px-5 py-2.5 text-sm font-semibold transition",
+            value === "INCONNU" ? "border-pine-500 bg-pine-50 text-pine-900" : "border-ink-900/10 bg-surface text-ink-700 hover:border-pine-300",
+          )}
+        >
+          <CircleHelp className="size-4" aria-hidden />
+          Je ne sais pas
+        </button>
+      </div>
     </div>
   );
 }

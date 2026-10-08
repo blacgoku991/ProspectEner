@@ -36,12 +36,21 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - une seule balise `h1` par page ;
   - scène 3D chargée à l'approche de l'écran quand elle est en bas de page.
   - Tant que la check-list de mise en ligne n'est pas complète, les pages restent en `noindex` et le plan du site est vide.
-- **Questionnaire progressif** (une question par écran, étapes Logement / Projet / Énergie / Avancement / Foyer) : le logement, ce que la personne a aujourd'hui (chauffage, eau chaude…) et ce qu'elle veut installer à la place. Les questions sont conditionnelles : on ne demande que ce qui sert aux dispositifs évalués. Par exemple, le revenu n'est pas demandé à un locataire ni pour un projet d'isolation seule.
+- **Questionnaire progressif** (une question par écran), dans l'ordre d'un conseiller :
+  1. **Logement** : code postal, maison ou appartement ;
+  2. **Foyer** : nombre de personnes et tranche de revenu fiscal de référence, avec un schéma « Où trouver ces informations sur mon avis d'impôt ? ». Chaque tranche affiche sa catégorie (profil bleu, jaune, violet ou rose). Aucun avis d'impôt ni numéro fiscal n'est demandé ;
+  3. **Projet** : ce que la personne veut changer ;
+  4. **Installation actuelle** (projets de chauffage) : chauffage actuel, diffusion de la chaleur (radiateurs à eau en fonte ou en acier, plancher chauffant, radiateurs électriques…), nombre de radiateurs à eau, surface chauffée, emplacement de la chaudière ;
+  5. **Situation** : propriétaire ou locataire, usage, date de construction ;
+  6. **Avancement** : devis, travaux commencés, aides déjà obtenues, entreprise.
+  - Les questions restent conditionnelles : le nombre de radiateurs n'est demandé que pour des radiateurs à eau, l'emplacement de la chaudière seulement s'il y en a une.
+  - Les questions d'installation servent à orienter la demande vers la bonne entreprise : elles ne changent jamais le résultat des aides.
   - Variante « test d'éligibilité seul », sans question sur le projet, au choix dans Paramètres : chaque aide est alors évaluée pour l'ensemble des travaux qu'elle couvre, et le projet est précisé avec un conseiller.
   - La progression est réelle et recalculée.
   - Retour en arrière sans perte, y compris avec le bouton « précédent » du navigateur et après rechargement (stockage de session).
   - Validation au fil de la saisie, aides contextuelles, réponse « Je ne sais pas » partout.
-  - Tranches de revenu calculées selon la taille du ménage et la zone (Île-de-France / autres régions).
+  - Tranches de revenu calculées selon la taille du foyer et la zone (Île-de-France / autres régions), plafonds 2026.
+  - Catégories de revenus qui ouvrent une demande de rendez-vous réglables (bleu et jaune par défaut ; « je ne sais pas » toujours accepté). Pour les autres, le test continue et donne le vrai résultat, sans formulaire de rappel, avec un renvoi vers France Rénov'.
   - Communes issues du jeu de données officiel Etalab, embarqué : aucun appel externe.
 - **Résultat avant coordonnées**, sous forme de verdict simple :
   - « Votre projet est potentiellement éligible », vérification complémentaire nécessaire, critères non remplis ou hors périmètre — toujours le vrai résultat du moteur ;
@@ -55,9 +64,11 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - détail complet par dispositif (critères, conditions, sources, dates de validité), date de référence et versions du barème et du moteur ;
   - aides repérées dans la liste des demandes et dans l'export CSV.
 - **Demande de contact explicite**.
-  - Phrase générée « Je demande à être contacté(e) par [entreprise], par [canal], au sujet de mon projet de [travaux] », avec une case jamais pré-cochée, décochée si le canal change.
+  - Phrase générée « Je demande à être contacté(e) par [entreprise], par [canal], au sujet de mon projet de [travaux] », avec une case jamais pré-cochée, décochée si la phrase change.
+  - En mise en relation, si une entreprise partenaire active correspond aux réponses, la phrase la nomme avant l'envoi : « Je demande à être contacté(e) par [éditeur] et par [entreprise], l'entreprise qui réalise les travaux, par [canal], au sujet de mon projet de [travaux]. » Le choix est fait dans le navigateur et refait par le serveur (`PARTNER_CHANGED` si l'entreprise affichée n'est plus la bonne). La demande peut alors être transmise à cette seule entreprise : export « demandes à transmettre » sur la page Partenaires, date de transmission enregistrée.
   - Information RGPD courte sous le formulaire (qui utilise les données, pourquoi, durée maximale, droits), avec un lien vers la politique de confidentialité. L'identité complète de l'entreprise figure dans les mentions légales et le pied de page, pas dans le formulaire.
-  - Pas de newsletter ni de partenaires.
+  - Champs facultatifs : adresse du logement (visite technique) et, avec le rappel téléphonique, une adresse e-mail.
+  - Pas de newsletter. En mise en relation, la notice annonce la transmission à une seule entreprise partenaire, nommée avant, et la rémunération de ces mises en relation.
 - **Parcours « rappel rapide »** sans questionnaire : **désactivé par défaut**, puisqu'il produit des demandes non qualifiées. `/rappel` renvoie alors vers le test, et le serveur refuse ce type de demande (`QUICK_CALLBACK_CLOSED`).
 - **Confirmation** « Merci, vous allez être recontacté(e) », avec le délai de rappel. Elle précise qu'aucun dossier n'est déposé et fournit une référence et un lien d'annulation personnel.
 - **Annulation** par le visiteur, avec effacement immédiat des coordonnées et opposition en option.
@@ -100,7 +111,13 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - parcours agrégé ;
   - alertes : check-list de mise en ligne, notifications en échec, barème proche de l'expiration ;
   - **encart sécurité** (administrateurs) : échecs de connexion et de second facteur, verrouillages, accès refusés sur 7 jours, sessions ouvertes, comptes sans double authentification.
-- **Liste des demandes** : recherche, filtres (statut, résultat, travaux, canal, assignation, échéance, dates), tri et pagination.
+- **Liste des demandes** : recherche, filtres (statut, résultat, travaux, **catégorie de revenus**, **entreprise partenaire**, canal, assignation, échéance, dates), tri et pagination. Chaque ligne affiche la pastille de revenus (bleu, jaune, violet, rose) et l'essentiel de l'installation ; filtrée par partenaire, elle indique « Correspond » ou « À vérifier ».
+- **Entreprises partenaires** (`/admin/partenaires`) :
+  - une fiche par entreprise, avec les demandes qui l'intéressent : travaux, catégories de revenus, maison ou appartement, statut, chauffage actuel, diffusion de la chaleur, surface chauffée minimale, ancienneté du logement, départements ;
+  - modèle prêt à l'emploi « pompe à chaleur air/eau » : maison, chauffage gaz, fioul ou bois, radiateurs à eau en fonte ou en acier, au moins 80 m² chauffés, plus de 2 ans, profils bleu et jaune ;
+  - nombre de demandes correspondantes (dont nouvelles) et lien vers la liste filtrée ;
+  - export CSV des seuls rendez-vous **transmis avec l'accord de la personne**, au format de la fiche demandée par l'entreprise ;
+  - les critères servent uniquement au tri : ils ne changent jamais le résultat affiché au visiteur.
 - **Qualification et rendez-vous** (sur chaque fiche) :
   - liste des critères de chaque aide, tirée du résultat du moteur : le conseiller les confirme un à un avec la personne (les points « à vérifier » sont signalés) ;
   - **un rendez-vous ne peut être fixé que si tous les critères d'au moins une aide sont confirmés**, contrôle refait côté serveur ;
@@ -109,10 +126,13 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - bouton « Non éligible après vérification » qui clôture la demande sans rendez-vous ;
   - **mise en relation** (si elle est déclarée dans Paramètres → Activité) :
     - le rendez-vous peut être confié à une entreprise partenaire, avec l'accord de la personne, coché obligatoirement et contrôlé côté serveur ;
-    - un récapitulatif à copier pour l'entreprise, sans revenus ni composition du foyer ;
+    - un récapitulatif à copier pour l'entreprise : la fiche de la demande (coordonnées, installation, logement, catégorie de revenus déclarative) et le rendez-vous, sans commentaire ni note interne ;
+    - l'entreprise est choisie parmi les partenaires actifs, et celles qui correspondent à la demande sont signalées ;
     - la première transmission est tracée dans l'historique ;
   - tableau de bord : rendez-vous fixés sur 7 jours et prochains rendez-vous ; colonnes rendez-vous, mode et aides qualifiées dans l'export CSV.
 - **Fiche** :
+  - « Fiche de la demande » dans l'ordre attendu par les entreprises : nom, prénom, adresse, téléphone, e-mail, mode de chauffage, diffusion de la chaleur, nombre de radiateurs, surface chauffée, emplacement de la chaudière, date de construction, propriétaire ou locataire, catégorie de revenus ;
+  - correspondance avec chaque entreprise partenaire, avec les critères non remplis ou à vérifier ;
   - coordonnées et canal demandé ;
   - réponses utiles ;
   - résultat exact présenté, avec versions ;
@@ -132,7 +152,7 @@ Site de conversion **transparent** pour une entreprise privée de rénovation é
   - oppositions (empreintes non réversibles) ;
   - canaux d'acquisition autorisés ;
   - équipe ;
-  - paramètres (identité, mentions, activité et entreprises partenaires, canaux, type de test, résultats qui ouvrent un rendez-vous, rappel rapide, notifications, conservation, sécurité) ;
+  - paramètres (identité, mentions, activité, canaux, type de test, résultats et catégories de revenus qui ouvrent un rendez-vous, rappel rapide, notifications, conservation, sécurité) ;
   - journal d'audit ;
   - compte personnel.
 - **Notifications internes** par e-mail ou webhook signé, via une file d'envoi. Elles contiennent une référence, l'échéance de rappel et un lien, **sans données personnelles**. Leur échec n'empêche jamais l'enregistrement et elles sont relancées automatiquement.

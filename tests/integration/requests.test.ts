@@ -124,15 +124,35 @@ describe("création d'une demande de contact", () => {
   });
 
   it("ne conserve que les réponses utiles (minimisation)", async () => {
-    const answers = { ...ANSWERS_ELIGIBLE, occupancy: "LOCATAIRE" };
+    // Plancher chauffant : pas de question sur les radiateurs ; chaudière au fioul : pas de question sur la condensation.
+    const answers = { ...ANSWERS_ELIGIBLE, heatEmitters: "PLANCHER_CHAUFFANT_EAU", radiatorCount: 9, gasBoilerCondensing: "NON", dpe: "E" };
     const res = await createContactRequest(await simulationPayload({ answers }), ctx());
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     const row = await prisma.contactRequest.findUniqueOrThrow({ where: { reference: res.reference } });
     const stored = row.answers as Record<string, unknown>;
-    expect(stored.income).toBeUndefined();
-    expect(stored.householdSize).toBeUndefined();
+    expect(stored.radiatorCount).toBeUndefined();
+    expect(stored.gasBoilerCondensing).toBeUndefined();
+    expect(stored.dpe).toBeUndefined();
+    expect(stored.heatEmitters).toBe("PLANCHER_CHAUFFANT_EAU");
+    expect(row.radiatorCount).toBeNull();
+    expect(row.heatEmitters).toBe("PLANCHER_CHAUFFANT_EAU");
+  });
+
+  it("demande la taille du foyer et les revenus à tous, locataires compris", async () => {
+    const tenant = { ...ANSWERS_ELIGIBLE, occupancy: "LOCATAIRE" };
+    const { householdSize: _h, income: _i, ...withoutHousehold } = tenant;
+    const incomplete = await createContactRequest(await simulationPayload({ answers: withoutHousehold }), ctx());
+    expect(!incomplete.ok && incomplete.code).toBe("INCOMPLETE_ANSWERS");
+    const res = await createContactRequest(await simulationPayload({ answers: tenant }), ctx());
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const row = await prisma.contactRequest.findUniqueOrThrow({ where: { reference: res.reference } });
+    const stored = row.answers as Record<string, unknown>;
+    expect(stored.householdSize).toBe(3);
+    expect(stored.income).toBe("MODESTE");
     expect(stored.occupancy).toBe("LOCATAIRE");
+    expect([row.householdSize, row.incomeCategory, row.occupancy]).toEqual([3, "MODESTE", "LOCATAIRE"]);
   });
 
   it("ne conserve que la coordonnée du canal choisi", async () => {
@@ -188,8 +208,6 @@ describe("création d'une demande de contact", () => {
     const notEligible = {
       ...ANSWERS_ELIGIBLE,
       occupancy: "LOCATAIRE",
-      householdSize: undefined,
-      income: undefined,
       worksStarted: "OUI",
       quoteSigned: "OUI",
       quoteSignedRecency: "OLD",

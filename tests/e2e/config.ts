@@ -17,3 +17,6 @@ export const E2E_ENV = {
 
 export const ADMIN = { email: "admin@e2e.invalid", password: "Correct-Horse-Battery-42", totpSecret: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP" };
 export const COLLAB = { email: "collab@e2e.invalid", password: "Another-Strong-Passphrase-7", totpSecret: "KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU" };
+
+/** Entreprise partenaire créée par le jeu de données (critères du modèle « pompe à chaleur air/eau »). */
+export const E2E_PARTNER = { name: "Chauffage Test E2E", details: "Lyon, RGE", displayName: "Chauffage Test E2E, Lyon, RGE" };

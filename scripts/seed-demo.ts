@@ -1,19 +1,23 @@
 /**
  * Données de DÉMONSTRATION — développement et recette uniquement.
  * Refusé en production et sans ALLOW_DEMO_DATA=true. Toutes les demandes créées sont
- * marquées `isDemo` et l'identité de l'entreprise est explicitement fictive.
+ * marquées `isDemo` ; l'identité de l'entreprise et celle des entreprises partenaires
+ * (mise en relation) sont explicitement fictives.
  *
  * Usage : ALLOW_DEMO_DATA=true npm run db:demo [-- --reset]
  */
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
-import { DEFAULT_RULESET, evaluate, REFERENCE_SCENARIOS, resolveTerritory } from "../src/engine";
+import { type Answers, DEFAULT_RULESET, evaluate, pruneAnswers, REFERENCE_SCENARIOS, resolveTerritory } from "../src/engine";
+import type { IncomeCategory } from "../src/engine/types";
 import type { Prisma } from "../src/generated/prisma/client";
 import { addJoursOuvrables, parisToday } from "../src/lib/business-days";
 import { hashEmail, hashPhone, hashToken, sha256Hex } from "../src/lib/crypto";
 import { prisma } from "../src/lib/db";
 import { env } from "../src/lib/env";
+import { HYDRAULIC_HEAT_PUMP_PRESET, type PartnerCriteria, partnerCriteriaSchema } from "../src/lib/leads/partners";
+import { leadProfileColumns, leadProfileFromAnswers } from "../src/lib/leads/profile";
 import { buildContactNotice, buildRequestSentence } from "../src/lib/legal/texts";
 import { cancelTokenFor, generateReference } from "../src/lib/requests/reference";
 import { worksTextForRequest } from "../src/lib/requests/shared";
@@ -32,7 +36,8 @@ const DEMO_SETTINGS: SiteSettings = {
   },
   activity: {
     ...DEFAULT_SETTINGS.activity,
-    kinds: ["ACCOMPAGNEMENT"],
+    // Mise en relation déclarée : les entreprises partenaires fictives ci-dessous peuvent recevoir des rendez-vous de démonstration.
+    kinds: ["ACCOMPAGNEMENT", "MISE_EN_RELATION"],
     description: "Texte de démonstration : remplacez-le par la présentation réelle de votre activité dans les paramètres.",
     qualifications: "",
     interventionArea: "",
@@ -59,6 +64,36 @@ const PEOPLE = [
 
 const STATUSES = ["NOUVEAU", "A_VERIFIER", "CONTACTE", "ETUDE_EN_COURS", "NOUVEAU", "TERMINE", "SANS_SUITE", "NOUVEAU"] as const;
 
+/** Entreprises partenaires fictives (le modèle ne porte pas d'indicateur « démo » : noms explicitement fictifs). */
+const DEMO_PARTNERS: { name: string; details: string; criteria: PartnerCriteria }[] = [
+  { name: "Chauffage Démo (entreprise fictive)", details: "Démoville, RGE — données de démonstration", criteria: HYDRAULIC_HEAT_PUMP_PRESET },
+  {
+    name: "Isolation Démo (entreprise fictive)",
+    details: "Démoville — données de démonstration",
+    criteria: partnerCriteriaSchema.parse({
+      works: ["ISOLATION_COMBLES_TOITURE", "ISOLATION_MURS", "ISOLATION_PLANCHER_BAS", "MENUISERIES"],
+      occupancies: ["PROPRIETAIRE_OCCUPANT", "PROPRIETAIRE_BAILLEUR"],
+      departements: ["69", "75"],
+    }),
+  },
+];
+
+/** Installation actuelle fictive (chauffage central à eau) ; seules les questions effectivement posées sont conservées. */
+const HYDRAULIC_INSTALLATIONS: Partial<Answers>[] = [
+  { heatEmitters: "RADIATEURS_FONTE", radiatorCount: 9, heatedArea: 120, boilerLocation: "GARAGE" },
+  { heatEmitters: "RADIATEURS_ACIER_ALU", radiatorCount: 7, heatedArea: 95, boilerLocation: "CAVE_SOUS_SOL" },
+  { heatEmitters: "PLANCHER_CHAUFFANT_EAU", heatedArea: 140, boilerLocation: "BUANDERIE_CELLIER" },
+  { heatEmitters: "RADIATEURS_FONTE", radiatorCount: "INCONNU", heatedArea: "INCONNU", boilerLocation: "CUISINE" },
+];
+
+function demoInstallation(answers: Answers, i: number): Partial<Answers> {
+  if (answers.currentHeating === "ELECTRIQUE") return { heatEmitters: "RADIATEURS_ELECTRIQUES", heatedArea: 65 + 5 * i };
+  return { gasBoilerCondensing: "NON", ...HYDRAULIC_INSTALLATIONS[i % HYDRAULIC_INSTALLATIONS.length] };
+}
+
+/** Variété des catégories de revenus (bleu, jaune, violet, rose) dans la liste de démonstration. */
+const DEMO_INCOMES: Partial<Record<string, IncomeCategory>> = { "pac-fioul-cuve": "TRES_MODESTE", vmc: "INTERMEDIAIRE" };
+
 async function main() {
   const { values } = parseArgs({ options: { reset: { type: "boolean", default: false } } });
   const e = env();
@@ -76,6 +111,10 @@ async function main() {
     create: { id: 1, data: DEMO_SETTINGS as unknown as Prisma.InputJsonValue },
     update: { data: DEMO_SETTINGS as unknown as Prisma.InputJsonValue },
   });
+  for (const p of DEMO_PARTNERS) {
+    const data = { details: p.details, active: true, criteria: p.criteria as unknown as Prisma.InputJsonValue };
+    await prisma.partner.upsert({ where: { name: p.name }, create: { name: p.name, ...data }, update: data });
+  }
   const noticeText = buildContactNotice(DEMO_SETTINGS);
   const notice = await prisma.textVersion.upsert({
     where: { hash: sha256Hex(noticeText) },
@@ -84,14 +123,19 @@ async function main() {
   });
   const referenceDate = parisToday();
   let i = 0;
+  const qctx = { rules: DEFAULT_RULESET.data, referenceDate };
   for (const scenario of REFERENCE_SCENARIOS) {
     const [firstName, lastName] = PEOPLE[i % PEOPLE.length]!;
     const channel = i % 3 === 0 ? "EMAIL" : "PHONE";
     const createdAt = new Date(Date.now() - (i * 26 + 3) * 3600 * 1000);
-    const evaluation = evaluate(scenario.answers, DEFAULT_RULESET, referenceDate);
-    const { territory, departement } = resolveTerritory(scenario.answers);
+    const income = DEMO_INCOMES[scenario.id] ?? scenario.answers.income;
+    const answers = pruneAnswers({ ...scenario.answers, ...demoInstallation(scenario.answers, i), income }, qctx);
+    const evaluation = evaluate(answers, DEFAULT_RULESET, referenceDate);
+    const { territory, departement } = resolveTerritory(answers);
     const phone = channel === "PHONE" ? `06000000${String(10 + i)}` : null;
-    const email = channel === "EMAIL" ? `demo${i}@example.invalid` : null;
+    // E-mail obligatoire pour une réponse par e-mail, parfois donné en plus avec un rappel ; adresse du logement facultative.
+    const email = channel === "EMAIL" || i % 3 === 1 ? `demo${i}@example.invalid` : null;
+    const streetAddress = i % 2 === 0 ? `${10 + i} rue de l'Exemple (adresse fictive)` : null;
     const key = randomUUID();
     await prisma.contactRequest.create({
       data: {
@@ -105,21 +149,23 @@ async function main() {
         lastName,
         email,
         phone,
+        streetAddress,
         channel,
-        postalCode: scenario.answers.postalCode ?? null,
-        communeName: scenario.answers.communeName ?? null,
-        communeInsee: scenario.answers.communeInsee ?? null,
+        postalCode: answers.postalCode ?? null,
+        communeName: answers.communeName ?? null,
+        communeInsee: answers.communeInsee ?? null,
         departement,
         territory,
-        answers: scenario.answers as unknown as Prisma.InputJsonValue,
-        projectTypes: scenario.answers.works ?? [],
+        answers: answers as unknown as Prisma.InputJsonValue,
+        projectTypes: answers.works ?? [],
+        ...leadProfileColumns(leadProfileFromAnswers(answers, departement)),
         evaluation: evaluation as unknown as Prisma.InputJsonValue,
         overallOutcome: evaluation.outcome,
         engineVersion: evaluation.engineVersion,
         ruleSetVersion: evaluation.ruleSetVersion,
         ruleSetId: ruleSet.id,
         evaluatedAt: createdAt,
-        requestSentence: buildRequestSentence(DEMO_SETTINGS.company.name, channel, worksTextForRequest("SIMULATION", scenario.answers)),
+        requestSentence: buildRequestSentence(DEMO_SETTINGS.company.name, channel, worksTextForRequest("SIMULATION", answers)),
         noticeTextId: notice.id,
         submittedAt: createdAt,
         createdAt,
@@ -136,7 +182,9 @@ async function main() {
     });
     i++;
   }
-  console.log(`${i} demande(s) de démonstration créées (marquées « Démo ») et paramètres fictifs appliqués.`);
+  console.log(
+    `${i} demande(s) de démonstration créées (marquées « Démo »), ${DEMO_PARTNERS.length} entreprises partenaires fictives et paramètres fictifs appliqués.`,
+  );
 }
 
 main()

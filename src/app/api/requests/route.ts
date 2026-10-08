@@ -46,6 +46,7 @@ export async function POST(request: Request) {
         channel: result.channel,
         callbackDeadline: result.callbackDeadline,
         requestSentence: result.requestSentence,
+        partnerName: result.partnerName,
         replay: result.replay,
       },
       { status: result.status },

@@ -5,12 +5,16 @@ import { incomeTable, type RuleSetData } from "./ruleset-schema";
 import { resolveTerritory } from "./territory";
 import type {
   Answers,
+  BoilerLocation,
   ConstructionAnswer,
   ContractorAnswer,
+  CountAnswer,
   CurrentHeating,
   DpeAnswer,
+  HeatEmitter,
   HousingType,
   IncomeAnswer,
+  IncomeCategory,
   Occupancy,
   PriorAidKind,
   ResidenceUse,
@@ -52,6 +56,10 @@ export type QuestionId =
   | "gasBoilerCondensing"
   | "oilTankRemoval"
   | "dpe"
+  | "heatEmitters"
+  | "radiatorCount"
+  | "heatedArea"
+  | "boilerLocation"
   | "quoteSigned"
   | "quoteSignedRecency"
   | "worksStarted"
@@ -61,7 +69,7 @@ export type QuestionId =
   | "householdSize"
   | "income";
 
-export type StepId = "logement" | "projet" | "energie" | "avancement" | "foyer";
+export type StepId = "logement" | "foyer" | "projet" | "installation" | "situation" | "avancement";
 
 export interface StepDef {
   id: StepId;
@@ -74,32 +82,38 @@ export const STEPS: StepDef[] = [
   {
     id: "logement",
     title: "Le logement",
-    subtitle: "Où se situe-t-il et quel est votre lien avec lui ?",
-    questions: ["location", "housingType", "occupancy", "residence", "construction"],
+    subtitle: "Où se situe-t-il et de quel type de logement s'agit-il ?",
+    questions: ["location", "housingType"],
+  },
+  {
+    id: "foyer",
+    title: "Le foyer",
+    subtitle: "D'après votre avis d'impôt : le barème des aides dépend du revenu et de la taille du foyer.",
+    questions: ["householdSize", "income"],
   },
   {
     id: "projet",
     title: "Le projet",
-    subtitle: "Quels travaux envisagez-vous ?",
+    subtitle: "Ce que vous souhaitez changer.",
     questions: ["works", "insulationItems", "heatPumpType", "heatingTarget", "hotWaterTarget", "ventilationTarget"],
   },
   {
-    id: "energie",
-    title: "La situation énergétique",
-    subtitle: "Uniquement ce qui est utile aux règles évaluées.",
-    questions: ["currentHeating", "gasBoilerCondensing", "oilTankRemoval", "dpe"],
+    id: "installation",
+    title: "L'installation actuelle",
+    subtitle: "Pour vérifier que l'équipement envisagé convient au logement.",
+    questions: ["currentHeating", "heatEmitters", "radiatorCount", "heatedArea", "boilerLocation", "gasBoilerCondensing", "oilTankRemoval", "dpe"],
+  },
+  {
+    id: "situation",
+    title: "Votre situation",
+    subtitle: "Votre lien avec le logement et son ancienneté.",
+    questions: ["occupancy", "residence", "construction"],
   },
   {
     id: "avancement",
     title: "L'avancement",
     subtitle: "Certaines aides doivent être demandées avant de s'engager.",
     questions: ["quoteSigned", "quoteSignedRecency", "worksStarted", "priorAidStatus", "priorAids", "contractor"],
-  },
-  {
-    id: "foyer",
-    title: "Le foyer",
-    subtitle: "Pour situer vos revenus dans le barème applicable.",
-    questions: ["householdSize", "income"],
   },
 ];
 
@@ -213,6 +227,35 @@ export const DPE_OPTIONS: Option<DpeAnswer>[] = [
   { value: "INCONNU", label: "Je ne sais pas" },
 ];
 
+export const HEAT_EMITTER_OPTIONS: Option<HeatEmitter>[] = [
+  { value: "RADIATEURS_FONTE", label: "Radiateurs à eau en fonte" },
+  { value: "RADIATEURS_ACIER_ALU", label: "Radiateurs à eau en acier ou en aluminium" },
+  { value: "PLANCHER_CHAUFFANT_EAU", label: "Plancher chauffant à eau" },
+  { value: "RADIATEURS_ELECTRIQUES", label: "Radiateurs électriques", hint: "Convecteurs, panneaux rayonnants, radiateurs à inertie…" },
+  { value: "POELE_CHEMINEE", label: "Poêle, insert ou cheminée" },
+  { value: "AUTRE", label: "Autre" },
+  { value: "INCONNU", label: "Je ne sais pas" },
+];
+
+/** Émetteurs alimentés par de l'eau chaude (réseau hydraulique), compatibles avec une chaudière ou une PAC air/eau. */
+export const HYDRAULIC_EMITTERS: HeatEmitter[] = ["RADIATEURS_FONTE", "RADIATEURS_ACIER_ALU", "PLANCHER_CHAUFFANT_EAU"];
+
+export const BOILER_LOCATION_OPTIONS: Option<BoilerLocation>[] = [
+  { value: "CUISINE", label: "Dans la cuisine" },
+  { value: "GARAGE", label: "Dans le garage" },
+  { value: "CAVE_SOUS_SOL", label: "À la cave ou au sous-sol" },
+  { value: "BUANDERIE_CELLIER", label: "Dans une buanderie ou un cellier" },
+  { value: "EXTERIEUR", label: "À l'extérieur ou dans un local à part" },
+  { value: "AUTRE", label: "Ailleurs" },
+  { value: "INCONNU", label: "Je ne sais pas" },
+];
+
+/** Questions à réponse numérique (avec « Je ne sais pas »). */
+export const NUMBER_QUESTIONS: Partial<Record<QuestionId, { min: number; max: number; unit: string; placeholder: string }>> = {
+  radiatorCount: { min: 1, max: 60, unit: "radiateurs", placeholder: "Ex. : 8" },
+  heatedArea: { min: 10, max: 1000, unit: "m²", placeholder: "Ex. : 110" },
+};
+
 export const PRIOR_AID_OPTIONS: Option<PriorAidKind>[] = [
   { value: "MAPRIMERENOV", label: "MaPrimeRénov'" },
   { value: "CEE", label: "Prime énergie (CEE)" },
@@ -235,13 +278,21 @@ export function quoteRecencyOptions(graceDays: number): Option<"RECENT" | "OLD" 
   ];
 }
 
+/** Couleurs utilisées par France Rénov' et l'Anah pour les catégories de revenus. */
+export const INCOME_PROFILE_HINTS: Record<IncomeCategory, string> = {
+  TRES_MODESTE: "Revenus très modestes (profil bleu)",
+  MODESTE: "Revenus modestes (profil jaune)",
+  INTERMEDIAIRE: "Revenus intermédiaires (profil violet)",
+  SUPERIEUR: "Revenus supérieurs (profil rose)",
+};
+
 export function incomeOptions(answers: Answers, ctx: QuestionContext): Option<IncomeAnswer>[] | null {
   const { territory } = resolveTerritory(answers);
   const zone = incomeZoneForTerritory(territory);
   if (!zone || !isValidHouseholdSize(answers.householdSize)) return null;
   const brackets = incomeBrackets(incomeTable(ctx.rules, zone), answers.householdSize);
   return [
-    ...brackets.map((b) => ({ value: b.category as IncomeAnswer, label: describeBracket(b) })),
+    ...brackets.map((b) => ({ value: b.category as IncomeAnswer, label: describeBracket(b), hint: INCOME_PROFILE_HINTS[b.category] })),
     { value: "INCONNU", label: "Je ne sais pas" },
   ];
 }
@@ -286,6 +337,13 @@ export function questionText(id: QuestionId, answers: Answers, ctx: QuestionCont
       title: "Prévoyez-vous de faire retirer la cuve à fioul ?",
       help: "Sa dépose peut être aidée lorsqu'elle accompagne le remplacement de la chaudière au fioul.",
     },
+    heatEmitters: {
+      title: "Comment la chaleur est-elle diffusée dans le logement ?",
+      help: "Principalement. Une pompe à chaleur air/eau se raccorde à des radiateurs à eau ou à un plancher chauffant à eau.",
+    },
+    radiatorCount: { title: "Combien de radiateurs à eau y a-t-il ?", help: "Un nombre approximatif suffit." },
+    heatedArea: { title: "Quelle est la surface chauffée du logement ?", help: "En mètres carrés, uniquement les pièces chauffées. Une estimation suffit." },
+    boilerLocation: { title: "Où se trouve la chaudière actuelle ?" },
     dpe: {
       title: "Quelle est la classe énergétique (DPE) du logement ?",
       help: "Elle figure sur le diagnostic de performance énergétique (étiquette de A à G). Si vous ne la connaissez pas, un audit pourra la déterminer.",
@@ -303,12 +361,12 @@ export function questionText(id: QuestionId, answers: Answers, ctx: QuestionCont
       help: "RGE (« Reconnu garant de l'environnement ») est une qualification exigée pour la plupart des aides. Elle se vérifie sur l'annuaire officiel France Rénov'.",
     },
     householdSize: {
-      title: "Combien de personnes composent votre ménage ?",
-      help: "Toutes les personnes qui vivent dans le logement, y compris vous (pour un bailleur : votre propre foyer fiscal).",
+      title: "Combien de personnes composent votre foyer ?",
+      help: "Toutes les personnes qui vivent dans le logement, vous compris : vous, votre conjoint, vos enfants ou autres personnes à charge. Si vous louez le logement, comptez votre propre foyer.",
     },
     income: {
-      title: "Dans quelle tranche se situe le revenu fiscal de référence du ménage ?",
-      help: `${ctx.rules.incomeCeilings.rfrNote} Additionnez les revenus fiscaux de référence de toutes les personnes du ménage. Aucun justificatif n'est demandé ici.`,
+      title: "Quel est le revenu fiscal de référence du foyer ?",
+      help: `Il figure en première page de votre avis d'impôt, dans le cadre « Vos références ». Si plusieurs avis concernent le foyer, additionnez-les. ${ctx.rules.incomeCeilings.rfrNote} Aucun justificatif n'est demandé ici.`,
     },
   };
   return texts[id];
@@ -371,9 +429,9 @@ function profileQuestionVisible(id: QuestionId, answers: Answers, ctx: QuestionC
     case "quoteSignedRecency":
       return answers.quoteSigned === "OUI" && graceDays(ctx.rules) !== null;
     case "householdSize":
-      return incomeRelevant(answers, ctx.rules);
+      return true;
     case "income":
-      return incomeRelevant(answers, ctx.rules) && isValidHouseholdSize(answers.householdSize);
+      return isValidHouseholdSize(answers.householdSize);
     default:
       return false;
   }
@@ -396,6 +454,13 @@ function oilTankEvaluated(rules: RuleSetData): boolean {
         d.reviewWorks.some((r) => r.item === "DEPOSE_CUVE_FIOUL") ||
         d.excludedWorks.some((e) => e.item === "DEPOSE_CUVE_FIOUL")),
   );
+}
+
+/** Le logement est-il chauffé par une chaudière (gaz, fioul, charbon, ou bois raccordée à des émetteurs à eau) ? */
+function hasBoiler(answers: Answers): boolean {
+  const h = answers.currentHeating;
+  if (h === "CHAUDIERE_GAZ" || h === "CHAUDIERE_FIOUL" || h === "CHAUDIERE_CHARBON") return true;
+  return h === "BOIS" && answers.heatEmitters !== undefined && HYDRAULIC_EMITTERS.includes(answers.heatEmitters);
 }
 
 function heatingRelevant(answers: Answers): boolean {
@@ -443,6 +508,18 @@ export function isQuestionVisible(id: QuestionId, answers: Answers, ctx: Questio
         answers.currentHeating === "CHAUDIERE_FIOUL" &&
         oilTankEvaluated(ctx.rules)
       );
+    case "heatEmitters":
+      return hasEvaluableWorks(answers) && heatingRelevant(answers);
+    case "radiatorCount":
+      return (
+        hasEvaluableWorks(answers) &&
+        heatingRelevant(answers) &&
+        (answers.heatEmitters === "RADIATEURS_FONTE" || answers.heatEmitters === "RADIATEURS_ACIER_ALU")
+      );
+    case "heatedArea":
+      return hasEvaluableWorks(answers) && heatingRelevant(answers);
+    case "boilerLocation":
+      return hasEvaluableWorks(answers) && heatingRelevant(answers) && hasBoiler(answers);
     case "dpe":
       return hasEvaluableWorks(answers) && dpeRelevant(answers, ctx.rules);
     case "quoteSigned":
@@ -454,10 +531,12 @@ export function isQuestionVisible(id: QuestionId, answers: Answers, ctx: Questio
       return hasEvaluableWorks(answers) && answers.quoteSigned === "OUI" && graceDays(ctx.rules) !== null;
     case "priorAids":
       return hasEvaluableWorks(answers) && answers.priorAidStatus === "OUI";
+    // Foyer : demandé à tous, tôt dans le parcours. Le moteur ne s'en sert que pour les aides
+    // soumises à condition de revenus ; la catégorie sert aussi à orienter la demande.
     case "householdSize":
-      return incomeRelevant(answers, ctx.rules);
+      return true;
     case "income":
-      return incomeRelevant(answers, ctx.rules) && isValidHouseholdSize(answers.householdSize);
+      return isValidHouseholdSize(answers.householdSize);
   }
 }
 
@@ -483,6 +562,10 @@ export const QUESTION_KEYS: Record<QuestionId, (keyof Answers)[]> = {
   gasBoilerCondensing: ["gasBoilerCondensing"],
   oilTankRemoval: ["oilTankRemoval"],
   dpe: ["dpe"],
+  heatEmitters: ["heatEmitters"],
+  radiatorCount: ["radiatorCount"],
+  heatedArea: ["heatedArea"],
+  boilerLocation: ["boilerLocation"],
   quoteSigned: ["quoteSigned"],
   quoteSignedRecency: ["quoteSignedRecency"],
   worksStarted: ["worksStarted"],
@@ -542,6 +625,11 @@ export function firstUnanswered(answers: Answers, ctx: QuestionContext): Questio
 const labelOf = <T extends string>(options: Option<T>[], value: T | undefined): string | undefined =>
   options.find((o) => o.value === value)?.label;
 
+function describeCount(value: CountAnswer | undefined, unit: string): string | undefined {
+  if (value === undefined) return undefined;
+  return value === "INCONNU" ? "Je ne sais pas" : `${value}${unit}`;
+}
+
 export interface AnswerSummaryLine {
   question: QuestionId;
   label: string;
@@ -573,6 +661,10 @@ export function summarizeAnswers(answers: Answers, ctx: QuestionContext): Answer
   if (v("currentHeating")) add("currentHeating", "Chauffage actuel", labelOf(CURRENT_HEATING_OPTIONS, answers.currentHeating));
   if (v("gasBoilerCondensing")) add("gasBoilerCondensing", "Chaudière à condensation", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.gasBoilerCondensing));
   if (v("oilTankRemoval")) add("oilTankRemoval", "Dépose de la cuve à fioul", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.oilTankRemoval));
+  if (v("heatEmitters")) add("heatEmitters", "Diffusion de la chaleur", labelOf(HEAT_EMITTER_OPTIONS, answers.heatEmitters));
+  if (v("radiatorCount")) add("radiatorCount", "Radiateurs à eau", describeCount(answers.radiatorCount, ""));
+  if (v("heatedArea")) add("heatedArea", "Surface chauffée", describeCount(answers.heatedArea, " m²"));
+  if (v("boilerLocation")) add("boilerLocation", "Emplacement de la chaudière", labelOf(BOILER_LOCATION_OPTIONS, answers.boilerLocation));
   if (v("dpe")) add("dpe", "Classe énergétique (DPE)", labelOf(DPE_OPTIONS, answers.dpe));
   if (v("quoteSigned")) add("quoteSigned", "Devis signé", labelOf(YES_NO_UNKNOWN_OPTIONS, answers.quoteSigned));
   if (v("quoteSignedRecency")) {
@@ -584,7 +676,7 @@ export function summarizeAnswers(answers: Answers, ctx: QuestionContext): Answer
   if (v("priorAids")) add("priorAids", "Aides concernées", (answers.priorAids ?? []).map((p) => labelOf(PRIOR_AID_OPTIONS, p)).join(", "));
   if (v("contractor")) add("contractor", "Entreprise", labelOf(CONTRACTOR_OPTIONS, answers.contractor));
   if (v("householdSize") && answers.householdSize) {
-    add("householdSize", "Personnes dans le ménage", String(answers.householdSize));
+    add("householdSize", "Personnes dans le foyer", String(answers.householdSize));
   }
   if (v("income")) {
     const opts = incomeOptions(answers, ctx);

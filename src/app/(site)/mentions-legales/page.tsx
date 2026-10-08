@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import { Field, LegalPage } from "@/components/site/LegalPage";
 import { INDEPENDENCE_DISCLAIMER } from "@/lib/legal/texts";
-import { siteSettings } from "@/lib/site-data";
-import { ACTIVITY_LABELS, partnerList, referralEnabled } from "@/lib/settings-schema";
+import { publicPartnerNames, siteSettings } from "@/lib/site-data";
+import { ACTIVITY_LABELS, referralEnabled } from "@/lib/settings-schema";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({ title: "Mentions légales", description: "Éditeur du site, hébergeur, médiateur de la consommation et informations légales.", path: "/mentions-legales" });
 }
 
 export default async function MentionsLegalesPage() {
-  const s = await siteSettings();
+  const [s, partners] = await Promise.all([siteSettings(), publicPartnerNames()]);
   const c = s.company;
   const missing = [
     !c.name && "dénomination",
@@ -57,12 +57,14 @@ export default async function MentionsLegalesPage() {
       {referralEnabled(s) && (
         <>
           <p>
-            Rendez-vous : lorsqu&apos;une personne accepte un rendez-vous, celui-ci est assuré par l&apos;entreprise qui réalise l&apos;étude et les
-            travaux, dont le nom lui est indiqué avant toute transmission de ses coordonnées.
+            Mise en relation : une demande n&apos;est transmise qu&apos;à l&apos;entreprise partenaire qui réalise les travaux et que la personne a
+            nommée dans sa demande, avant l&apos;envoi, ou, lorsqu&apos;une personne accepte un rendez-vous, à l&apos;entreprise qui l&apos;assure, dont le
+            nom lui est indiqué avant toute transmission de ses coordonnées. L&apos;éditeur est rémunéré par les entreprises partenaires pour ces mises
+            en relation (article L111-7 du Code de la consommation).
           </p>
-          {partnerList(s).length > 0 ? (
+          {partners.length > 0 ? (
             <ul>
-              {partnerList(s).map((p) => (
+              {partners.map((p) => (
                 <li key={p}>{p}</li>
               ))}
             </ul>

@@ -1,11 +1,14 @@
 "use client";
 
 import { Loader2, Lock, Mail, MapPin, PhoneCall, Send } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Answers } from "@/engine/types";
 import { cn } from "@/lib/cn";
 import { trackStep } from "@/lib/funnel";
-import { buildRequestSentence, type ChannelChoice, noticeParagraphs, PRIVACY_LINK_TEXT } from "@/lib/legal/texts";
+import { referenceYearOf, selectPartnerForRequest } from "@/lib/leads/partners";
+import { requestLeadProfile } from "@/lib/leads/profile";
+import { buildRequestSentence, type ChannelChoice, noticeParagraphs, PRIVACY_LINK_TEXT, requestSentencePreview } from "@/lib/legal/texts";
 import type { PublicConfig } from "@/lib/public-config";
 import {
   AVAILABILITY_DAYS,
@@ -24,6 +27,8 @@ export interface SubmitSuccess {
   channel: ChannelChoice;
   callbackDeadline: string | null;
   requestSentence: string;
+  /** Entreprise partenaire nommée dans la demande (mise en relation), telle qu'enregistrée par le serveur. */
+  partnerName?: string | null;
   /** Numéro ou adresse saisis, rappelés sur la confirmation (jamais conservés dans le navigateur). */
   contactDisplay?: string;
 }
@@ -41,10 +46,16 @@ interface Props {
   onSuccess: (r: SubmitSuccess) => void;
 }
 
-type FieldErrors = Partial<Record<"firstName" | "lastName" | "channel" | "email" | "phone" | "comment" | "confirmRequest" | "form", string>>;
+type FieldErrors = Partial<
+  Record<"firstName" | "lastName" | "channel" | "email" | "phone" | "streetAddress" | "comment" | "confirmRequest" | "form", string>
+>;
+
+/** Le texte présenté (notice ou entreprise nommée) a changé : la configuration est rechargée et la demande relue. */
+const RELOAD_CODES = new Set(["NOTICE_CHANGED", "PARTNER_CHANGED"]);
 
 export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDate, locationLabel, worksText, validateExtra, onSuccess }: Props) {
   const id = useId();
+  const router = useRouter();
   const channelsAvailable = (["PHONE", "EMAIL"] as const).filter((c) => (c === "PHONE" ? config.channels.phone : config.channels.email));
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const startedAt = useRef<number | null>(null);
@@ -53,10 +64,12 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
   const [channel, setChannel] = useState<ChannelChoice | null>(channelsAvailable.length === 1 ? channelsAvailable[0]! : null);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
   const [days, setDays] = useState<(typeof AVAILABILITY_DAYS)[number][]>([]);
   const [slots, setSlots] = useState<(typeof AVAILABILITY_SLOTS)[number][]>([]);
   const [comment, setComment] = useState("");
-  const [confirm, setConfirm] = useState(false);
+  // La case vaut pour la phrase exacte cochée : si la phrase change (canal, entreprise nommée), elle est décochée.
+  const [confirmedSentence, setConfirmedSentence] = useState<string | null>(null);
   const [website, setWebsite] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | undefined>(undefined);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -75,14 +88,26 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
     trackStep(kind === "SIMULATION" ? "contact_form" : "quick_form");
   };
 
-  const sentence = channel ? buildRequestSentence(config.companyName, channel, worksText) : null;
+  // Mise en relation : entreprise partenaire nommée dans la demande, choisie ici à partir des réponses, qui ne
+  // quittent pas le navigateur avant l'envoi. Le serveur refait le même choix et refuse l'envoi s'il diffère.
+  const partner = useMemo(
+    () =>
+      kind === "SIMULATION" && config.referral && referenceDate
+        ? selectPartnerForRequest(requestLeadProfile(answers), config.partners, referenceYearOf(referenceDate))
+        : null,
+    [kind, config.referral, config.partners, answers, referenceDate],
+  );
+  const sentence = channel ? buildRequestSentence(config.companyName, channel, worksText, partner?.displayName) : null;
+  const confirm = sentence !== null && confirmedSentence === sentence;
 
   const contactInput = () => ({
     firstName,
     lastName,
     channel: channel ?? undefined,
-    email: channel === "EMAIL" ? email : "",
+    // E-mail obligatoire pour une réponse par e-mail, facultatif avec un rappel (envoi des documents du projet).
+    email: channel ? email : "",
     phone: channel === "PHONE" ? phone : "",
+    streetAddress: streetAddress.trim() ? streetAddress : undefined,
     availability: channel === "PHONE" && (days.length || slots.length) ? { days, slots } : undefined,
     comment: comment.trim() ? comment : undefined,
     confirmRequest: confirm,
@@ -127,6 +152,7 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
       website,
       formElapsedMs: Math.round(performance.now() - (startedAt.current ?? performance.now())),
       ...(turnstileToken ? { turnstileToken } : {}),
+      partnerId: partner?.id ?? null,
     };
     try {
       const res = await fetch("/api/requests", {
@@ -147,9 +173,15 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
           channel: data.channel,
           callbackDeadline: data.callbackDeadline ?? null,
           requestSentence: data.requestSentence,
+          partnerName: data.partnerName ?? null,
           contactDisplay: contact.phone ? formatFrenchPhone(contact.phone) : contact.email || undefined,
         });
         return;
+      }
+      if (data.code && RELOAD_CODES.has(data.code)) {
+        // Texte affiché périmé : nouvelle configuration publique, puis nouvelle confirmation de la phrase.
+        setConfirmedSentence(null);
+        router.refresh();
       }
       const fe: FieldErrors = { form: data.message ?? "L'envoi n'a pas abouti. Merci de réessayer." };
       for (const [k, v] of Object.entries(data.fieldErrors ?? {})) {
@@ -209,7 +241,7 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
             const selected = channel === c;
             return (
               <button key={c} type="button" aria-pressed={selected}
-                onClick={() => { setChannel(c); setConfirm(false); setErrors((e) => ({ ...e, channel: undefined, confirmRequest: undefined })); }}
+                onClick={() => { setChannel(c); setConfirmedSentence(null); setErrors((e) => ({ ...e, channel: undefined, confirmRequest: undefined })); }}
                 className={cn("flex items-center gap-3 rounded-2xl border-2 bg-surface px-4 py-4 text-left transition",
                   selected ? "border-pine-500 bg-pine-50 shadow-glow" : "border-ink-900/[0.08] hover:border-pine-300")}>
                 <span className={cn("grid size-10 place-items-center rounded-xl", selected ? "bg-pine-600 text-white" : "bg-sand-100 text-ink-700")}>
@@ -248,6 +280,17 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
               placeholder="06 12 34 56 78" aria-invalid={Boolean(errors.phone)} onChange={(e) => setPhone(e.target.value)} onBlur={() => phone && validateField("phone")} />
             {errors.phone && <p className="field-error">{errors.phone}</p>}
           </div>
+          <div>
+            <label htmlFor={`${id}-em`} className="field-label">Adresse e-mail <span className="font-normal text-ink-500">(facultatif)</span></label>
+            <input id={`${id}-em`} type="email" inputMode="email" autoComplete="email" className="field-input" value={email} maxLength={160}
+              aria-invalid={Boolean(errors.email)} aria-describedby={`${id}-em-h`}
+              onChange={(e) => setEmail(e.target.value)} onBlur={() => (email ? validateField("email") : setErrors((x) => ({ ...x, email: undefined })))} />
+            {errors.email ? (
+              <p id={`${id}-em-h`} className="field-error">{errors.email}</p>
+            ) : (
+              <p id={`${id}-em-h`} className="field-help">Pour vous envoyer les documents liés à votre projet.</p>
+            )}
+          </div>
           <fieldset>
             <legend className="field-label">Vos disponibilités <span className="font-normal text-ink-500">(facultatif)</span></legend>
             <div className="flex flex-wrap gap-2">
@@ -270,9 +313,22 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
         </div>
       )}
 
-      <div className="flex items-center gap-2 rounded-xl bg-sand-100 px-4 py-3 text-sm text-ink-700">
-        <MapPin className="size-4 shrink-0 text-ink-500" aria-hidden />
-        Logement : <strong className="font-semibold">{locationLabel}</strong>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 rounded-xl bg-sand-100 px-4 py-3 text-sm text-ink-700">
+          <MapPin className="size-4 shrink-0 text-ink-500" aria-hidden />
+          Logement : <strong className="font-semibold">{locationLabel}</strong>
+        </div>
+        <div>
+          <label htmlFor={`${id}-ad`} className="field-label">Adresse du logement <span className="font-normal text-ink-500">(facultatif)</span></label>
+          <input id={`${id}-ad`} className="field-input" autoComplete="street-address" value={streetAddress} maxLength={200}
+            placeholder="Ex. : 12 rue des Lilas" aria-invalid={Boolean(errors.streetAddress)} aria-describedby={`${id}-ad-h`}
+            onChange={(e) => setStreetAddress(e.target.value)} />
+          {errors.streetAddress ? (
+            <p id={`${id}-ad-h`} className="field-error">{errors.streetAddress}</p>
+          ) : (
+            <p id={`${id}-ad-h`} className="field-help">Numéro et rue : utile pour préparer la visite technique si vous prenez rendez-vous.</p>
+          )}
+        </div>
       </div>
 
       <div>
@@ -293,10 +349,10 @@ export function ContactForm({ kind, config, answers, ruleSetVersion, referenceDa
       <div className={cn("rounded-2xl border-2 p-4 transition", confirm ? "border-pine-500 bg-pine-50" : "border-ink-900/10 bg-surface", errors.confirmRequest && "border-red-400")}>
         <label className="flex cursor-pointer items-start gap-3">
           <input type="checkbox" checked={confirm} disabled={!channel}
-            onChange={(e) => { setConfirm(e.target.checked); setErrors((x) => ({ ...x, confirmRequest: undefined })); }}
+            onChange={(e) => { setConfirmedSentence(e.target.checked ? sentence : null); setErrors((x) => ({ ...x, confirmRequest: undefined })); }}
             className="mt-1 size-5 shrink-0 accent-pine-600" aria-describedby={errors.confirmRequest ? `${id}-cf-e` : undefined} />
           <span className="text-[15px] font-medium text-ink-900">
-            {sentence ?? `Je demande à être contacté(e) par ${config.companyName}, par [choisissez un canal ci-dessus], au sujet de mon projet de ${worksText}.`}
+            {sentence ?? requestSentencePreview(config.companyName, worksText, partner?.displayName)}
           </span>
         </label>
         {errors.confirmRequest && <p id={`${id}-cf-e`} className="field-error pl-8">{errors.confirmRequest}</p>}

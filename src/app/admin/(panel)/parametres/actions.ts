@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db";
+import { INCOME_CATEGORIES } from "@/lib/leads/profile";
 import { errorCode } from "@/lib/logger";
 import { dispatchPendingNotifications } from "@/lib/notifications/dispatch";
 import { notificationTransport } from "@/lib/notifications/transports";
@@ -32,12 +33,13 @@ function apply(section: Section, s: SiteSettings, f: FormData, actorLabel: strin
       for (const key of Object.keys(next.company) as (keyof SiteSettings["company"])[]) next.company[key] = str(f, key);
       break;
     case "activity":
+      // L'ancienne liste libre des partenaires (activity.partners) est conservée telle quelle : les entreprises se gèrent dans Partenaires.
       next.activity = {
+        ...next.activity,
         kinds: ACTIVITY_KINDS.filter((k) => bool(f, `kind-${k}`)),
         description: str(f, "description"),
         qualifications: str(f, "qualifications"),
         interventionArea: str(f, "interventionArea"),
-        partners: str(f, "partners"),
       };
       break;
     case "contact": {
@@ -50,6 +52,9 @@ function apply(section: Section, s: SiteSettings, f: FormData, actorLabel: strin
       next.contact.quickCallbackEnabled = bool(f, "quickCallbackEnabled");
       const accepted = str(f, "acceptedOutcomes");
       if (accepted === "ELIGIBLE_OR_REVIEW" || accepted === "ELIGIBLE_ONLY" || accepted === "ALL") next.contact.acceptedOutcomes = accepted;
+      const incomes = INCOME_CATEGORIES.filter((c) => bool(f, `income-${c}`));
+      if (incomes.length === 0) throw new Error("Cochez au moins une catégorie de revenus pour laquelle une demande de rendez-vous est proposée.");
+      next.contact.acceptedIncomeCategories = incomes;
       next.test.mode = str(f, "testMode") === "ELIGIBILITE" ? "ELIGIBILITE" : "PROJET";
       if (wantPhone && !next.contact.phoneCallbackReviewedAt && !confirmed) {
         throw new Error("Pour activer le rappel téléphonique, cochez la confirmation après lecture de l'avertissement.");

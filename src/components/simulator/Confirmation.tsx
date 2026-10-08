@@ -43,6 +43,8 @@ export function Confirmation({
   const cancelUrl = `${origin}/annulation#ref=${encodeURIComponent(result.reference)}&t=${encodeURIComponent(result.cancelToken)}`;
   const company = config.companyName;
   const byPhone = result.channel === "PHONE";
+  // Entreprise nommée dans la demande, telle qu'enregistrée par le serveur (aucune coordonnée conservée ici).
+  const partner = result.partnerName || null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6" role="status" aria-live="polite">
@@ -83,6 +85,15 @@ export function Confirmation({
                   </span>
                 )}
               </li>
+              {partner && (
+                <li className="flex gap-3">
+                  <ChevronRight className="mt-0.5 size-5 shrink-0 text-pine-600" aria-hidden />
+                  <span>
+                    Votre demande est aussi transmise à <strong className="text-ink-950">{partner}</strong>, l&apos;entreprise qui réalise les travaux :
+                    elle pourra vous recontacter à ce sujet.
+                  </span>
+                </li>
+              )}
               <li className="flex gap-3">
                 <ChevronRight className="mt-0.5 size-5 shrink-0 text-pine-600" aria-hidden />
                 <span>Il vérifie avec vous les conditions des aides, sans engagement.</span>
@@ -152,7 +163,8 @@ export function Confirmation({
         </p>
         <p className="flex gap-2 rounded-xl bg-sand-100 px-4 py-3 text-sm text-ink-700">
           <Info className="mt-0.5 size-4 shrink-0 text-ink-500" aria-hidden />
-          Aucun dossier d&apos;aide n&apos;a été déposé : cette demande concerne uniquement un échange avec {company}. L&apos;attribution d&apos;une aide
+          Aucun dossier d&apos;aide n&apos;a été déposé : cette demande concerne uniquement un échange avec {company}
+          {partner ? ` et ${partner}` : ""}. L&apos;attribution d&apos;une aide
           dépend de l&apos;instruction d&apos;un dossier par l&apos;organisme concerné.
         </p>
       </section>

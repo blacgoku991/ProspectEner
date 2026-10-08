@@ -53,6 +53,12 @@ export const answersSchema = z
     gasBoilerCondensing: yesNoUnknown.optional(),
     oilTankRemoval: yesNoUnknown.optional(),
     dpe: z.enum(["A", "B", "C", "D", "E", "F", "G", "INCONNU"]).optional(),
+    heatEmitters: z
+      .enum(["RADIATEURS_FONTE", "RADIATEURS_ACIER_ALU", "PLANCHER_CHAUFFANT_EAU", "RADIATEURS_ELECTRIQUES", "POELE_CHEMINEE", "AUTRE", "INCONNU"])
+      .optional(),
+    radiatorCount: z.union([z.number().int().min(1).max(60), z.literal("INCONNU")]).optional(),
+    heatedArea: z.union([z.number().int().min(10).max(1000), z.literal("INCONNU")]).optional(),
+    boilerLocation: z.enum(["CUISINE", "GARAGE", "CAVE_SOUS_SOL", "BUANDERIE_CELLIER", "EXTERIEUR", "AUTRE", "INCONNU"]).optional(),
     quoteSigned: yesNoUnknown.optional(),
     quoteSignedRecency: z.enum(["RECENT", "OLD", "INCONNU"]).optional(),
     worksStarted: yesNoUnknown.optional(),
@@ -104,6 +110,11 @@ const common = {
   /** Durée de remplissage mesurée par le navigateur (ms) : détection des envois automatisés trop rapides. */
   formElapsedMs: z.number().int().min(0).max(7 * 24 * 3600 * 1000),
   turnstileToken: z.string().max(4096).optional(),
+  /**
+   * Mise en relation : entreprise partenaire nommée dans la phrase affichée (null = aucune).
+   * Le serveur refait le choix et refuse l'envoi si l'entreprise affichée n'est plus la bonne.
+   */
+  partnerId: z.uuid().nullable().optional(),
 };
 
 export const simulationRequestSchema = z

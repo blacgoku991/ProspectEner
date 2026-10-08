@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Field, LegalPage } from "@/components/site/LegalPage";
-import { partnerList, referralEnabled } from "@/lib/settings-schema";
-import { siteSettings } from "@/lib/site-data";
+import { referralEnabled } from "@/lib/settings-schema";
+import { publicPartnerNames, siteSettings } from "@/lib/site-data";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
@@ -16,12 +16,11 @@ export async function generateMetadata(): Promise<Metadata> {
 const duration = (months: number) => (months % 12 === 0 ? `${months / 12} an${months / 12 > 1 ? "s" : ""}` : `${months} mois`);
 
 export default async function ConfidentialitePage() {
-  const s = await siteSettings();
+  const [s, partners] = await Promise.all([siteSettings(), publicPartnerNames()]);
   const c = s.company;
   const r = s.retention;
   const rights = c.privacyContact || c.email;
   const referral = referralEnabled(s);
-  const partners = partnerList(s);
   return (
     <LegalPage title="Politique de confidentialité" missing={[!c.name && "responsable du traitement", !rights && "contact pour exercer vos droits"].filter(Boolean) as string[]}>
       <h2>Responsable du traitement</h2>
@@ -36,18 +35,22 @@ export default async function ConfidentialitePage() {
         tant que vous n&apos;envoyez pas de demande : aucune fiche n&apos;est créée avant l&apos;envoi volontaire du formulaire de contact. Le code postal
         saisi est transmis à notre serveur uniquement pour afficher la liste des communes correspondantes ; il n&apos;est pas enregistré. Des
         statistiques de parcours strictement agrégées (nombre de passages par étape et par jour) sont tenues sans cookie, sans identifiant et sans
-        aucune réponse au questionnaire.
+        aucune réponse au questionnaire.{referral
+          ? " Le choix de l'entreprise partenaire éventuellement nommée dans votre demande est lui aussi fait dans votre navigateur, à partir de vos réponses."
+          : ""}
       </p>
 
       <h2>2. Demandes de contact</h2>
       <table>
         <tbody>
-          <tr><th>Données</th><td>Prénom, nom, téléphone ou e-mail (selon le canal choisi), commune et code postal, disponibilités et commentaire facultatifs, réponses au questionnaire et résultat indicatif, paramètres de campagne publicitaire éventuels (sans donnée personnelle).</td></tr>
+          <tr><th>Données</th><td>Prénom, nom, téléphone ou e-mail (selon le canal choisi), adresse e-mail complémentaire et adresse du logement si vous les indiquez, commune et code postal, disponibilités et commentaire facultatifs, réponses au questionnaire (dont la taille du foyer, la tranche de revenu fiscal de référence et les caractéristiques du chauffage) et résultat indicatif, paramètres de campagne publicitaire éventuels (sans donnée personnelle). Aucun avis d&apos;imposition, numéro fiscal ni justificatif n&apos;est demandé.</td></tr>
           <tr>
             <th>Finalité</th>
             <td>
               Répondre à votre demande et étudier votre projet de rénovation énergétique
-              {referral ? " ; si vous l'acceptez, organiser votre rendez-vous avec l'entreprise qui réalise l'étude et les travaux." : "."}
+              {referral
+                ? " ; transmettre votre demande à l'entreprise partenaire qu'elle nomme, le cas échéant ; si vous l'acceptez, organiser votre rendez-vous avec l'entreprise qui réalise l'étude et les travaux."
+                : "."}
             </td>
           </tr>
           <tr><th>Base légale</th><td>Mesures précontractuelles prises à votre demande (article 6.1.b du RGPD).</td></tr>
@@ -57,9 +60,11 @@ export default async function ConfidentialitePage() {
               Personnes habilitées de l&apos;éditeur et ses prestataires techniques (hébergement, messagerie).{" "}
               {referral ? (
                 <>
-                  Si vous acceptez un rendez-vous : l&apos;entreprise qui réalise l&apos;étude et les travaux, dont le nom vous est indiqué avant
-                  {partners.length > 0 ? <> (entreprises concernées : {partners.join(" ; ")})</> : null}. Aucune vente de données, aucune
-                  transmission à d&apos;autres entreprises.
+                  Si votre demande nomme une entreprise partenaire (son nom figure dans la phrase que vous validez avant l&apos;envoi) : cette entreprise,
+                  et elle seule. Sinon, si vous acceptez un rendez-vous : une seule entreprise partenaire, celle qui réalise l&apos;étude et les travaux,
+                  dont le nom vous est indiqué avant{partners.length > 0 ? <> (entreprises concernées : {partners.join(" ; ")})</> : null}. Elle reçoit vos coordonnées, votre
+                  projet, les caractéristiques utiles du logement et votre catégorie de revenus. L&apos;éditeur est rémunéré par ses entreprises partenaires
+                  pour ces mises en relation. Aucune transmission à d&apos;autres entreprises.
                 </>
               ) : (
                 "Aucune vente ni transmission à des partenaires."

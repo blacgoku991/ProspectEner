@@ -4,12 +4,13 @@ import { ArrowRight, CalendarClock, ChevronDown, CircleHelp, Compass, Info, Penc
 import { FranceRenovNotice } from "@/components/site/FranceRenovNotice";
 import { IndependenceBadge } from "@/components/site/IndependenceBadge";
 import { StickyCta } from "@/components/site/StickyCta";
-import type { AnswerSummaryLine, QuestionId } from "@/engine/questionnaire";
-import type { Evaluation, OverallOutcome } from "@/engine/types";
+import { type AnswerSummaryLine, INCOME_PROFILE_HINTS, type QuestionId } from "@/engine/questionnaire";
+import type { Evaluation, IncomeAnswer, OverallOutcome } from "@/engine/types";
 import { workLabel } from "@/engine/works";
 import { cn } from "@/lib/cn";
 import { INDICATIVE_NOTICE } from "@/lib/legal/texts";
 import { visitorVerdict } from "@/lib/requests/shared";
+import { INCOME_DOT_CLASS } from "./QuestionView";
 
 const OUTCOME_STYLE: Record<OverallOutcome, { icon: typeof SearchCheck; ring: string; bg: string; iconBg: string }> = {
   POTENTIALLY_ELIGIBLE: { icon: SearchCheck, ring: "ring-pine-500/30", bg: "from-pine-50 to-surface", iconBg: "bg-pine-600" },
@@ -27,6 +28,10 @@ const NOT_ACCEPTED_TEXT: Record<OverallOutcome, string> = {
     "Selon vos réponses, votre situation ne remplit pas les conditions des aides que nous accompagnons. Si une réponse est inexacte, vous pouvez la modifier ci-dessous.",
   OUT_OF_SCOPE: "Votre situation sort du périmètre de ce simulateur.",
 };
+
+/** Catégorie de revenus non retenue dans les paramètres : le résultat lui-même reste inchangé. */
+const INCOME_NOT_ACCEPTED_TEXT =
+  "Nos rendez-vous ne concernent pas la catégorie de revenus que vous avez indiquée ; le résultat ci-dessus vous reste utile pour préparer votre projet.";
 
 const longDate = (iso: string) =>
   new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
@@ -60,6 +65,8 @@ export function ResultView({
   summary,
   canContact,
   notAccepted = false,
+  notAcceptedReason = "OUTCOME",
+  income,
   channels,
   contact,
   projectLabel,
@@ -72,6 +79,10 @@ export function ResultView({
   canContact: boolean;
   /** Formulaire ouvert, mais ce résultat ne donne pas lieu à un rendez-vous (paramètres). */
   notAccepted?: boolean;
+  /** Motif du refus : le résultat du test, ou la catégorie de revenus (paramètres). */
+  notAcceptedReason?: "OUTCOME" | "INCOME";
+  /** Catégorie de revenus déclarée, rappelée sous le verdict. */
+  income?: IncomeAnswer;
   channels: { phone: boolean; email: boolean };
   /** Formulaire de demande de rappel, affiché sous le verdict. */
   contact?: React.ReactNode;
@@ -116,6 +127,12 @@ export function ResultView({
               {projectLabel && (
                 <p className="text-sm text-ink-600">
                   Votre projet : <span className="font-semibold text-ink-900">{projectLabel.charAt(0).toUpperCase() + projectLabel.slice(1)}</span>
+                </p>
+              )}
+              {income && income !== "INCONNU" && (
+                <p className="flex items-start gap-1.5 text-sm text-ink-500">
+                  <span aria-hidden className={cn("mt-1.5 size-2 shrink-0 rounded-full", INCOME_DOT_CLASS[income])} />
+                  Catégorie de revenus : {INCOME_PROFILE_HINTS[income]}
                 </p>
               )}
             </div>
@@ -163,7 +180,8 @@ export function ResultView({
                 <Info className="mt-0.5 size-4 shrink-0 text-ink-500" aria-hidden />
                 <p>
                   <strong className="text-ink-900">Nous ne pouvons pas vous proposer de rendez-vous. </strong>
-                  {NOT_ACCEPTED_TEXT[outcome]} Le service public France Rénov&apos; vous conseille gratuitement, y compris sur les aides locales.
+                  {notAcceptedReason === "INCOME" ? INCOME_NOT_ACCEPTED_TEXT : NOT_ACCEPTED_TEXT[outcome]} Le service public France Rénov&apos; vous
+                  conseille gratuitement, y compris sur les aides locales.
                 </p>
               </div>
             ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { FileSpreadsheet, Inbox, LayoutDashboard, Megaphone, ScrollText, Settings, ShieldBan, UserCog, Users } from "lucide-react";
+import { FileSpreadsheet, Handshake, Inbox, LayoutDashboard, Megaphone, ScrollText, Settings, ShieldBan, UserCog, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 const ITEMS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard, admin: false },
   { href: "/admin/demandes", label: "Demandes", icon: Inbox, admin: false },
+  { href: "/admin/partenaires", label: "Partenaires", icon: Handshake, admin: true },
   { href: "/admin/baremes", label: "Barèmes & règles", icon: FileSpreadsheet, admin: false },
   { href: "/admin/oppositions", label: "Oppositions", icon: ShieldBan, admin: false },
   { href: "/admin/acquisition", label: "Acquisition", icon: Megaphone, admin: true },

@@ -7,7 +7,7 @@
  */
 
 /** Version de la logique du moteur (code). Les barèmes ont leur propre version. */
-export const ENGINE_VERSION = "1.2.0";
+export const ENGINE_VERSION = "1.3.0";
 
 // ─── Réponses ────────────────────────────────────────────────────────────────
 
@@ -46,6 +46,32 @@ export type CurrentHeating =
   | "INCONNU";
 
 export type YesNoUnknown = "OUI" | "NON" | "INCONNU";
+
+/**
+ * Diffusion de la chaleur dans le logement (principalement). Qualification d'un projet de chauffage :
+ * aucune règle d'aide n'en dépend, mais une pompe à chaleur air/eau suppose un réseau d'eau chaude.
+ */
+export type HeatEmitter =
+  | "RADIATEURS_FONTE"
+  | "RADIATEURS_ACIER_ALU"
+  | "PLANCHER_CHAUFFANT_EAU"
+  | "RADIATEURS_ELECTRIQUES"
+  | "POELE_CHEMINEE"
+  | "AUTRE"
+  | "INCONNU";
+
+/** Emplacement de la chaudière actuelle (qualification, sans effet sur les règles d'aides). */
+export type BoilerLocation =
+  | "CUISINE"
+  | "GARAGE"
+  | "CAVE_SOUS_SOL"
+  | "BUANDERIE_CELLIER"
+  | "EXTERIEUR"
+  | "AUTRE"
+  | "INCONNU";
+
+/** Réponse numérique facultative : un nombre, ou « je ne sais pas ». */
+export type CountAnswer = number | "INCONNU";
 
 export type DpeAnswer = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "INCONNU";
 
@@ -132,6 +158,13 @@ export interface Answers {
   /** Dépose de la cuve envisagée (question posée si le chauffage actuel est une chaudière fioul). */
   oilTankRemoval?: YesNoUnknown;
   dpe?: DpeAnswer;
+  // Installation actuelle (qualification du projet de chauffage, sans effet sur les règles d'aides)
+  heatEmitters?: HeatEmitter;
+  /** Nombre de radiateurs à eau. */
+  radiatorCount?: CountAnswer;
+  /** Surface chauffée, en m². */
+  heatedArea?: CountAnswer;
+  boilerLocation?: BoilerLocation;
   // Avancement
   quoteSigned?: YesNoUnknown;
   /** Si devis signé : signé depuis moins (RECENT) ou plus (OLD) que le délai de grâce du barème. */

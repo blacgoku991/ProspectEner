@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { OverallOutcome } from "@/engine/types";
+import type { IncomeAnswer, IncomeCategory, OverallOutcome } from "@/engine/types";
 
 /**
  * Paramètres configurables depuis l'administration. Valeurs par défaut volontairement vides :
@@ -47,7 +47,10 @@ export const siteSettingsSchema = z.object({
       description: text(1500),
       qualifications: text(1000),
       interventionArea: text(300),
-      /** Mise en relation : entreprises qui reçoivent les rendez-vous (une par ligne). */
+      /**
+       * Ancienne liste libre des entreprises partenaires (une par ligne), reprise dans la table
+       * des partenaires lors de la migration du 8 octobre 2026. N'est plus modifiée ni affichée.
+       */
       partners: text(1000),
     })
     .prefault({}),
@@ -63,6 +66,14 @@ export const siteSettingsSchema = z.object({
       showCompanyPhone: z.boolean().default(true),
       /** Résultats du test pour lesquels une demande de rendez-vous est proposée au visiteur. */
       acceptedOutcomes: z.enum(["ELIGIBLE_OR_REVIEW", "ELIGIBLE_ONLY", "ALL"]).default("ELIGIBLE_OR_REVIEW"),
+      /**
+       * Catégories de revenus pour lesquelles une demande de rendez-vous est proposée (bleu et jaune par
+       * défaut). Une réponse « je ne sais pas » est toujours acceptée : le conseiller vérifie.
+       */
+      acceptedIncomeCategories: z
+        .array(z.enum(["TRES_MODESTE", "MODESTE", "INTERMEDIAIRE", "SUPERIEUR"]))
+        .max(4)
+        .default(["TRES_MODESTE", "MODESTE"]),
       /** Demande de rappel sans faire le test (non qualifiée) : désactivée par défaut. */
       quickCallbackEnabled: z.boolean().default(false),
     })
@@ -168,6 +179,11 @@ export function contactAcceptedFor(s: SiteSettings, outcome: OverallOutcome): bo
   return ACCEPTED_OUTCOMES[s.contact.acceptedOutcomes].includes(outcome);
 }
 
+/** Catégorie de revenus qui ouvre la demande de rendez-vous (inconnue ou non demandée : acceptée). */
+export function incomeAcceptedFor(accepted: readonly IncomeCategory[], income: IncomeAnswer | undefined): boolean {
+  return income === undefined || income === "INCONNU" || accepted.includes(income);
+}
+
 /**
  * Mise en relation déclarée : la notice annonce qu'un rendez-vous accepté peut être confié à une
  * entreprise partenaire. Sans elle, aucune transmission à une autre entreprise n'est possible.
@@ -176,13 +192,6 @@ export function referralEnabled(s: SiteSettings): boolean {
   return s.activity.kinds.includes("MISE_EN_RELATION");
 }
 
-/** Entreprises partenaires déclarées (une par ligne). */
-export function partnerList(s: SiteSettings): string[] {
-  return s.activity.partners
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-}
 
 /** Demande de rappel sans test : seulement si elle est activée (elle n'est pas qualifiée par le test). */
 export function quickCallbackOpen(s: SiteSettings): boolean {
@@ -198,7 +207,11 @@ export interface LaunchCheckItem {
 }
 
 /** Check-list de mise en ligne affichée dans l'administration. */
-export function launchChecklist(s: SiteSettings, hasNotificationTransport: { email: boolean; webhook: boolean }): LaunchCheckItem[] {
+export function launchChecklist(
+  s: SiteSettings,
+  hasNotificationTransport: { email: boolean; webhook: boolean },
+  activePartners: number,
+): LaunchCheckItem[] {
   const c = s.company;
   const legalMissing = [
     !c.name && "dénomination",
@@ -244,8 +257,8 @@ export function launchChecklist(s: SiteSettings, hasNotificationTransport: { ema
           {
             id: "partners",
             label: "Entreprises partenaires (mise en relation)",
-            ok: partnerList(s).length > 0,
-            detail: "Dénomination, ville et qualification RGE des entreprises qui reçoivent les rendez-vous : elles sont listées dans la politique de confidentialité.",
+            ok: activePartners > 0,
+            detail: "Au moins une entreprise active dans Partenaires : elles sont listées dans la politique de confidentialité et les mentions légales.",
             blocking: false,
           },
         ]

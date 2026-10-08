@@ -13,6 +13,8 @@ import { OUTCOME_LABELS, STATUS_LABELS } from "@/lib/requests/shared";
 import { getPublishedRuleSet } from "@/lib/rulesets";
 import { notificationTransports } from "@/lib/settings";
 import { launchChecklist } from "@/lib/settings-schema";
+import { countActivePartners } from "@/lib/leads/partners-db";
+import { INCOME_CATEGORIES, INCOME_PROFILE } from "@/lib/leads/profile";
 
 export const metadata = { title: "Tableau de bord" };
 
@@ -35,8 +37,23 @@ export default async function DashboardPage() {
       select: { id: true, reference: true, firstName: true, lastName: true, communeName: true, appointmentAt: true, appointmentMode: true, appointmentPartner: true },
     }),
   ]);
-  const [newCount, toProcess, soon, overdue, byOutcome, byStatus, byTerritory, worksRows, funnelRows, upcoming, failedNotifications, ruleSet, demoCount, pendingDraft] =
-    await Promise.all([
+  const [
+    newCount,
+    toProcess,
+    soon,
+    overdue,
+    byOutcome,
+    byStatus,
+    byTerritory,
+    worksRows,
+    funnelRows,
+    upcoming,
+    failedNotifications,
+    ruleSet,
+    demoCount,
+    pendingDraft,
+    byIncome,
+  ] = await Promise.all([
       prisma.contactRequest.count({ where: { AND: [scope, { createdAt: { gte: since7 } }] } }),
       prisma.contactRequest.count({ where: { AND: [scope, { status: { in: ["NOUVEAU", "A_VERIFIER"] } }] } }),
       prisma.contactRequest.count({ where: buildRequestWhere({ deadline: "soon" }, user, settings, now) }),
@@ -59,9 +76,11 @@ export default async function DashboardPage() {
       prisma.contactRequest.count({ where: { isDemo: true } }),
       // Nouvelle version embarquée ajoutée comme brouillon lors d'un déploiement.
       prisma.ruleSet.findFirst({ where: { status: "DRAFT", createdById: null }, orderBy: { createdAt: "desc" }, select: { id: true, version: true } }),
+      // Catégories de revenus des demandes visibles par la personne connectée.
+      prisma.contactRequest.groupBy({ by: ["incomeCategory"], where: { AND: [scope, { createdAt: { gte: since30 } }] }, _count: { _all: true } }),
     ]);
 
-  const checklist = launchChecklist(settings, notificationTransports());
+  const checklist = launchChecklist(settings, notificationTransports(), await countActivePartners());
   const blocking = checklist.filter((c) => !c.ok && c.blocking);
   const pendingChecks = checklist.filter((c) => !c.ok);
   const d = ruleSet.data.dispositifs;
@@ -221,7 +240,20 @@ export default async function DashboardPage() {
         </Panel>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <Panel title="Catégories de revenus (30 jours)">
+          <BarList
+            data={[
+              ...INCOME_CATEGORIES.map((c) => ({
+                label: INCOME_PROFILE[c].label,
+                value: byIncome.find((x) => x.incomeCategory === c)?._count._all ?? 0,
+                href: `/admin/demandes?revenus=${c}`,
+              })),
+              { label: "Non renseigné", value: byIncome.find((x) => x.incomeCategory === null)?._count._all ?? 0, href: "/admin/demandes?revenus=INCONNU" },
+            ]}
+          />
+          <p className="mt-4 text-xs text-ink-500">Catégorie déclarée par la personne dans le test, non vérifiée.</p>
+        </Panel>
         <Panel title="Types de travaux (30 jours)">
           <BarList
             data={worksRows.map((w) => ({
@@ -232,13 +264,6 @@ export default async function DashboardPage() {
             total={worksRows.reduce((a, w) => a + Number(w.n), 0)}
           />
         </Panel>
-        <Panel title="Territoires (30 jours)">
-          <BarList
-            data={byTerritory
-              .map((t) => ({ label: TERRITORY_LABELS[t.territory as Territory] ?? t.territory, value: t._count._all, href: `/admin/demandes?territory=${t.territory}` }))
-              .sort((a, b) => b.value - a.value)}
-          />
-        </Panel>
         <Panel title="Résultats indicatifs (30 jours)">
           <BarList
             data={(Object.keys(OUTCOME_LABELS) as (keyof typeof OUTCOME_LABELS)[]).map((o) => ({
@@ -246,6 +271,13 @@ export default async function DashboardPage() {
               value: byOutcome.find((x) => x.overallOutcome === o)?._count._all ?? 0,
               href: `/admin/demandes?outcome=${o}`,
             }))}
+          />
+        </Panel>
+        <Panel title="Territoires (30 jours)">
+          <BarList
+            data={byTerritory
+              .map((t) => ({ label: TERRITORY_LABELS[t.territory as Territory] ?? t.territory, value: t._count._all, href: `/admin/demandes?territory=${t.territory}` }))
+              .sort((a, b) => b.value - a.value)}
           />
         </Panel>
       </div>

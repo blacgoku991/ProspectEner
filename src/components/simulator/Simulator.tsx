@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, ArrowRight, CircleHelp, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CircleHelp, ExternalLink, Info, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import HouseHero from "@/components/three/HouseHero";
@@ -22,9 +22,10 @@ import {
 } from "@/engine/questionnaire";
 import type { RuleSet } from "@/engine/ruleset-schema";
 import type { Answers } from "@/engine/types";
-import { NO_STATE_DATA_NOTICE } from "@/lib/legal/texts";
+import { FRANCE_RENOV_REDIRECT_URL, NO_STATE_DATA_NOTICE } from "@/lib/legal/texts";
 import type { PublicConfig } from "@/lib/public-config";
 import { trackStep } from "@/lib/funnel";
+import { incomeAcceptedFor } from "@/lib/settings-schema";
 import { worksTextForRequest } from "@/lib/requests/shared";
 import { cn } from "@/lib/cn";
 import { Confirmation } from "./Confirmation";
@@ -67,10 +68,30 @@ function stepOf(q: QuestionId): StepId {
   return (STEPS.find((s) => s.questions.includes(q)) ?? STEPS[0]!).id;
 }
 
+/** Libellés courts de l'indicateur d'étapes (six étapes, à l'aise sur mobile comme sur ordinateur). */
+const STEP_LABELS: Record<StepId, string> = {
+  logement: "Logement",
+  foyer: "Foyer",
+  projet: "Projet",
+  installation: "Installation",
+  situation: "Situation",
+  avancement: "Avancement",
+};
+
 function focusFor(answers: Answers, current: QuestionId): HouseFocus {
   const works = answers.works ?? [];
   if (current === "insulationItems") return "isolation";
-  if (current === "heatPumpType" || current === "heatingTarget" || current === "currentHeating") return "chauffage";
+  if (
+    current === "heatPumpType" ||
+    current === "heatingTarget" ||
+    current === "currentHeating" ||
+    current === "heatEmitters" ||
+    current === "radiatorCount" ||
+    current === "heatedArea" ||
+    current === "boilerLocation"
+  ) {
+    return "chauffage";
+  }
   if (current === "hotWaterTarget") return "eau-chaude";
   if (current === "ventilationTarget") return "ventilation";
   if (works.includes("RENOVATION_GLOBALE") || works.length > 1) return "global";
@@ -153,6 +174,9 @@ export default function Simulator({
   const currentVisible = visible.includes(current) ? current : (firstUnanswered(answers, ctx) ?? visible[visible.length - 1] ?? "location");
   const stepId = stepOf(currentVisible);
   const visibleSteps = STEPS.filter((s) => s.questions.some((q) => estimated.includes(q)));
+  // Catégorie de revenus non retenue (paramètres) : l'information est donnée dès la question suivante,
+  // le test continue et son résultat ne change pas ; seul le rendez-vous n'est pas proposé.
+  const incomeAccepted = incomeAcceptedFor(config.acceptedIncomeCategories, answers.income);
 
   useEffect(() => {
     if (phase === "questions") {
@@ -255,7 +279,9 @@ export default function Simulator({
     const location = [pruned.postalCode, pruned.communeName].filter(Boolean).join(" ");
     // Rappel proposé seulement pour les résultats retenus dans les paramètres (éligibles ou à vérifier par défaut).
     const accepted = config.acceptedOutcomes.includes(evaluation.outcome);
-    const canContact = config.submissionsOpen && accepted;
+    // Rendez-vous également réservé aux catégories de revenus retenues (revenus inconnus toujours acceptés).
+    const incomeOk = incomeAcceptedFor(config.acceptedIncomeCategories, pruned.income);
+    const canContact = config.submissionsOpen && accepted && incomeOk;
     const goToForm = () => {
       const form = document.getElementById("contact");
       form?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -270,7 +296,9 @@ export default function Simulator({
           evaluation={evaluation}
           summary={summarizeAnswers(pruned, ctx)}
           canContact={canContact}
-          notAccepted={config.submissionsOpen && !accepted}
+          notAccepted={config.submissionsOpen && (!accepted || !incomeOk)}
+          notAcceptedReason={accepted ? "INCOME" : "OUTCOME"}
+          income={pruned.income}
           channels={config.channels}
           projectLabel={isProfileTest(pruned) ? undefined : worksTextForRequest("SIMULATION", pruned)}
           onContact={goToForm}
@@ -315,19 +343,21 @@ export default function Simulator({
   // ─── Questionnaire ───────────────────────────────────────────────────────
   const text = questionText(currentVisible, answers, ctx);
   const qIndex = visible.indexOf(currentVisible);
+  const stepIndex = Math.max(0, visibleSteps.findIndex((s) => s.id === stepId));
+  const showIncomeNotice = !incomeAccepted && visible.includes("income") && qIndex > visible.indexOf("income");
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
       <div className="min-w-0">
-        <div className="mb-5" aria-label="Progression">
-          <div className="mb-3 flex items-center justify-between gap-3 text-sm">
-            <p className="font-semibold text-ink-800">
-              {STEPS.find((s) => s.id === stepId)?.title}
-              <span className="ml-2 font-normal text-ink-500">
-                Question {qIndex + 1} sur {estimated.length}
+        <div className="mb-5">
+          <div className="mb-3 flex items-end justify-between gap-3 text-sm">
+            <p className="min-w-0">
+              <span className="block font-semibold text-ink-800">{STEPS.find((s) => s.id === stepId)?.title}</span>
+              <span className="text-ink-500">
+                Étape {stepIndex + 1} sur {visibleSteps.length} · question {qIndex + 1} sur {estimated.length}
               </span>
             </p>
-            <p className="font-semibold text-pine-700">{progress}%</p>
+            <p className="shrink-0 font-semibold text-pine-700">{progress}%</p>
           </div>
           <div
             className="h-2.5 overflow-hidden rounded-full bg-ink-900/[0.07]"
@@ -339,25 +369,61 @@ export default function Simulator({
           >
             <div className="h-full rounded-full bg-gradient-to-r from-pine-500 to-pine-700 transition-[width] duration-500" style={{ width: `${progress}%` }} />
           </div>
-          <ol className="mt-3 hidden gap-2 sm:flex">
-            {visibleSteps.map((s) => {
-              const idx = visibleSteps.findIndex((x) => x.id === stepId);
-              const me = visibleSteps.findIndex((x) => x.id === s.id);
+          {/* Sur mobile, seule l'étape en cours affiche son libellé ; les autres sont numérotées. */}
+          <ol aria-label="Étapes du questionnaire" className="mt-3 flex gap-1.5">
+            {visibleSteps.map((s, i) => {
+              const state = i < stepIndex ? "done" : i === stepIndex ? "current" : "todo";
               return (
                 <li
                   key={s.id}
+                  title={s.title}
+                  aria-current={state === "current" ? "step" : undefined}
                   className={cn(
-                    "flex-1 rounded-lg px-2 py-1 text-center text-xs font-medium",
-                    me < idx ? "bg-pine-50 text-pine-800" : me === idx ? "bg-ink-900 text-sand-50" : "bg-ink-900/[0.04] text-ink-500",
+                    "flex h-7 min-w-0 items-center justify-center gap-1.5 rounded-full text-xs font-medium transition-colors sm:flex-auto sm:px-2",
+                    state === "current" ? "flex-1 bg-ink-900 px-2.5 text-sand-50" : "w-7 shrink-0 sm:w-auto sm:shrink",
+                    state === "done" && "bg-pine-50 text-pine-800",
+                    state === "todo" && "bg-ink-900/[0.04] text-ink-500",
                   )}
-                  aria-current={me === idx ? "step" : undefined}
                 >
-                  {s.title.replace(/^(Le |La |L')/, "").replace(/^./, (c) => c.toUpperCase())}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-semibold tabular-nums",
+                      state === "current" && "bg-sand-50/15",
+                    )}
+                  >
+                    {state === "done" ? <Check className="size-3.5" /> : i + 1}
+                  </span>
+                  <span className={cn("truncate", state !== "current" && "sr-only sm:not-sr-only")}>
+                    {STEP_LABELS[s.id]}
+                    {state === "done" && <span className="sr-only"> (terminée)</span>}
+                  </span>
                 </li>
               );
             })}
           </ol>
         </div>
+
+        {showIncomeNotice && (
+          <div role="note" className="mb-4 flex gap-3 rounded-2xl bg-surface/70 px-4 py-3 text-sm text-ink-700 ring-1 ring-inset ring-ink-900/10">
+            <Info className="mt-0.5 size-4 shrink-0 text-ink-500" aria-hidden />
+            <p>
+              Pour information : nous ne proposons pas de rendez-vous pour cette catégorie de revenus. Vous pouvez poursuivre le test pour
+              connaître les aides possibles. Le service public{" "}
+              <a
+                href={FRANCE_RENOV_REDIRECT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-semibold text-ink-900 underline underline-offset-2"
+              >
+                France Rénov&apos;
+                <ExternalLink className="size-3.5" aria-hidden />
+                <span className="sr-only">(nouvel onglet, site du service public)</span>
+              </a>{" "}
+              peut aussi vous conseiller.
+            </p>
+          </div>
+        )}
 
         <div className="card relative overflow-hidden p-5 sm:p-8">
           <AnimatePresence mode="wait" custom={direction} initial={false}>

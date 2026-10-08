@@ -39,6 +39,8 @@ test.describe("contrôle d'accès à l'administration", () => {
     await expect(page).toHaveURL(/\/admin\/connexion\?suite=%2Fadmin%2Fdemandes/);
     const exportRes = await request.get("/admin/demandes/export", { maxRedirects: 0 });
     expect([302, 303, 307, 308]).toContain(exportRes.status());
+    const partnerExport = await request.get("/admin/partenaires/00000000-0000-0000-0000-000000000000/export", { maxRedirects: 0 });
+    expect([302, 303, 307, 308]).toContain(partnerExport.status());
     const cron = await request.get("/api/cron");
     expect(cron.status()).toBe(401);
     const cronOk = await request.get("/api/cron", { headers: { authorization: `Bearer ${E2E_ENV.CRON_SECRET}` } });
@@ -76,6 +78,15 @@ test.describe("contrôle d'accès à l'administration", () => {
     expect(users?.status()).toBe(404);
     const exp = await page.goto("/admin/demandes/export");
     expect(exp?.status()).toBe(403);
+    // Entreprises partenaires : réservées aux administrateurs ; export soumis au droit d'export.
+    await page.goto("/admin");
+    await expect(page.getByRole("link", { name: "Partenaires" })).toHaveCount(0);
+    const partners = await page.goto("/admin/partenaires");
+    expect(partners?.status()).toBe(404);
+    const newPartner = await page.goto("/admin/partenaires/nouveau");
+    expect(newPartner?.status()).toBe(404);
+    const partnerExport = await page.goto("/admin/partenaires/00000000-0000-0000-0000-000000000000/export");
+    expect(partnerExport?.status()).toBe(403);
     const unknown = await page.goto("/admin/demandes/00000000-0000-0000-0000-000000000000");
     expect(unknown?.status()).toBe(404);
   });

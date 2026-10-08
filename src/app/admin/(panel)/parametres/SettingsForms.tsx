@@ -1,7 +1,11 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useActionState } from "react";
+import { IncomeBadge } from "@/components/admin/IncomeBadge";
 import { SubmitButton } from "@/components/admin/SubmitButton";
+import { INCOME_CATEGORIES } from "@/lib/leads/profile";
 import { ACCEPTED_OUTCOMES_LABELS, ACTIVITY_KINDS, ACTIVITY_LABELS, type SiteSettings } from "@/lib/settings-schema";
 import { applyRetentionAction, retryNotificationsAction, saveSettingsAction, type SettingsState, testNotificationAction } from "./actions";
 
@@ -91,15 +95,17 @@ export function ActivityForm({ s }: { s: SiteSettings }) {
         <textarea name="qualifications" defaultValue={s.activity.qualifications} rows={2} maxLength={1000} className="field-input mt-1 text-sm" />
       </label>
       <Input name="interventionArea" label="Zone d'intervention" value={s.activity.interventionArea} />
-      <label className="block text-sm text-ink-800">
-        Mise en relation : entreprises qui reçoivent les rendez-vous{" "}
-        <span className="text-ink-500">(une par ligne : dénomination, ville, qualification RGE)</span>
-        <textarea name="partners" defaultValue={s.activity.partners} rows={3} maxLength={1000} className="field-input mt-1 text-sm" />
-        <span className="mt-1 block text-xs text-ink-500">
-          Cochez « Mise en relation avec des professionnels » pour pouvoir confier un rendez-vous à l&apos;une de ces entreprises : la notice
-          d&apos;information l&apos;annonce alors aux visiteurs, et l&apos;accord de chaque personne est demandé avant toute transmission.
-        </span>
-      </label>
+      <div className="rounded-xl bg-sand-100 p-4 text-sm text-ink-700">
+        <p className="font-medium text-ink-900">Mise en relation</p>
+        <p className="mt-1">
+          Les entreprises qui reçoivent les rendez-vous, et les demandes qui les intéressent, se gèrent dans Entreprises partenaires. Cochez « Mise en
+          relation avec des professionnels » pour pouvoir leur confier un rendez-vous : la notice d&apos;information l&apos;annonce alors aux visiteurs,
+          et l&apos;accord de chaque personne est demandé avant toute transmission.
+        </p>
+        <Link href="/admin/partenaires" className="mt-2 inline-flex items-center gap-1 font-semibold text-pine-700 hover:text-pine-800">
+          Gérer les entreprises partenaires <ArrowRight className="size-3.5" aria-hidden />
+        </Link>
+      </div>
     </SectionForm>
   );
 }
@@ -131,6 +137,18 @@ export function ContactForm({ s }: { s: SiteSettings }) {
             Rénov&apos;.
           </span>
         </label>
+        <fieldset>
+          <legend className="text-sm text-ink-800">Catégories de revenus qui ouvrent une demande de rendez-vous</legend>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+            {INCOME_CATEGORIES.map((c) => (
+              <label key={c} className="flex items-center gap-2 text-sm text-ink-800">
+                <input type="checkbox" name={`income-${c}`} defaultChecked={s.contact.acceptedIncomeCategories.includes(c)} className="size-4 accent-pine-600" />
+                <IncomeBadge category={c} long />
+              </label>
+            ))}
+          </div>
+          <span className="mt-1 block text-xs text-ink-500">Une réponse « je ne sais pas » est toujours acceptée : le conseiller vérifie.</span>
+        </fieldset>
         <Check
           name="quickCallbackEnabled"
           label="Proposer « Être recontacté(e) sans faire le test » (demandes non qualifiées)"

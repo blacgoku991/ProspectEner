@@ -39,21 +39,21 @@ const TENANT: Answers = {
 };
 
 describe("test d'éligibilité seul (sans le détail du projet)", () => {
-  it("ne pose que les questions de logement, d'avancement et de foyer", () => {
+  it("ne pose que les questions de logement, de foyer, de situation et d'avancement", () => {
     expect(visibleQuestions(OWNER, ctx)).toEqual([
       "location",
       "housingType",
+      "householdSize",
+      "income",
       "occupancy",
       "residence",
       "construction",
       "quoteSigned",
       "worksStarted",
-      "householdSize",
-      "income",
     ]);
     expect(firstUnanswered(OWNER, ctx)).toBeNull();
-    // Le revenu ne change rien pour un locataire : il n'est pas demandé.
-    expect(visibleQuestions(TENANT, ctx)).not.toContain("income");
+    // Le foyer est demandé à tous, dès le début (orientation de la demande).
+    expect(firstUnanswered(TENANT, ctx)).toBe("householdSize");
     expect(visibleQuestions({ ...OWNER, quoteSigned: "OUI" }, ctx)).toContain("quoteSignedRecency");
   });
 

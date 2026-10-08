@@ -5,6 +5,24 @@ import { useActionState, useId, useMemo, useState } from "react";
 import { type AppointmentState, bookAppointmentAction } from "@/app/admin/(panel)/demandes/[id]/actions";
 import { APPOINTMENT_MODES, type QualificationGroup, qualifiedAids } from "@/lib/admin/qualification";
 import { cn } from "@/lib/cn";
+import type { MatchStatus } from "@/lib/leads/partners";
+
+/** Entreprise partenaire active, proposée pour assurer le rendez-vous. */
+export interface PartnerChoice {
+  /** Nom annoncé à la personne (dénomination, puis précisions) : c'est lui qui est enregistré sur la demande. */
+  name: string;
+  /** Correspondance de la demande avec les critères de l'entreprise. */
+  match?: MatchStatus;
+  /** Entreprise nommée dans la demande (phrase validée par la personne avant l'envoi). */
+  requested?: boolean;
+}
+
+const MATCH_ORDER: Record<MatchStatus, number> = { MATCH: 0, TO_CHECK: 1, NO: 2 };
+const MATCH_SUFFIX: Record<MatchStatus, string> = {
+  MATCH: "correspond aux critères",
+  TO_CHECK: "critères à vérifier",
+  NO: "ne correspond pas aux critères",
+};
 
 /**
  * Qualification puis rendez-vous : le conseiller confirme chaque critère avec la personne.
@@ -20,12 +38,22 @@ export function AppointmentForm({
   groups: QualificationGroup[];
   /** Mise en relation déclarée dans les paramètres : le rendez-vous peut être confié à une entreprise partenaire. */
   referral?: boolean;
-  partners?: string[];
+  /** Entreprises partenaires actives (contrôlées aussi côté serveur). */
+  partners?: PartnerChoice[];
 }) {
   const uid = useId();
   const [state, action] = useActionState<AppointmentState, FormData>(bookAppointmentAction, {});
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [partner, setPartner] = useState("");
+  const choices = useMemo(
+    () => [...partners].sort((a, b) => MATCH_ORDER[a.match ?? "TO_CHECK"] - MATCH_ORDER[b.match ?? "TO_CHECK"] || a.name.localeCompare(b.name, "fr")),
+    [partners],
+  );
+  // Entreprise nommée dans la demande, sinon la seule qui correspond à tous les critères : proposée d'office
+  // (l'accord pour le rendez-vous reste à cocher).
+  const matching = choices.filter((p) => p.match === "MATCH");
+  const requested = choices.find((p) => p.requested);
+  const suggested = !referral ? "" : requested ? requested.name : matching.length === 1 ? (matching[0]?.name ?? "") : "";
+  const [partner, setPartner] = useState(suggested);
   const [consent, setConsent] = useState(false);
   const partnerName = partner.trim();
   const qualified = useMemo(() => qualifiedAids(groups, checked), [groups, checked]);
@@ -104,25 +132,47 @@ export function AppointmentForm({
       </label>
       {referral && (
         <div className="space-y-3 rounded-xl border border-ink-900/10 p-4">
-          <label className="block text-sm text-ink-800">
-            Entreprise qui assure le rendez-vous <span className="text-ink-500">(laisser vide si c&apos;est votre entreprise)</span>
-            <input
-              name="partner"
-              list={`${uid}-partners`}
-              maxLength={120}
-              value={partner}
-              onChange={(e) => {
-                setPartner(e.target.value);
-                setConsent(false);
-              }}
-              className="field-input mt-1 py-2.5 text-sm"
-            />
-            <datalist id={`${uid}-partners`}>
-              {partners.map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
-          </label>
+          {choices.length === 0 ? (
+            <p className="text-sm text-ink-600">
+              Aucune entreprise partenaire active : le rendez-vous est assuré par votre entreprise. Les entreprises se déclarent dans « Partenaires ».
+            </p>
+          ) : (
+            <>
+              <label className="block text-sm text-ink-800">
+                Entreprise qui assure le rendez-vous
+                <select
+                  name="partner"
+                  value={partner}
+                  onChange={(e) => {
+                    setPartner(e.target.value);
+                    setConsent(false);
+                  }}
+                  aria-describedby={requested || matching.length > 0 ? `${uid}-partner-hint` : undefined}
+                  className="field-input mt-1 py-2.5 text-sm"
+                >
+                  <option value="">Votre entreprise (pas de mise en relation)</option>
+                  {choices.map((p) => (
+                    <option key={p.name} value={p.name}>
+                      {p.name}
+                      {p.requested ? " — nommée dans la demande" : p.match ? ` — ${MATCH_SUFFIX[p.match]}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {requested ? (
+                <p id={`${uid}-partner-hint`} className="text-xs text-ink-500">
+                  La personne a nommé {requested.name} dans sa demande : entreprise proposée. Détail dans « Entreprises partenaires ».
+                </p>
+              ) : matching.length > 0 && (
+                <p id={`${uid}-partner-hint`} className="text-xs text-ink-500">
+                  {matching.length === 1
+                    ? `La demande correspond à tous les critères de ${matching[0]?.name} : entreprise proposée.`
+                    : `La demande correspond à tous les critères de ${matching.length} entreprises : choisissez celle qui assure le rendez-vous.`}{" "}
+                  Détail dans « Entreprises partenaires ».
+                </p>
+              )}
+            </>
+          )}
           {partnerName && (
             <label className="flex cursor-pointer gap-2.5 text-sm">
               <input
@@ -133,7 +183,8 @@ export function AppointmentForm({
                 className="mt-0.5 size-4 shrink-0 accent-pine-600"
               />
               <span>
-                La personne a accepté que ses coordonnées et son projet soient transmis à <strong>{partnerName}</strong> pour ce rendez-vous.
+                La personne a accepté que ses coordonnées et ses réponses (logement, chauffage, revenus) soient transmises à <strong>{partnerName}</strong>{" "}
+                pour ce rendez-vous.
               </span>
             </label>
           )}
@@ -148,7 +199,11 @@ export function AppointmentForm({
         <CalendarCheck className="size-4" aria-hidden />
         Fixer le rendez-vous
       </button>
-      {qualified.length === 0 && <p className="text-xs text-ink-500">Le bouton s&apos;active quand une aide est entièrement qualifiée.</p>}
+      {qualified.length === 0 ? (
+        <p className="text-xs text-ink-500">Le bouton s&apos;active quand une aide est entièrement qualifiée.</p>
+      ) : partnerName !== "" && !consent ? (
+        <p className="text-xs text-ink-500">Cochez l&apos;accord de la personne pour la transmission, ou choisissez « Votre entreprise ».</p>
+      ) : null}
     </form>
   );
 }

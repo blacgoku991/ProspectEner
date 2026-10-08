@@ -9,7 +9,8 @@ const dts = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "
 
 /**
  * Récapitulatif du rendez-vous à transmettre à l'entreprise partenaire (copié puis envoyé par
- * le conseiller). La première transmission est tracée dans l'historique de la demande.
+ * le conseiller) : fiche de la demande, rendez-vous et aides confirmées, construits côté serveur
+ * (fiche de la demande, page [id]). La première transmission est tracée dans l'historique de la demande.
  */
 export function HandoffRecap({ requestId, partner, text, sentAt }: { requestId: string; partner: string; text: string; sentAt: string | null }) {
   const router = useRouter();
@@ -38,7 +39,11 @@ export function HandoffRecap({ requestId, partner, text, sentAt }: { requestId: 
         <Send className="size-4 text-pine-700" aria-hidden />
         Récapitulatif à transmettre à {partner}
       </p>
-      <textarea readOnly value={text} rows={Math.min(14, text.split("\n").length + 1)} className="field-input font-mono text-xs" aria-label="Récapitulatif du rendez-vous" />
+      <p className="text-xs text-ink-500">
+        Coordonnées et réponses de la personne (dont sa catégorie de revenus), rendez-vous et aides confirmées. Le commentaire libre et les notes internes
+        ne sont jamais repris.
+      </p>
+      <textarea readOnly value={text} rows={Math.min(20, text.split("\n").length + 1)} className="field-input font-mono text-xs" aria-label="Récapitulatif du rendez-vous" />
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={copy} disabled={pending} className="btn-ghost py-2 text-sm">
           {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
