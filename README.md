@@ -83,6 +83,8 @@ Les couleurs et réglages généraux sont en tête de `src/styles/global.css`.
 
 Le dossier `dist/` se dépose sur n'importe quel hébergeur statique. Sur Vercel, le dépôt se déploie tel quel (`vercel.json` fourni).
 
+L'adresse publique du site (aperçus de lien, URL canonique) est lue dans la variable d'environnement `SITE_URL`, par exemple `https://elyra.fr`. Sur Vercel, elle est déduite automatiquement du domaine de production.
+
 ---
 
 Elyra est un projet communautaire indépendant, sans lien avec Rockstar Games, Take-Two Interactive ni Cfx.re.
