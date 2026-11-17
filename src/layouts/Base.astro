@@ -1,0 +1,89 @@
+---
+import '@fontsource-variable/archivo/wdth.css';
+import '@fontsource-variable/manrope';
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/global.css';
+
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import Star from '../components/Star.astro';
+import { site } from '../config/site';
+
+interface Props {
+  title?: string;
+  description?: string;
+  theme?: 'default' | 'legal' | 'illegal' | 'gold' | 'aide';
+  /** Masque le pied de page (page 404). */
+  bare?: boolean;
+}
+const { title, description = site.description, theme = 'default', bare = false } = Astro.props;
+const fullTitle = title ? `${title} · ${site.name}` : `${site.name} — ${site.baseline}`;
+const ogImage = new URL('/og.jpg', Astro.site ?? Astro.url).href;
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#05050b" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:locale" content="fr_FR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script is:inline>
+      (function () {
+        var d = document.documentElement;
+        d.classList.add('js');
+        try {
+          if (sessionStorage.getItem('elyra:seen')) d.classList.add('is-return');
+        } catch (e) {}
+        // Filet de sécurité : si le script principal ne démarre pas, tout redevient visible.
+        setTimeout(function () {
+          if (!window.__elyra) d.classList.remove('js');
+        }, 6000);
+      })();
+    </script>
+  </head>
+  <body data-theme={theme} data-cfx={site.cfxCode || undefined}>
+    <a class="skip-link" href="#contenu">Aller au contenu</a>
+
+    <div class="veil" aria-hidden="true">
+      <div class="veil__cols">
+        {[0, 1, 2, 3, 4].map((i) => <span class="veil__col" style={`--i:${i}`} />)}
+      </div>
+      <div class="veil__center"><Star size={74} class="veil__mark" /></div>
+      <span class="veil__label mono">Elyra · Los Santos</span>
+      <span class="veil__count">000</span>
+    </div>
+
+    <div class="backdrop" aria-hidden="true">
+      <span class="backdrop__blob backdrop__blob--1"></span>
+      <span class="backdrop__blob backdrop__blob--2"></span>
+      <span class="backdrop__grid"></span>
+    </div>
+    <div class="cursor-glow" aria-hidden="true"></div>
+    <div class="progress" aria-hidden="true"></div>
+
+    <Header />
+    <main id="contenu">
+      <slot />
+    </main>
+    {!bare && <Footer />}
+
+    <div class="grain" aria-hidden="true"></div>
+    <div class="cursor" aria-hidden="true"><span></span></div>
+    <div class="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      import '../scripts/app.ts';
+    </script>
+  </body>
+</html>

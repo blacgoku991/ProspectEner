@@ -1,0 +1,543 @@
+---
+import Button from '../components/Button.astro';
+import Faq from '../components/Faq.astro';
+import Icon from '../components/Icon.astro';
+import PageHero from '../components/PageHero.astro';
+import Star from '../components/Star.astro';
+import { fr, joinUrl, site } from '../config/site';
+import { boutiqueFaq, currency, packs, passes, principles, tiers } from '../data/boutique';
+import Base from '../layouts/Base.astro';
+
+const store = site.links.store;
+const fmt = (n: number) => n.toLocaleString('fr-FR');
+---
+
+<Base
+  title="Boutique"
+  theme="gold"
+  description="La boutique d'Elyra : abonnements, Éclats et passes pour soutenir le serveur. Du confort et du cosmétique, jamais d'avantage en jeu."
+>
+  <PageHero
+    kicker="Boutique officielle"
+    ghost="Boutique"
+    lead="Elyra est gratuit et le restera. La boutique sert à faire vivre le serveur, en échange de confort et de style. Jamais d’un avantage sur les autres."
+  >
+    <Fragment slot="title">Soutiens <em>la ville.</em></Fragment>
+    <Fragment slot="meta">
+      <span class="chip chip--accent"><Icon name="shield-check" size={13} />Zéro pay-to-win</span>
+      <span class="chip">Livraison immédiate</span>
+      {!store && <span class="chip"><i class="dot dot--warn"></i>Ouverture prochaine</span>}
+    </Fragment>
+  </PageHero>
+
+  <section class="section section--tight">
+    <div class="container">
+      <ul class="principles" data-stagger="80">
+        {
+          principles.map((p) => (
+            <li class="principle" data-reveal>
+              <span class="principle__icon"><Icon name={p.icon} size={20} /></span>
+              <div>
+                <h2 class="h3">{p.title}</h2>
+                <p>{fr(p.text)}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================================ ABONNEMENTS -->
+  <section class="section section--tight" id="abonnements">
+    <div class="container">
+      <header class="section-head section-head--split">
+        <div>
+          <p class="kicker" data-reveal>01 · Abonnements</p>
+          <h2 class="display h2" data-split>Trois étoiles,<br />trois paliers.</h2>
+        </div>
+        <p class="lead" data-reveal>
+          Des {currency} versés chaque mois et des avantages de confort. Sans engagement&nbsp;: tu
+          arrêtes quand tu veux.
+        </p>
+      </header>
+
+      <div class="tiers" data-stagger="130">
+        {
+          tiers.map((t) => (
+            <div class:list={['tilt-scene tier-wrap', { 'tier-wrap--featured': t.featured }]} data-reveal="flip">
+              <article class:list={['tier', { 'tier--featured': t.featured }]} style={`--c:${t.color}`} data-tilt="10" data-spot>
+                <span class="tier__holo" aria-hidden="true" />
+                <span class="tier__stars" aria-hidden="true" />
+                <div class="tier__head">
+                  <span class="tier__star tilt-pop"><Star size={44} mono /></span>
+                  {t.featured && <span class="tier__badge mono">Le plus choisi</span>}
+                </div>
+                <div class="tier__titles tilt-pop-sm">
+                  <p class="mono tier__kicker">Palier</p>
+                  <h3 class="display tier__name">{t.name}</h3>
+                  <p class="tier__tagline">{fr(t.tagline)}</p>
+                </div>
+                <ul class="tier__perks">
+                  {t.perks.map((perk) => (
+                    <li><Icon name="check" size={16} />{fr(perk)}</li>
+                  ))}
+                </ul>
+                <p class="tier__price">
+                  {t.price ? <b class="display">{t.price}</b> : <span class="mono">Tarif sur la boutique</span>}
+                </p>
+                <span class="tilt-glare" />
+              </article>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ ÉCLATS -->
+  <section class="section section--tight" id="eclats">
+    <div class="container">
+      <header class="section-head section-head--split">
+        <div>
+          <p class="kicker" data-reveal>02 · {currency}</p>
+          <h2 class="display h2" data-split>La monnaie<br />de la boutique.</h2>
+        </div>
+        <p class="lead" data-reveal>
+          Les {currency} se dépensent en jeu&nbsp;: véhicules, tenues, accessoires, emplacements. Plus
+          le pack est gros, plus le bonus est généreux.
+        </p>
+      </header>
+
+      <ul class="packs" data-stagger="70">
+        {
+          packs.map((p, i) => (
+            <li class:list={['pack card', { 'pack--featured': p.featured }]} data-reveal data-spot>
+              <span class="pack__gems" aria-hidden="true" style={`--n:${i + 1}`}>
+                {Array.from({ length: i + 1 }).map((_, k) => (
+                  <Star size={18 + (i - k) * 3} />
+                ))}
+              </span>
+              <p class="mono pack__name">{p.name}</p>
+              <p class="pack__amount display">{fmt(p.amount)}</p>
+              <p class="pack__unit">{currency}</p>
+              <p class="pack__bonus mono">
+                {p.bonus > 0 ? `+ ${p.bonus} % offerts` : 'Pour essayer'}
+              </p>
+              {p.price && <p class="pack__price">{p.price}</p>}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================================ PASSES -->
+  <section class="section section--tight" id="passes">
+    <div class="container">
+      <header class="section-head">
+        <p class="kicker" data-reveal>03 · Passes</p>
+        <h2 class="display h2" data-split>Un extra,<br />à la carte.</h2>
+      </header>
+      <div class="passes" data-stagger="100">
+        {
+          passes.map((p, i) => (
+            <article class="pass card" data-reveal="flip" data-spot>
+              <span class="pass__num display" aria-hidden="true">0{i + 1}</span>
+              <span class="pass__icon"><Icon name={p.icon} size={24} /></span>
+              <h3 class="display pass__name">{p.name}</h3>
+              <p>{fr(p.text)}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ FAQ + APPEL -->
+  <section class="section section--tight">
+    <div class="container shopfaq">
+      <header class="shopfaq__head">
+        <p class="kicker" data-reveal>Avant d’acheter</p>
+        <h2 class="display h2" data-split>Les questions<br />qui reviennent.</h2>
+      </header>
+      <Faq id="faq-boutique" items={boutiqueFaq} />
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="open card" data-reveal="scale">
+        <span class="open__aurora" aria-hidden="true"></span>
+        <span class="corners" aria-hidden="true"></span>
+        <Star size={58} class="open__star" />
+        {
+          store ? (
+            <>
+              <h2 class="display h2">La boutique est ouverte.</h2>
+              <p class="lead">Les tarifs, les offres du moment et le paiement se trouvent sur la boutique officielle.</p>
+              <Button href={store} label="Ouvrir la boutique" size="lg" arrow magnetic />
+            </>
+          ) : (
+            <>
+              <h2 class="display h2">Ouverture<br />prochaine.</h2>
+              <p class="lead">La boutique arrive bientôt. L’annonce de l’ouverture et les tarifs seront publiés sur Discord.</p>
+              <Button href={joinUrl} label="Être prévenu sur Discord" brand="discord" size="lg" magnetic />
+            </>
+          )
+        }
+        <p class="open__note">
+          Les achats soutiennent le serveur et ne donnent jamais d’avantage injuste en jeu.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .principles {
+    display: grid;
+    gap: 0;
+    border-block: 1px solid var(--line);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  }
+  .principle {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    padding: 26px 22px 26px 0;
+  }
+  .principle__icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--a1) 45%, transparent);
+    color: var(--a1);
+  }
+  .principle div {
+    display: grid;
+    gap: 6px;
+  }
+  .principle h2 {
+    font-size: 1.06rem;
+  }
+  .principle p {
+    color: var(--muted);
+    font-size: 0.93rem;
+  }
+
+  /* ---- Paliers : cartes holographiques ---- */
+  .tiers {
+    display: grid;
+    gap: 18px;
+    align-items: stretch;
+  }
+  @media (min-width: 940px) {
+    .tiers {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: center;
+    }
+  }
+  .tier {
+    --spot: var(--c);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    height: 100%;
+    padding: clamp(26px, 2.6vw, 38px);
+    border-radius: 28px;
+    border: 1px solid color-mix(in srgb, var(--c) 34%, var(--line));
+    background:
+      radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--c) 26%, transparent), transparent 62%),
+      linear-gradient(180deg, #11111f, #08080f);
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow: 0 40px 80px -50px color-mix(in srgb, var(--c) 80%, transparent);
+  }
+  @media (min-width: 940px) {
+    .tier--featured {
+      padding-block: clamp(40px, 4vw, 60px);
+    }
+  }
+  .tier--featured {
+    border-color: color-mix(in srgb, var(--c) 70%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent),
+      0 50px 110px -50px var(--c);
+  }
+  .tier__holo {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      115deg,
+      transparent 22%,
+      rgba(86, 228, 255, 0.55) 36%,
+      rgba(143, 107, 255, 0.6) 45%,
+      rgba(255, 79, 163, 0.6) 54%,
+      rgba(255, 197, 110, 0.55) 63%,
+      transparent 78%
+    );
+    background-size: 260% 260%;
+    background-position: var(--gx, 50%) var(--gy, 50%);
+    mix-blend-mode: color-dodge;
+    opacity: 0.1;
+    transition: opacity 0.6s;
+  }
+  .tier:hover .tier__holo {
+    opacity: 0.42;
+  }
+  .tier__stars {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, #fff, transparent),
+      radial-gradient(1px 1px at 78% 12%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 64% 34%, #fff, transparent),
+      radial-gradient(1px 1px at 30% 44%, #fff, transparent),
+      radial-gradient(1px 1px at 88% 58%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 18% 72%, #fff, transparent),
+      radial-gradient(1px 1px at 52% 84%, #fff, transparent),
+      radial-gradient(1px 1px at 92% 90%, #fff, transparent);
+    opacity: 0.5;
+    animation: twinkle 4s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle {
+    to {
+      opacity: 0.15;
+    }
+  }
+  .tier__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    transform-style: preserve-3d;
+  }
+  .tier__star {
+    display: grid;
+    place-items: center;
+    width: 78px;
+    height: 78px;
+    border-radius: 24px;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+    box-shadow: 0 0 50px -10px var(--c);
+  }
+  .tier__star :global(svg) {
+    filter: drop-shadow(0 0 12px var(--c));
+    animation: spin-slow 16s linear infinite;
+  }
+  @keyframes spin-slow {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .tier__badge {
+    padding: 7px 12px;
+    border-radius: 999px;
+    color: #06060c;
+    background: var(--c);
+    font-size: 0.62rem;
+    font-weight: 700;
+  }
+  .tier__kicker {
+    color: var(--c);
+  }
+  .tier__name {
+    font-size: clamp(2.6rem, 4.4vw, 4rem);
+    margin-top: 6px;
+  }
+  .tier__tagline {
+    margin-top: 10px;
+    color: #cfcbe0;
+  }
+  .tier__perks {
+    display: grid;
+    gap: 12px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #dcd8ea;
+  }
+  .tier__perks li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+  .tier__perks :global(svg) {
+    margin-top: 4px;
+    color: var(--c);
+  }
+  .tier__price {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .tier__price b {
+    font-size: 1.6rem;
+    color: var(--text);
+  }
+
+  /* ---- Packs ---- */
+  .packs {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  }
+  .pack {
+    display: grid;
+    gap: 4px;
+    align-content: end;
+    min-height: 270px;
+    padding: 24px;
+    transition:
+      transform 0.6s var(--ease-out),
+      border-color 0.4s;
+  }
+  .pack:hover {
+    transform: translateY(-8px);
+    border-color: color-mix(in srgb, var(--a1) 55%, transparent);
+  }
+  .pack--featured {
+    border-color: color-mix(in srgb, var(--a1) 50%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--a1) 14%, transparent), rgba(255, 255, 255, 0.02));
+  }
+  .pack__gems {
+    display: flex;
+    flex-wrap: wrap-reverse;
+    align-items: flex-end;
+    gap: 4px;
+    margin-bottom: auto;
+    padding-bottom: 26px;
+    filter: drop-shadow(0 0 14px rgba(255, 79, 163, 0.5));
+  }
+  .pack:hover .pack__gems :global(svg) {
+    animation: hop 0.7s var(--ease-back);
+  }
+  @keyframes hop {
+    40% {
+      transform: translateY(-9px) rotate(40deg);
+    }
+  }
+  .pack__name {
+    color: var(--a1);
+  }
+  .pack__amount {
+    font-size: clamp(2rem, 3vw, 2.7rem);
+    font-variant-numeric: tabular-nums;
+  }
+  .pack__unit {
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .pack__bonus {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 0.64rem;
+    color: var(--muted);
+  }
+  .pack__price {
+    font-weight: 700;
+  }
+
+  /* ---- Passes ---- */
+  .passes {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+  }
+  .pass {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+    min-height: 260px;
+    padding: 28px;
+  }
+  .pass__num {
+    position: absolute;
+    right: 20px;
+    top: 10px;
+    font-size: 5rem;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--a1) 30%, transparent);
+  }
+  .pass__icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 40px;
+    border-radius: 16px;
+    color: #06060c;
+    background: var(--grad-accent);
+    box-shadow: 0 16px 36px -14px var(--a1);
+  }
+  .pass__name {
+    font-size: clamp(1.5rem, 2.4vw, 2rem);
+  }
+  .pass p {
+    color: var(--muted);
+  }
+
+  .shopfaq {
+    display: grid;
+    gap: 34px;
+  }
+  @media (min-width: 980px) {
+    .shopfaq {
+      grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
+      gap: 90px;
+      align-items: start;
+    }
+  }
+  .shopfaq__head {
+    display: grid;
+    gap: 22px;
+  }
+
+  .open {
+    display: grid;
+    justify-items: center;
+    gap: 22px;
+    padding: clamp(44px, 7vw, 96px) clamp(22px, 5vw, 80px);
+    text-align: center;
+    background: #080812;
+  }
+  .open__aurora {
+    position: absolute;
+    inset: -30%;
+    z-index: -1;
+    background:
+      radial-gradient(40% 50% at 30% 40%, rgba(255, 197, 110, 0.32), transparent 70%),
+      radial-gradient(40% 50% at 70% 60%, rgba(255, 79, 163, 0.3), transparent 70%);
+    filter: blur(60px);
+    animation: sway 16s ease-in-out infinite alternate;
+  }
+  @keyframes sway {
+    to {
+      transform: translate3d(6%, -4%, 0) rotate(8deg) scale(1.1);
+    }
+  }
+  .open :global(.open__star) {
+    animation: spin-slow 18s linear infinite;
+    filter: drop-shadow(0 0 26px rgba(255, 197, 110, 0.7));
+  }
+  .open .lead {
+    color: #d5d1e6;
+  }
+  .open__note {
+    font-size: 0.84rem;
+    color: var(--dim);
+    max-width: 52ch;
+  }
+</style>

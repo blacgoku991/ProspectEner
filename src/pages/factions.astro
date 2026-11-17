@@ -1,0 +1,460 @@
+---
+import Button from '../components/Button.astro';
+import Icon from '../components/Icon.astro';
+import PageHero from '../components/PageHero.astro';
+import { fr, joinUrl, linkAttrs } from '../config/site';
+import { factions, factionsCount, factionStatusLabel } from '../data/factions';
+import Base from '../layouts/Base.astro';
+
+const recruiting = factions.reduce((n, t) => n + t.factions.filter((f) => f.status === 'recrute').length, 0);
+const vacant = factions.reduce((n, t) => n + t.factions.filter((f) => f.status === 'vacant').length, 0);
+---
+
+<Base
+  title="Factions"
+  theme="illegal"
+  description="Cartels, mafias, familles, clubs de motards et gangs : découvre les factions d'Elyra, leurs territoires et comment les rejoindre."
+>
+  <PageHero
+    kicker="Découvrir · L’illégal"
+    ghost="Factions"
+    lead={fr(
+      "Chaque quartier a ses couleurs, chaque nom a une histoire. Rejoins une organisation installée, intègre un gang de rue ou reprends un groupe laissé vacant.",
+    )}
+  >
+    <Fragment slot="title">Choisis <em>ton camp.</em></Fragment>
+    <Fragment slot="meta">
+      <span class="chip"><b>{factionsCount}</b> factions</span>
+      <span class="chip chip--accent"><i class="dot"></i><b>{recruiting}</b> recrutent</span>
+      <span class="chip"><b>{vacant}</b> à reprendre</span>
+    </Fragment>
+  </PageHero>
+
+  <div class="toolbar" data-toolbar>
+    <div class="container toolbar__inner">
+      <nav class="toolbar__nav" aria-label="Types de factions" data-lenis-prevent>
+        {
+          factions.map((type) => (
+            <a class="toolbar__link" href={`#${type.id}`} data-spy={type.id}>
+              {type.title}
+              <span class="toolbar__count">{type.factions.length}</span>
+            </a>
+          ))
+        }
+      </nav>
+      <div class="toolbar__filters" role="group" aria-label="Filtrer par statut">
+        <button class="pill is-active" type="button" data-filter="all" aria-pressed="true">Toutes</button>
+        <button class="pill" type="button" data-filter="recrute" aria-pressed="false">Recrutent</button>
+        <button class="pill" type="button" data-filter="invitation" aria-pressed="false">Sur invitation</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="section section--tight notice-wrap">
+    <div class="container">
+      <a class="notice" href="/reglement/illegal" data-reveal data-spot>
+        <span class="notice__icon"><Icon name="venetian-mask" size={22} /></span>
+        <p>
+          <b>L’illégal organisé se mérite.</b> L’accès à une faction passe par un dossier et une
+          validation du staff. Lis le règlement illégal avant de te lancer.
+        </p>
+        <span class="link-arrow">Règlement illégal <Icon name="arrow-up-right" size={17} /></span>
+      </a>
+    </div>
+  </section>
+
+  {
+    factions.map((type, ti) => (
+      <section class="section section--tight ftype" id={type.id} data-category>
+        <div class="container">
+          <header class="ftype__head">
+            <div class="ftype__titles">
+              <p class="kicker" data-reveal>
+                0{ti + 1} · {type.id === 'a-reprendre' ? 'Sans direction' : `${type.max} membres max`}
+              </p>
+              <h2 class="display h2" data-split>{type.title}</h2>
+            </div>
+            <p class="lead" data-reveal>{fr(type.desc)}</p>
+          </header>
+
+          <div class="fgrid" data-stagger="80">
+            {type.factions.map((f) => (
+              <div class="tilt-scene fwrap" data-reveal="flip" data-status={f.status}>
+                <article
+                  class:list={['card faction', { 'faction--vacant': f.status === 'vacant' }]}
+                  style={`--c:${f.color}`}
+                  data-spot
+                  data-tilt="7"
+                >
+                  <span class="faction__glow" aria-hidden="true" />
+                  <span class="faction__mono display" aria-hidden="true">{f.mono}</span>
+
+                  <div class="faction__head">
+                    <span class="faction__emblem tilt-pop" aria-hidden="true">
+                      <span class="faction__emblem-ring" />
+                      <span class="faction__emblem-core">
+                        <Icon name={f.icon} size={26} stroke={1.5} />
+                      </span>
+                    </span>
+                    <span class="faction__status mono">
+                      <i class:list={['dot', { 'dot--warn': f.status === 'invitation', 'dot--off': f.status === 'vacant' }]} />
+                      {factionStatusLabel[f.status]}
+                    </span>
+                  </div>
+
+                  <div class="faction__body tilt-pop-sm">
+                    <h3 class="faction__name display">{f.name}</h3>
+                    <p class="faction__motto">« {fr(f.motto)} »</p>
+                    <p class="faction__desc">{fr(f.desc)}</p>
+                  </div>
+
+                  <dl class="faction__meta">
+                    <div>
+                      <dt class="mono">Territoire</dt>
+                      <dd><Icon name="map-pin" size={14} /> {f.territory}</dd>
+                    </div>
+                    <div>
+                      <dt class="mono">Spécialités</dt>
+                      <dd>{f.specialties.join(' · ')}</dd>
+                    </div>
+                  </dl>
+
+                  <a class="faction__cta" {...linkAttrs(f.discord || joinUrl)} aria-label={`${f.status === 'vacant' ? 'Reprendre' : 'Rejoindre'} : ${f.name}`}>
+                    <span>{f.status === 'vacant' ? 'Déposer un dossier' : f.status === 'invitation' ? 'Prendre contact' : 'Rejoindre'}</span>
+                    <Icon name="arrow-up-right" size={18} />
+                  </a>
+                  <span class="tilt-glare" />
+                </article>
+              </div>
+            ))}
+          </div>
+          <p class="ftype__empty" data-empty hidden>Aucune faction ne correspond à ce filtre ici.</p>
+        </div>
+      </section>
+    ))
+  }
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="found card" data-reveal="scale" data-spot>
+        <span class="corners" aria-hidden="true"></span>
+        <div class="found__text">
+          <p class="kicker">Créer</p>
+          <h2 class="display h2">Fonde<br />la tienne.</h2>
+          <p class="lead">
+            Un nom, une histoire, des membres actifs et une vraie raison d’exister en ville. Monte ton
+            dossier sur Discord&nbsp;: le staff l’étudie et t’accompagne jusqu’à l’officialisation.
+          </p>
+          <div class="found__cta">
+            <Button href={joinUrl} label="Monter un dossier" variant="accent" arrow magnetic />
+            <Button href="/reglement/illegal" label="Lire le règlement" variant="ghost" />
+          </div>
+        </div>
+        <ol class="found__steps">
+          <li><span class="mono">01</span><b>L’idée</b>Un concept qui apporte du jeu aux autres, pas seulement à ton groupe.</li>
+          <li><span class="mono">02</span><b>Le dossier</b>Histoire, organisation, membres fondateurs, objectifs en ville.</li>
+          <li><span class="mono">03</span><b>L’observation</b>Tu fais tes preuves en jeu, le staff suit tes premières scènes.</li>
+          <li><span class="mono">04</span><b>L’officialisation</b>Couleurs, territoire de départ et place sur cette page.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import '../scripts/catalog.ts';
+</script>
+
+<style>
+  .toolbar__count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding-inline: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.09);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+  }
+
+  .notice-wrap {
+    padding-bottom: 0;
+  }
+  .notice {
+    position: relative;
+    display: grid;
+    gap: 16px 22px;
+    align-items: center;
+    padding: 20px 24px;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--a1) 35%, transparent);
+    background: color-mix(in srgb, var(--a1) 7%, transparent);
+    overflow: hidden;
+    isolation: isolate;
+  }
+  @media (min-width: 860px) {
+    .notice {
+      grid-template-columns: auto 1fr auto;
+    }
+  }
+  .notice__icon {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    color: #0b0614;
+    background: var(--grad-accent);
+  }
+  .notice p {
+    color: #d5d1e6;
+  }
+  .notice b {
+    color: var(--text);
+  }
+
+  .ftype__head {
+    display: grid;
+    gap: 18px 60px;
+    align-items: end;
+    margin-bottom: clamp(30px, 4vw, 54px);
+  }
+  @media (min-width: 900px) {
+    .ftype__head {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+    }
+  }
+  .ftype__titles {
+    display: grid;
+    gap: 16px;
+  }
+  .ftype__empty {
+    padding: 26px;
+    border: 1px dashed var(--line-2);
+    border-radius: var(--radius);
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .fgrid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+  }
+  .fwrap[hidden] {
+    display: none;
+  }
+
+  .faction {
+    --spot: var(--c);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+    padding: 24px;
+    border-color: color-mix(in srgb, var(--c) 22%, var(--line));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--c) 9%, transparent), transparent 46%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+  }
+  .faction__glow {
+    position: absolute;
+    top: -90px;
+    left: -60px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--c) 40%, transparent), transparent 65%);
+    z-index: -1;
+    transition: transform 1.2s var(--ease-out);
+  }
+  .faction:hover .faction__glow {
+    transform: scale(1.35) translate(20px, 20px);
+  }
+  .faction__mono {
+    position: absolute;
+    right: -0.06em;
+    top: 0.02em;
+    font-size: 8.4rem;
+    line-height: 0.8;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--c) 34%, transparent);
+    z-index: -1;
+    transition: transform 1.2s var(--ease-out);
+  }
+  .faction:hover .faction__mono {
+    transform: translate(-10px, 6px);
+  }
+  .faction__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    transform-style: preserve-3d;
+  }
+  .faction__emblem {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 74px;
+    height: 74px;
+  }
+  .faction__emblem-ring,
+  .faction__emblem-core {
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+  }
+  .faction__emblem-ring {
+    border: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
+    transform: rotate(45deg) scale(0.86);
+    transition: transform 1s var(--ease-out);
+    box-shadow: 0 0 34px -6px var(--c);
+  }
+  .faction:hover .faction__emblem-ring {
+    transform: rotate(135deg) scale(0.96);
+  }
+  .faction__emblem-core {
+    inset: 11px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    color: #06060c;
+    background: linear-gradient(140deg, color-mix(in srgb, var(--c) 100%, #fff), color-mix(in srgb, var(--c) 60%, #000));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  }
+  .faction__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    background: rgba(5, 5, 11, 0.55);
+    border: 1px solid var(--line-2);
+  }
+  .faction__body {
+    display: grid;
+    gap: 10px;
+  }
+  .faction__name {
+    font-size: clamp(1.5rem, 2.1vw, 1.9rem);
+    line-height: 1;
+  }
+  .faction__motto {
+    font-style: italic;
+    font-weight: 600;
+    color: var(--c);
+  }
+  .faction__desc {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .faction__meta {
+    display: grid;
+    gap: 12px;
+    margin: auto 0 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+  .faction__meta div {
+    display: grid;
+    gap: 4px;
+  }
+  .faction__meta dt {
+    font-size: 0.62rem;
+    color: var(--dim);
+  }
+  .faction__meta dd {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #d5d1e6;
+  }
+  .faction__cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+    font-weight: 700;
+    font-size: 0.92rem;
+    transition:
+      color 0.3s,
+      background-color 0.4s,
+      border-color 0.4s;
+  }
+  .faction__cta :global(svg) {
+    transition: transform 0.5s var(--ease-out);
+  }
+  .faction__cta:hover {
+    color: #06060c;
+    background: var(--c);
+    border-color: var(--c);
+  }
+  .faction__cta:hover :global(svg) {
+    transform: translate(4px, -4px);
+  }
+  .faction--vacant {
+    border-style: dashed;
+  }
+  .faction--vacant .faction__emblem-core {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .found {
+    display: grid;
+    gap: 40px 70px;
+    padding: clamp(30px, 5vw, 70px);
+    background:
+      radial-gradient(70% 120% at 0% 100%, color-mix(in srgb, var(--a1) 16%, transparent), transparent 60%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+  }
+  @media (min-width: 980px) {
+    .found {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+      align-items: center;
+    }
+  }
+  .found__text {
+    display: grid;
+    gap: 22px;
+    justify-items: start;
+  }
+  .found__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .found__steps {
+    display: grid;
+    gap: 0;
+  }
+  .found__steps li {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 2px 8px;
+    padding: 18px 0;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .found__steps li:last-child {
+    border-bottom: 1px solid var(--line);
+  }
+  .found__steps .mono {
+    grid-row: span 2;
+    color: var(--a1);
+    padding-top: 4px;
+  }
+  .found__steps b {
+    color: var(--text);
+    font-size: 1.02rem;
+  }
+</style>

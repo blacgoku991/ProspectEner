@@ -1,0 +1,34 @@
+---
+/** Liste de questions/réponses en accordéon. `id` rend les identifiants uniques sur la page. */
+import { fr } from '../config/site';
+
+interface Props {
+  id: string;
+  items: Array<{ q: string; a: string }>;
+}
+const { id, items } = Astro.props;
+---
+
+<div class="faq" data-acc-group>
+  {
+    items.map((item, i) => (
+      <div class="acc" data-acc data-reveal style={`--d:${i * 60}`}>
+        <h3 class="acc__q">
+          <button class="acc__btn" type="button" aria-expanded="false" aria-controls={`${id}-${i}`} id={`${id}-btn-${i}`}>
+            <span>{fr(item.q)}</span>
+            <span class="acc__plus" aria-hidden="true" />
+          </button>
+        </h3>
+        <div class="acc__panel" id={`${id}-${i}`} role="region" aria-labelledby={`${id}-btn-${i}`}>
+          <div>
+            <p set:html={fr(item.a)} />
+          </div>
+        </div>
+      </div>
+    ))
+  }
+</div>
+
+<script>
+  import '../scripts/accordion.ts';
+</script>

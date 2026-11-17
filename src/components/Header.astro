@@ -1,0 +1,456 @@
+---
+import { joinUrl, nav, site } from '../config/site';
+import Brand from './Brand.astro';
+import Button from './Button.astro';
+import Icon from './Icon.astro';
+import Logo from './Logo.astro';
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isActive = (href: string) => path === href || path.startsWith(href + '/');
+
+const socials = (
+  [
+    ['discord', site.links.discord, 'Discord'],
+    ['tiktok', site.links.tiktok, 'TikTok'],
+    ['youtube', site.links.youtube, 'YouTube'],
+    ['twitch', site.links.twitch, 'Twitch'],
+    ['instagram', site.links.instagram, 'Instagram'],
+  ] as const
+).filter(([, url]) => url);
+---
+
+<header class="header" data-header>
+  <div class="header__bar">
+    <a class="header__logo" href="/" aria-label="Elyra, retour à l’accueil">
+      <Logo />
+    </a>
+
+    <nav class="header__nav" aria-label="Navigation principale">
+      {
+        nav.map((item) =>
+          'children' in item ? (
+            <div class="header__group">
+              <a
+                class:list={['header__link', { 'is-active': isActive(item.href) }]}
+                href={item.href}
+                aria-current={isActive(item.href) ? 'page' : undefined}
+              >
+                {item.label}
+                <Icon name="chevron-down" size={14} class="header__chev" />
+              </a>
+              <div class="header__drop">
+                <div class="header__drop-inner">
+                  {item.children.map((child, i) => (
+                    <a class="header__drop-link" href={child.href}>
+                      <span class="mono">0{i + 1}</span>
+                      <span>
+                        <b>{child.label}</b>
+                        <small>{child.hint}</small>
+                      </span>
+                      <Icon name="arrow-up-right" size={16} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <a
+              class:list={['header__link', { 'is-active': isActive(item.href) }]}
+              href={item.href}
+              aria-current={isActive(item.href) ? 'page' : undefined}
+            >
+              {item.label}
+            </a>
+          ),
+        )
+      }
+    </nav>
+
+    <div class="header__side">
+      <span class="header__status chip" data-server-status hidden>
+        <i class="dot"></i>
+        <span data-server-count>En ligne</span>
+      </span>
+      <Button href={joinUrl} label="Rejoindre" size="sm" brand="discord" class="header__cta" />
+      <button
+        class="header__burger"
+        type="button"
+        aria-label="Ouvrir le menu"
+        aria-expanded="false"
+        aria-controls="menu"
+        data-menu-toggle
+      >
+        <span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="menu" id="menu" aria-hidden="true" data-menu>
+  <div class="menu__inner">
+    <nav class="menu__nav" aria-label="Menu mobile">
+      <a class="menu__link" href="/" style="--i:0"><span class="mono">00</span>Accueil</a>
+      {
+        nav.map((item, i) => (
+          <>
+            <a class="menu__link" href={item.href} style={`--i:${i + 1}`}>
+              <span class="mono">0{i + 1}</span>
+              {item.label}
+            </a>
+            {'children' in item && (
+              <div class="menu__sub" style={`--i:${i + 1}`}>
+                {item.children.map((c) => (
+                  <a href={c.href}>{c.label}</a>
+                ))}
+              </div>
+            )}
+          </>
+        ))
+      }
+      <a class="menu__link" href="/rejoindre" style={`--i:${nav.length + 1}`}>
+        <span class="mono">0{nav.length + 1}</span>Rejoindre
+      </a>
+    </nav>
+    <div class="menu__foot">
+      <Button href={joinUrl} label="Rejoindre le serveur" brand="discord" block />
+      {
+        socials.length > 0 && (
+          <div class="menu__socials">
+            {socials.map(([name, url, label]) => (
+              <a href={url} target="_blank" rel="noopener noreferrer" aria-label={label}>
+                <Brand name={name} size={20} />
+              </a>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  </div>
+</div>
+
+<style>
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    padding: 14px var(--gutter) 0;
+    pointer-events: none;
+    transition: transform 0.7s var(--ease-out);
+  }
+  .header.is-hidden {
+    transform: translateY(-130%);
+  }
+  .header__bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    max-width: var(--container);
+    height: 62px;
+    margin-inline: auto;
+    padding: 0 10px 0 24px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    pointer-events: auto;
+    transition:
+      background-color 0.5s,
+      border-color 0.5s,
+      box-shadow 0.5s,
+      backdrop-filter 0.5s;
+  }
+  .header.is-scrolled .header__bar,
+  :global(html.menu-open) .header__bar {
+    background: rgba(10, 10, 21, 0.62);
+    border-color: var(--line);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+    box-shadow: 0 18px 50px -24px rgba(0, 0, 0, 0.9);
+  }
+  .header__logo {
+    display: inline-flex;
+    flex: none;
+  }
+
+  .header__nav {
+    display: none;
+    align-items: center;
+    gap: 4px;
+  }
+  @media (min-width: 1020px) {
+    .header__nav {
+      display: flex;
+    }
+  }
+  .header__group {
+    position: relative;
+  }
+  .header__link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--muted);
+    transition:
+      color 0.3s,
+      background-color 0.3s;
+  }
+  .header__link:hover,
+  .header__group:hover > .header__link,
+  .header__group:focus-within > .header__link {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .header__link.is-active {
+    color: var(--text);
+  }
+  .header__link.is-active::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--a1);
+    box-shadow: 0 0 10px var(--a1);
+    transform: translateX(-50%);
+  }
+  .header__link :global(.header__chev) {
+    transition: transform 0.4s var(--ease-out);
+  }
+  .header__group:hover :global(.header__chev),
+  .header__group:focus-within :global(.header__chev) {
+    transform: rotate(180deg);
+  }
+
+  .header__drop {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    padding-top: 16px;
+    transform: translate(-50%, 8px);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.3s,
+      transform 0.45s var(--ease-out),
+      visibility 0.3s;
+  }
+  .header__group:hover .header__drop,
+  .header__group:focus-within .header__drop {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+  }
+  .header__drop-inner {
+    width: 300px;
+    padding: 8px;
+    border-radius: 20px;
+    border: 1px solid var(--line-2);
+    background: rgba(12, 12, 24, 0.92);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    box-shadow: 0 30px 80px -30px #000;
+  }
+  .header__drop-link {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 14px;
+    border-radius: 14px;
+    color: var(--muted);
+    transition:
+      background-color 0.3s,
+      color 0.3s;
+  }
+  .header__drop-link .mono {
+    color: var(--dim);
+  }
+  .header__drop-link b {
+    display: block;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .header__drop-link small {
+    font-size: 0.78rem;
+  }
+  .header__drop-link :global(svg) {
+    opacity: 0;
+    transform: translate(-6px, 6px);
+    transition:
+      opacity 0.3s,
+      transform 0.4s var(--ease-out);
+  }
+  .header__drop-link:hover {
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .header__drop-link:hover :global(svg) {
+    opacity: 1;
+    transform: none;
+    color: var(--a1);
+  }
+
+  .header__side {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header__status {
+    display: none;
+  }
+  @media (min-width: 1180px) {
+    .header__status:not([hidden]) {
+      display: inline-flex;
+    }
+  }
+  .header__side :global(.header__cta) {
+    display: none;
+  }
+  @media (min-width: 560px) {
+    .header__side :global(.header__cta) {
+      display: inline-flex;
+    }
+  }
+
+  .header__burger {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--line-2);
+    background: var(--glass);
+  }
+  @media (min-width: 1020px) {
+    .header__burger {
+      display: none;
+    }
+  }
+  .header__burger span {
+    position: absolute;
+    left: 13px;
+    right: 13px;
+    height: 1.5px;
+    background: var(--text);
+    border-radius: 2px;
+    transition:
+      transform 0.5s var(--ease-out),
+      top 0.5s var(--ease-out);
+  }
+  .header__burger span:first-child {
+    top: 17px;
+  }
+  .header__burger span:last-child {
+    top: 25px;
+  }
+  :global(html.menu-open) .header__burger span:first-child {
+    top: 21px;
+    transform: rotate(45deg);
+  }
+  :global(html.menu-open) .header__burger span:last-child {
+    top: 21px;
+    transform: rotate(-45deg);
+  }
+
+  /* ----- Menu plein écran (mobile) ----- */
+  .menu {
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    background: rgba(5, 5, 11, 0.94);
+    -webkit-backdrop-filter: blur(28px);
+    backdrop-filter: blur(28px);
+    clip-path: circle(0% at calc(100% - var(--gutter) - 32px) 45px);
+    visibility: hidden;
+    transition:
+      clip-path 0.9s var(--ease-in-out),
+      visibility 0s 0.9s;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  :global(html.menu-open) .menu {
+    clip-path: circle(150% at calc(100% - var(--gutter) - 32px) 45px);
+    visibility: visible;
+    transition:
+      clip-path 0.9s var(--ease-in-out),
+      visibility 0s;
+  }
+  .menu__inner {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 40px;
+    padding: 118px var(--gutter) 34px;
+  }
+  .menu__nav {
+    display: grid;
+    gap: 4px;
+  }
+  .menu__link {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 9px 0;
+    font-family: var(--font-display);
+    font-stretch: 125%;
+    font-weight: 800;
+    font-size: clamp(2rem, 9.5vw, 3.4rem);
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    opacity: 0;
+    transform: translateY(40px);
+    transition:
+      opacity 0.5s,
+      transform 0.8s var(--ease-out),
+      color 0.3s;
+  }
+  .menu__link .mono {
+    color: var(--a1);
+    font-stretch: 100%;
+  }
+  .menu__link:hover {
+    color: var(--a1);
+  }
+  .menu__sub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 4px 0 10px 44px;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .menu__sub a {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line-2);
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  :global(html.menu-open) .menu__link,
+  :global(html.menu-open) .menu__sub {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(0.22s + var(--i) * 55ms);
+  }
+  .menu__foot {
+    display: grid;
+    gap: 22px;
+  }
+  .menu__socials {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    color: var(--muted);
+  }
+</style>

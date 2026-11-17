@@ -1,0 +1,36 @@
+---
+import Star from './Star.astro';
+interface Props {
+  size?: number;
+}
+const { size = 26 } = Astro.props;
+---
+
+<span class="logo">
+  <Star size={size} class="logo__star" />
+  <span class="logo__word">Elyra</span>
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+  }
+  .logo :global(.logo__star) {
+    transition: transform 0.9s var(--ease-out);
+    filter: drop-shadow(0 0 12px rgba(255, 79, 163, 0.55));
+  }
+  .logo:hover :global(.logo__star) {
+    transform: rotate(180deg) scale(1.12);
+  }
+  .logo__word {
+    font-family: var(--font-display);
+    font-stretch: 125%;
+    font-weight: 800;
+    font-size: 1.18rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+</style>

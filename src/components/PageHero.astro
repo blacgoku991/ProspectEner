@@ -1,0 +1,146 @@
+---
+/**
+ * En-tête des pages intérieures : titre animé, grand mot fantôme et étoile 3D.
+ * Le titre se passe par le slot « title », les puces par le slot « meta ».
+ */
+interface Props {
+  kicker: string;
+  lead: string;
+  /** Mot géant en filigrane derrière le titre. */
+  ghost: string;
+}
+const { kicker, lead, ghost } = Astro.props;
+---
+
+<header class="phero">
+  <span class="phero__ghost display" aria-hidden="true" data-parallax="0.1" data-parallax-axis="x">
+    {ghost}
+  </span>
+  <div class="phero__visual" aria-hidden="true">
+    <canvas data-crystal></canvas>
+  </div>
+  <div class="container phero__inner">
+    <p class="kicker" data-reveal>{kicker}</p>
+    <h1 class="display h1 phero__title" data-split="now"><slot name="title" /></h1>
+    <p class="lead" data-reveal style="--d:200">{lead}</p>
+    <div class="phero__meta" data-reveal style="--d:320"><slot name="meta" /></div>
+  </div>
+  <span class="phero__line" aria-hidden="true"></span>
+</header>
+
+<script>
+  import { holdIntro, onIntro, reduced } from '../scripts/app.ts';
+
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-crystal]');
+  if (canvas) {
+    const css = getComputedStyle(document.body);
+    const colors: [string, string] = [
+      css.getPropertyValue('--a1').trim() || '#8f6bff',
+      css.getPropertyValue('--a2').trim() || '#ff4fa3',
+    ];
+    const ready = import('../scripts/crystal.ts')
+      .then(({ createCrystal }) => {
+        const crystal = createCrystal(canvas, { reduced, colors });
+        canvas.classList.add('is-ready');
+        const io = new IntersectionObserver(([entry]) => crystal.setActive(entry.isIntersecting), {
+          rootMargin: '80px',
+        });
+        onIntro(() => io.observe(canvas));
+      })
+      .catch((err) => console.warn('Étoile 3D indisponible :', err));
+    holdIntro(ready, 2200);
+  }
+</script>
+
+<style>
+  .phero {
+    position: relative;
+    padding-top: clamp(150px, 19vw, 250px);
+    padding-bottom: clamp(48px, 7vw, 96px);
+    overflow: hidden;
+  }
+  .phero__inner {
+    position: relative;
+    display: grid;
+    gap: clamp(18px, 2.2vw, 28px);
+    justify-items: start;
+  }
+  .phero__title {
+    max-width: 13ch;
+  }
+  .phero__title :global(em) {
+    font-style: normal;
+    background: var(--grad-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+  .phero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .phero__meta:empty {
+    display: none;
+  }
+  .phero__ghost {
+    position: absolute;
+    top: clamp(84px, 9vw, 120px);
+    left: -2vw;
+    font-size: clamp(7rem, 25vw, 26rem);
+    line-height: 0.8;
+    white-space: nowrap;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--a1) 30%, transparent);
+    opacity: 0.55;
+    pointer-events: none;
+    mask-image: linear-gradient(180deg, #000 20%, transparent 95%);
+    -webkit-mask-image: linear-gradient(180deg, #000 20%, transparent 95%);
+  }
+  .phero__visual {
+    position: absolute;
+    top: 50%;
+    right: max(-60px, calc((100vw - var(--container)) / 2 - 80px));
+    width: min(58vw, 660px);
+    aspect-ratio: 1;
+    transform: translateY(-46%);
+    pointer-events: none;
+    opacity: 0.5;
+  }
+  @media (min-width: 900px) {
+    .phero__visual {
+      opacity: 1;
+    }
+  }
+  @media (max-width: 899px) {
+    .phero__visual {
+      top: 30%;
+      right: -22vw;
+      width: 92vw;
+    }
+  }
+  .phero__visual canvas {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transform: scale(0.82);
+    transition:
+      opacity 1.6s ease,
+      transform 2.2s var(--ease-out);
+  }
+  :global(.is-ready) .phero__visual canvas.is-ready {
+    opacity: 1;
+    transform: none;
+  }
+  .phero__line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--a1) 30%, var(--a2) 70%, transparent);
+    opacity: 0.45;
+  }
+</style>

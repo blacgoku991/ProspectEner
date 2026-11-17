@@ -1,0 +1,98 @@
+---
+import Button from '../components/Button.astro';
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Page introuvable" bare>
+  <section class="lost">
+    <span class="lost__code display" aria-hidden="true" data-text="404">404</span>
+    <div class="container lost__inner">
+      <p class="kicker" data-reveal>Erreur 404</p>
+      <h1 class="display h1" data-split="now">Perdu<br /><span class="grad-text">en ville.</span></h1>
+      <p class="lead" data-reveal style="--d:200">
+        Cette adresse ne mène nulle part. La page a peut-être déménagé, ou le GPS t’a joué un tour.
+      </p>
+      <div class="lost__cta" data-reveal style="--d:320">
+        <Button href="/" label="Retour à l’accueil" arrow magnetic />
+        <Button href="/aide" label="Voir l’aide" variant="ghost" />
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .lost {
+    position: relative;
+    min-height: 100vh;
+    min-height: 100svh;
+    display: grid;
+    align-items: center;
+    padding-block: 140px 80px;
+    overflow: hidden;
+  }
+  .lost__inner {
+    position: relative;
+    display: grid;
+    gap: 24px;
+    justify-items: start;
+  }
+  .lost__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .lost__code {
+    position: absolute;
+    right: -3vw;
+    top: 50%;
+    font-size: clamp(12rem, 44vw, 46rem);
+    line-height: 0.8;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.14);
+    transform: translateY(-50%);
+    pointer-events: none;
+    user-select: none;
+  }
+  .lost__code::before,
+  .lost__code::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    -webkit-text-stroke: 1px var(--pink);
+    opacity: 0.7;
+    animation: glitch 3.4s steps(1) infinite;
+  }
+  .lost__code::after {
+    -webkit-text-stroke-color: var(--cyan);
+    animation-delay: -1.7s;
+    animation-direction: reverse;
+  }
+  @keyframes glitch {
+    0%,
+    100% {
+      clip-path: inset(0 0 86% 0);
+      transform: translate(-8px, 0);
+    }
+    12% {
+      clip-path: inset(34% 0 44% 0);
+      transform: translate(10px, 0);
+    }
+    24% {
+      clip-path: inset(70% 0 8% 0);
+      transform: translate(-6px, 0);
+    }
+    36% {
+      clip-path: inset(12% 0 70% 0);
+      transform: translate(8px, 0);
+    }
+    48% {
+      clip-path: inset(52% 0 30% 0);
+      transform: translate(-12px, 0);
+    }
+    60% {
+      clip-path: inset(0 0 100% 0);
+      transform: none;
+    }
+  }
+</style>

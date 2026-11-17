@@ -1,0 +1,58 @@
+---
+/** Bouton / lien d'action. Le libellé « roule » au survol. */
+import { isExternal } from '../config/site';
+import Brand from './Brand.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  href?: string;
+  label: string;
+  variant?: 'primary' | 'ghost' | 'accent';
+  size?: 'sm' | 'md' | 'lg';
+  icon?: string;
+  brand?: 'discord' | 'fivem';
+  arrow?: boolean;
+  block?: boolean;
+  magnetic?: boolean;
+  cursor?: string;
+  class?: string;
+}
+const {
+  href,
+  label,
+  variant = 'primary',
+  size = 'md',
+  icon,
+  brand,
+  arrow = false,
+  block = false,
+  magnetic = false,
+  cursor,
+  class: cls,
+} = Astro.props;
+
+const classes = [
+  'btn',
+  `btn--${variant}`,
+  size !== 'md' && `btn--${size}`,
+  block && 'btn--block',
+  cls,
+];
+const external = href ? isExternal(href) : false;
+const Tag = href ? 'a' : 'button';
+const attrs = href
+  ? { href, ...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {}) }
+  : { type: 'button' };
+---
+
+<Tag
+  class:list={classes}
+  {...attrs}
+  data-magnetic={magnetic ? '' : undefined}
+  data-cursor={cursor}
+>
+  {brand && <Brand name={brand} size={18} />}
+  {icon && <Icon name={icon} size={18} />}
+  <span class="btn__label" data-text={label}><span>{label}</span></span>
+  {arrow && <Icon name={external ? 'arrow-up-right' : 'arrow-right'} size={18} class="btn__arrow" />}
+</Tag>

@@ -1,0 +1,30 @@
+---
+/** Logos de plateformes (Discord, FiveM, réseaux). */
+import { siDiscord, siFivem, siInstagram, siTiktok, siTwitch, siYoutube } from 'simple-icons';
+
+interface Props {
+  name: 'discord' | 'fivem' | 'tiktok' | 'youtube' | 'twitch' | 'instagram';
+  size?: number;
+  class?: string;
+}
+const map = {
+  discord: siDiscord,
+  fivem: siFivem,
+  tiktok: siTiktok,
+  youtube: siYoutube,
+  twitch: siTwitch,
+  instagram: siInstagram,
+};
+const { name, size = 20, class: cls } = Astro.props;
+---
+
+<svg
+  class={cls}
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="currentColor"
+  aria-hidden="true"
+>
+  <path d={map[name].path}></path>
+</svg>

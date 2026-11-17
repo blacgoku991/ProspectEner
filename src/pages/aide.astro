@@ -1,0 +1,352 @@
+---
+import Brand from '../components/Brand.astro';
+import Button from '../components/Button.astro';
+import Faq from '../components/Faq.astro';
+import Icon from '../components/Icon.astro';
+import PageHero from '../components/PageHero.astro';
+import { joinUrl, linkAttrs, site } from '../config/site';
+import Base from '../layouts/Base.astro';
+
+const shortcuts = [
+  { icon: 'rocket', title: 'Arriver en ville', text: 'Le guide pas à pas jusqu’à ta première scène.', href: '/rejoindre' },
+  { icon: 'book-open', title: 'Règlement', text: 'Trois tomes et une recherche instantanée.', href: '/reglement' },
+  { icon: 'briefcase', title: 'Métiers', text: 'Institutions, entreprises et recrutements.', href: '/metiers' },
+  { icon: 'venetian-mask', title: 'Factions', text: 'Groupes, territoires et dossiers.', href: '/factions' },
+  { icon: 'gem', title: 'Boutique', text: 'Soutenir le serveur, sans avantage en jeu.', href: '/boutique' },
+  { icon: 'message-circle', title: 'Discord', text: 'Tickets, annonces et recrutements.', href: joinUrl },
+  ...(site.links.wiki
+    ? [{ icon: 'scroll-text', title: 'Wiki', text: 'Guides, tutoriels et astuces.', href: site.links.wiki }]
+    : []),
+];
+
+const groups = [
+  {
+    id: 'demarrer',
+    title: 'Démarrer',
+    icon: 'play',
+    items: [
+      {
+        q: 'Comment rejoindre le serveur ?',
+        a: 'Installe FiveM, rejoins le Discord pour récupérer ton accès, puis lance la connexion depuis le bouton « Se connecter » ou en cherchant « Elyra » dans la liste des serveurs. Le <a href="/rejoindre">guide d’arrivée</a> détaille chaque étape.',
+      },
+      {
+        q: 'Elyra est-il vraiment gratuit ?',
+        a: 'Oui. Tout le contenu de jeu est accessible sans payer. La boutique propose du confort et du cosmétique, jamais un avantage sur les autres joueurs.',
+      },
+      {
+        q: 'Faut-il passer une whitelist ?',
+        a: 'Pas pour commencer : le légal est ouvert à tous. Les groupes illégaux et certains postes à responsabilité (police, justice, direction d’entreprise) passent par une candidature ou un dossier.',
+      },
+      {
+        q: 'De quoi ai-je besoin pour jouer ?',
+        a: 'GTA V sur PC, le client FiveM, un micro correct et 16 ans révolus. Aucun mod à installer : tout se télécharge à la connexion.',
+      },
+    ],
+  },
+  {
+    id: 'en-jeu',
+    title: 'En jeu',
+    icon: 'gamepad-2',
+    items: [
+      {
+        q: 'Je débute en roleplay, par où commencer ?',
+        a: 'Lis le chapitre « L’esprit d’Elyra » et le lexique du <a href="/reglement/global">règlement global</a>, prends un premier job simple (livraison, taxi, restauration) et observe. Dis en jeu que ton personnage vient d’arriver en ville : les autres t’aideront.',
+      },
+      {
+        q: 'Comment postuler dans une entreprise ?',
+        a: 'Depuis la page <a href="/metiers">Métiers</a>, choisis l’entreprise et clique sur « Postuler » : tu arrives sur son Discord de recrutement. La plupart des entretiens se font ensuite en jeu.',
+      },
+      {
+        q: 'Comment créer ou rejoindre une faction ?',
+        a: 'Les groupes qui recrutent sont listés sur la page <a href="/factions">Factions</a>. Pour fonder le tien, monte un dossier sur Discord : histoire, organisation, membres fondateurs. Le staff l’étudie et suit tes premières scènes.',
+      },
+      {
+        q: 'Le micro est-il obligatoire ?',
+        a: 'Oui. Le roleplay se joue à la voix : il te faut un micro correct, sans bruit de fond gênant. Les musiques et bruitages diffusés au micro sont interdits.',
+      },
+    ],
+  },
+  {
+    id: 'support',
+    title: 'Support',
+    icon: 'life-buoy',
+    items: [
+      {
+        q: 'Comment signaler un joueur ?',
+        a: 'Termine la scène, garde ton clip vidéo, puis ouvre un ticket sur Discord en indiquant l’heure, les joueurs concernés et la règle en cause. Sans vidéo, le staff ne peut généralement pas trancher.',
+      },
+      {
+        q: 'J’ai trouvé un bug, que faire ?',
+        a: 'Ouvre un ticket en décrivant ce que tu faisais, où tu étais et ce qui s’est passé, avec une capture si possible. Exploiter un bug au lieu de le signaler est sanctionné.',
+      },
+      {
+        q: 'Je veux contester une sanction.',
+        a: 'Ouvre un ticket dédié, calmement et preuves à l’appui. Relancer un membre du staff en message privé ne fait pas avancer la demande.',
+      },
+      {
+        q: 'Un achat en boutique n’est pas arrivé.',
+        a: 'La livraison est normalement immédiate. Si rien n’apparaît au bout de dix minutes, ouvre un ticket avec ton numéro de commande : on vérifie et on régularise.',
+      },
+    ],
+  },
+];
+---
+
+<Base
+  title="Aide"
+  theme="aide"
+  description="Questions fréquentes, liens utiles et support : tout ce qu'il faut pour rejoindre Elyra et régler un problème rapidement."
+>
+  <PageHero
+    kicker="Aide & support"
+    ghost="Aide"
+    lead="Une question avant de te lancer, un souci en jeu, un doute sur une règle ? La réponse est sans doute ici. Sinon, l’équipe te répond sur Discord."
+  >
+    <Fragment slot="title">On te <em>guide.</em></Fragment>
+    <Fragment slot="meta">
+      <span class="chip"><b>{groups.reduce((n, g) => n + g.items.length, 0)}</b> réponses</span>
+      <span class="chip chip--accent"><i class="dot"></i>Support sur Discord</span>
+    </Fragment>
+  </PageHero>
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="shortcuts" data-stagger="70">
+        {
+          shortcuts.map((s) => (
+            <a class="shortcut card" {...linkAttrs(s.href)} data-reveal data-spot>
+              <span class="shortcut__icon"><Icon name={s.icon} size={22} /></span>
+              <span class="shortcut__text">
+                <b class="h3">{s.title}</b>
+                <small>{s.text}</small>
+              </span>
+              <Icon name="arrow-up-right" size={18} class="shortcut__arrow" />
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container faqs">
+      <aside class="faqs__side">
+        <p class="kicker" data-reveal>Questions fréquentes</p>
+        <h2 class="display h2" data-split>Les réponses<br />rapides.</h2>
+        <nav class="faqs__nav" aria-label="Rubriques" data-reveal>
+          {
+            groups.map((g) => (
+              <a href={`#${g.id}`}>
+                <Icon name={g.icon} size={16} />
+                {g.title}
+                <span class="mono">{g.items.length}</span>
+              </a>
+            ))
+          }
+        </nav>
+      </aside>
+
+      <div class="faqs__main">
+        {
+          groups.map((g) => (
+            <div class="faqs__group" id={g.id}>
+              <h3 class="mono faqs__title" data-reveal>
+                <Icon name={g.icon} size={15} /> {g.title}
+              </h3>
+              <Faq id={`faq-${g.id}`} items={g.items} />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="support card" data-reveal="scale" data-spot>
+        <span class="support__aurora" aria-hidden="true"></span>
+        <span class="corners" aria-hidden="true"></span>
+        <span class="support__icon"><Brand name="discord" size={34} /></span>
+        <h2 class="display h2">Toujours bloqué&nbsp;?</h2>
+        <p class="lead">
+          Le Discord est le centre de la communauté&nbsp;: support par ticket, annonces, recrutements
+          et suggestions. Une vraie personne te répond.
+        </p>
+        <div class="support__cta">
+          <Button href={joinUrl} label="Ouvrir un ticket" brand="discord" size="lg" magnetic />
+          <Button href="/reglement" label="Consulter le règlement" variant="ghost" size="lg" />
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .shortcuts {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  }
+  .shortcut {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 22px 20px 20px;
+    transition:
+      transform 0.6s var(--ease-out),
+      border-color 0.4s;
+  }
+  .shortcut:hover {
+    transform: translateY(-5px);
+    border-color: color-mix(in srgb, var(--a1) 50%, transparent);
+  }
+  .shortcut__icon {
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    color: var(--a1);
+    background: color-mix(in srgb, var(--a1) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--a1) 34%, transparent);
+    transition:
+      color 0.4s,
+      background-color 0.4s;
+  }
+  .shortcut:hover .shortcut__icon {
+    color: #06060c;
+    background: var(--a1);
+  }
+  .shortcut__text {
+    display: grid;
+    gap: 2px;
+  }
+  .shortcut__text b {
+    font-size: 1.1rem;
+  }
+  .shortcut__text small {
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  .shortcut :global(.shortcut__arrow) {
+    color: var(--dim);
+    transition:
+      transform 0.5s var(--ease-out),
+      color 0.3s;
+  }
+  .shortcut:hover :global(.shortcut__arrow) {
+    color: var(--text);
+    transform: translate(4px, -4px);
+  }
+
+  .faqs {
+    display: grid;
+    gap: 40px;
+  }
+  @media (min-width: 980px) {
+    .faqs {
+      grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
+      gap: 90px;
+      align-items: start;
+    }
+    .faqs__side {
+      position: sticky;
+      top: 140px;
+    }
+  }
+  .faqs__side {
+    display: grid;
+    gap: 22px;
+    justify-items: start;
+  }
+  .faqs__nav {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+    max-width: 340px;
+    margin-top: 10px;
+  }
+  .faqs__nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    font-weight: 600;
+    color: var(--muted);
+    transition:
+      color 0.3s,
+      border-color 0.3s,
+      background-color 0.3s;
+  }
+  .faqs__nav a .mono {
+    margin-left: auto;
+    color: var(--dim);
+  }
+  .faqs__nav a:hover {
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--a1) 50%, transparent);
+    background: color-mix(in srgb, var(--a1) 7%, transparent);
+  }
+  .faqs__main {
+    display: grid;
+    gap: 54px;
+  }
+  .faqs__group {
+    scroll-margin-top: 130px;
+  }
+  .faqs__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    color: var(--a1);
+    font-weight: 500;
+  }
+
+  .support {
+    display: grid;
+    justify-items: center;
+    gap: 22px;
+    padding: clamp(44px, 7vw, 96px) clamp(22px, 5vw, 80px);
+    text-align: center;
+    background: #080812;
+  }
+  .support__aurora {
+    position: absolute;
+    inset: -30%;
+    z-index: -1;
+    background:
+      radial-gradient(40% 50% at 30% 40%, color-mix(in srgb, var(--a1) 34%, transparent), transparent 70%),
+      radial-gradient(40% 50% at 70% 60%, color-mix(in srgb, var(--a2) 30%, transparent), transparent 70%);
+    filter: blur(60px);
+    animation: sway 16s ease-in-out infinite alternate;
+  }
+  @keyframes sway {
+    to {
+      transform: translate3d(6%, -4%, 0) rotate(8deg) scale(1.1);
+    }
+  }
+  .support__icon {
+    display: grid;
+    place-items: center;
+    width: 78px;
+    height: 78px;
+    border-radius: 24px;
+    color: #06060c;
+    background: var(--grad-accent);
+    box-shadow: 0 20px 50px -16px var(--a1);
+  }
+  .support .lead {
+    color: #d5d1e6;
+  }
+  .support__cta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 8px;
+  }
+</style>

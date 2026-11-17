@@ -1,0 +1,20 @@
+---
+/** Icône Lucide par son nom (kebab-case), ex. <Icon name="shield" />. */
+import { icons } from '@lucide/astro';
+
+interface Props {
+  name: string;
+  size?: number;
+  stroke?: number;
+  class?: string;
+}
+const { name, size = 20, stroke = 1.75, class: cls } = Astro.props;
+const pascal = name
+  .split('-')
+  .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+  .join('');
+const Cmp = (icons as Record<string, any>)[pascal];
+if (!Cmp) throw new Error(`Icône inconnue : « ${name} »`);
+---
+
+<Cmp size={size} stroke-width={stroke} class={cls} aria-hidden="true" />

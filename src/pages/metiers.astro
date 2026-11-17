@@ -1,0 +1,328 @@
+---
+import Button from '../components/Button.astro';
+import Icon from '../components/Icon.astro';
+import PageHero from '../components/PageHero.astro';
+import { fr, joinUrl, linkAttrs } from '../config/site';
+import { metiers, metiersCount, statusLabel } from '../data/metiers';
+import Base from '../layouts/Base.astro';
+
+const open = metiers.reduce((n, c) => n + c.jobs.filter((j) => j.status === 'ouvert').length, 0);
+---
+
+<Base
+  title="Métiers"
+  theme="legal"
+  description="Police, secours, justice, garages, clubs, médias, restaurants : découvre les métiers et entreprises d'Elyra et trouve celui qui te ressemble."
+>
+  <PageHero
+    kicker="Découvrir · Le légal"
+    ghost="Métiers"
+    lead={fr(
+      "Porter l'uniforme, tenir un comptoir, monter son garage. Elyra compte des institutions et des entreprises tenues par des joueurs : choisis la tienne, ou viens proposer celle qui manque.",
+    )}
+  >
+    <Fragment slot="title">Fais tourner <em>la ville.</em></Fragment>
+    <Fragment slot="meta">
+      <span class="chip"><b>{metiersCount}</b> entreprises</span>
+      <span class="chip"><b>{metiers.length}</b> secteurs</span>
+      <span class="chip chip--accent"><i class="dot"></i><b>{open}</b> recrutent</span>
+    </Fragment>
+  </PageHero>
+
+  <div class="toolbar" data-toolbar>
+    <div class="container toolbar__inner">
+      <nav class="toolbar__nav" aria-label="Secteurs" data-lenis-prevent>
+        {
+          metiers.map((cat) => (
+            <a class="toolbar__link" href={`#${cat.id}`} data-spy={cat.id} style={`--c:${cat.color}`}>
+              <Icon name={cat.icon} size={15} />
+              {cat.title}
+            </a>
+          ))
+        }
+      </nav>
+      <div class="toolbar__filters" role="group" aria-label="Filtrer par recrutement">
+        <button class="pill is-active" type="button" data-filter="all" aria-pressed="true">Tous</button>
+        <button class="pill" type="button" data-filter="ouvert" aria-pressed="false">Recrutent</button>
+        <button class="pill" type="button" data-filter="dossier" aria-pressed="false">Sur candidature</button>
+      </div>
+    </div>
+  </div>
+
+  {
+    metiers.map((cat, ci) => (
+      <section class="section section--tight sector" id={cat.id} style={`--c:${cat.color}`} data-category>
+        <div class="container">
+          <header class="sector__head">
+            <span class="sector__num display" aria-hidden="true">0{ci + 1}</span>
+            <div class="sector__titles">
+              <p class="kicker sector__kicker" data-reveal>{cat.kicker}</p>
+              <h2 class="display h2" data-split>{cat.title}</h2>
+            </div>
+            <p class="lead sector__desc" data-reveal>{fr(cat.desc)}</p>
+          </header>
+
+          <div class="jobs" data-stagger="70">
+            {cat.jobs.map((job) => (
+              <div class="tilt-scene job-wrap" data-reveal="flip" data-status={job.status}>
+                <article class="card job" data-spot data-tilt="6">
+                  <div class="job__top">
+                    <span class="job__pattern" aria-hidden="true" />
+                    <span class="job__icon tilt-pop">
+                      <Icon name={job.icon} size={30} stroke={1.5} />
+                    </span>
+                    <span class:list={['job__status mono', `job__status--${job.status}`]}>
+                      <i class:list={['dot', { 'dot--warn': job.status === 'dossier', 'dot--off': job.status === 'complet' }]} />
+                      {statusLabel[job.status]}
+                    </span>
+                  </div>
+                  <div class="job__body">
+                    <p class="mono job__label">{job.label}</p>
+                    <h3 class="job__name display">{job.name}</h3>
+                    <p class="job__tagline">{fr(job.tagline)}</p>
+                    <p class="job__desc">{fr(job.desc)}</p>
+                    <ul class="job__roles">
+                      {job.roles.map((r) => <li>{r}</li>)}
+                    </ul>
+                  </div>
+                  <a class="job__cta" {...linkAttrs(job.discord || joinUrl)} aria-label={`Postuler : ${job.name}`}>
+                    <span>{job.status === 'complet' ? 'Liste d’attente' : 'Postuler'}</span>
+                    <Icon name="arrow-up-right" size={18} />
+                  </a>
+                  <span class="tilt-glare" />
+                </article>
+              </div>
+            ))}
+          </div>
+          <p class="sector__empty" hidden>Aucune entreprise ne correspond à ce filtre dans ce secteur.</p>
+        </div>
+      </section>
+    ))
+  }
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="pitch card" data-reveal="scale" data-spot>
+        <span class="corners" aria-hidden="true"></span>
+        <div>
+          <p class="kicker">Une idée ?</p>
+          <h2 class="display h2">Ton entreprise<br />n’existe pas encore.</h2>
+        </div>
+        <div class="pitch__side">
+          <p class="lead">
+            Librairie, salle de sport, label de musique, agence de détectives : si le projet tient la
+            route et fait jouer les autres, on t’aide à l’ouvrir.
+          </p>
+          <div class="pitch__cta">
+            <Button href={joinUrl} label="Proposer un projet" variant="accent" arrow magnetic />
+            <Button href="/reglement/legal" label="Lire le règlement légal" variant="ghost" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import '../scripts/catalog.ts';
+</script>
+
+<style>
+  /* ---- Secteur ---- */
+  .sector {
+    --spot: var(--c);
+  }
+  .sector__head {
+    position: relative;
+    display: grid;
+    gap: 18px 60px;
+    align-items: end;
+    margin-bottom: clamp(30px, 4vw, 54px);
+  }
+  @media (min-width: 900px) {
+    .sector__head {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+    }
+  }
+  .sector__titles {
+    display: grid;
+    gap: 16px;
+  }
+  .sector__kicker {
+    color: var(--c);
+  }
+  .sector__num {
+    position: absolute;
+    right: 0;
+    top: -0.55em;
+    font-size: clamp(6rem, 15vw, 14rem);
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--c) 30%, transparent);
+    pointer-events: none;
+    z-index: -1;
+  }
+  .sector__empty {
+    padding: 26px;
+    border: 1px dashed var(--line-2);
+    border-radius: var(--radius);
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* ---- Cartes métier ---- */
+  .jobs {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  }
+  .job-wrap[hidden] {
+    display: none;
+  }
+  .job {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border-color: color-mix(in srgb, var(--c) 16%, var(--line));
+  }
+  .job__top {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    height: 148px;
+    padding: 20px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--line);
+    transform-style: preserve-3d;
+  }
+  .job__pattern {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(120% 130% at 0% 0%, color-mix(in srgb, var(--c) 34%, transparent), transparent 58%),
+      radial-gradient(80% 90% at 100% 100%, color-mix(in srgb, var(--c) 16%, transparent), transparent 60%),
+      repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 15px);
+    transition: transform 1.2s var(--ease-out);
+  }
+  .job:hover .job__pattern {
+    transform: scale(1.12) rotate(2deg);
+  }
+  .job__icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 68px;
+    height: 68px;
+    border-radius: 20px;
+    color: #06060c;
+    background: linear-gradient(140deg, color-mix(in srgb, var(--c) 100%, #fff), color-mix(in srgb, var(--c) 62%, #000));
+    box-shadow:
+      0 18px 40px -14px var(--c),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+  .job__status {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    background: rgba(5, 5, 11, 0.6);
+    border: 1px solid var(--line-2);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .job__status--complet {
+    color: var(--dim);
+  }
+  .job__body {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    padding: 22px 22px 18px;
+    flex: 1;
+  }
+  .job__label {
+    color: var(--c);
+    font-size: 0.66rem;
+  }
+  .job__name {
+    font-size: clamp(1.45rem, 2vw, 1.8rem);
+    line-height: 1;
+  }
+  .job__tagline {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .job__desc {
+    color: var(--muted);
+    font-size: 0.94rem;
+  }
+  .job__roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .job__roles li {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line-2);
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #d5d1e6;
+  }
+  .job__cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 22px;
+    border-top: 1px solid var(--line);
+    font-weight: 700;
+    font-size: 0.92rem;
+    transition:
+      color 0.3s,
+      background-color 0.4s;
+  }
+  .job__cta :global(svg) {
+    transition: transform 0.5s var(--ease-out);
+  }
+  .job__cta:hover {
+    color: #06060c;
+    background: var(--c);
+  }
+  .job__cta:hover :global(svg) {
+    transform: translate(4px, -4px);
+  }
+
+  /* ---- Encart « ton entreprise » ---- */
+  .pitch {
+    display: grid;
+    gap: 30px 70px;
+    align-items: end;
+    padding: clamp(30px, 5vw, 70px);
+    background:
+      radial-gradient(70% 120% at 100% 0%, color-mix(in srgb, var(--a1) 16%, transparent), transparent 60%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+  }
+  @media (min-width: 900px) {
+    .pitch {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+    }
+  }
+  .pitch > div:first-of-type {
+    display: grid;
+    gap: 20px;
+  }
+  .pitch__side {
+    display: grid;
+    gap: 26px;
+  }
+  .pitch__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+</style>

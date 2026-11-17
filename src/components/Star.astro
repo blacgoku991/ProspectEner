@@ -1,0 +1,28 @@
+---
+/** L'étoile d'Elyra : quatre branches, dégradé crépuscule. */
+interface Props {
+  size?: number;
+  class?: string;
+  mono?: boolean;
+}
+const { size = 24, class: cls, mono = false } = Astro.props;
+const id = `star-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<svg class={cls} width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+  {
+    !mono && (
+      <defs>
+        <linearGradient id={id} x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#8f6bff" />
+          <stop offset=".55" stop-color="#ff4fa3" />
+          <stop offset="1" stop-color="#ffc56e" />
+        </linearGradient>
+      </defs>
+    )
+  }
+  <path
+    fill={mono ? 'currentColor' : `url(#${id})`}
+    d="M24 0c1.5 14.6 9.4 22.5 24 24-14.6 1.5-22.5 9.4-24 24-1.5-14.6-9.4-22.5-24-24C14.6 22.5 22.5 14.6 24 0Z"
+  ></path>
+</svg>

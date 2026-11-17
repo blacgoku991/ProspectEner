@@ -1,0 +1,276 @@
+---
+import { joinUrl, linkAttrs, playUrl, site } from '../config/site';
+import Brand from './Brand.astro';
+import Icon from './Icon.astro';
+import Logo from './Logo.astro';
+
+const year = new Date().getFullYear();
+const socials = (
+  [
+    ['discord', site.links.discord, 'Discord'],
+    ['tiktok', site.links.tiktok, 'TikTok'],
+    ['youtube', site.links.youtube, 'YouTube'],
+    ['twitch', site.links.twitch, 'Twitch'],
+    ['instagram', site.links.instagram, 'Instagram'],
+  ] as const
+).filter(([, url]) => url);
+
+const columns = [
+  {
+    title: 'Explorer',
+    links: [
+      { label: 'Accueil', href: '/' },
+      { label: 'Métiers', href: '/metiers' },
+      { label: 'Factions', href: '/factions' },
+      { label: 'Boutique', href: '/boutique' },
+    ],
+  },
+  {
+    title: 'Règlement',
+    links: [
+      { label: 'Vue d’ensemble', href: '/reglement' },
+      { label: 'Global', href: '/reglement/global' },
+      { label: 'Légal', href: '/reglement/legal' },
+      { label: 'Illégal', href: '/reglement/illegal' },
+    ],
+  },
+  {
+    title: 'Communauté',
+    links: [
+      { label: 'Rejoindre', href: '/rejoindre' },
+      { label: 'Aide & support', href: '/aide' },
+      { label: 'Discord', href: joinUrl },
+      { label: 'Se connecter', href: playUrl },
+      ...(site.links.wiki ? [{ label: 'Wiki', href: site.links.wiki }] : []),
+    ],
+  },
+];
+---
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__top">
+      <div class="footer__brand">
+        <a href="/" aria-label="Elyra, retour à l’accueil"><Logo size={30} /></a>
+        <p>
+          Un serveur GTA RP francophone et gratuit, tenu par des passionnés. Une ville, mille vies,
+          et la tienne à écrire.
+        </p>
+        {
+          socials.length > 0 && (
+            <div class="footer__socials">
+              {socials.map(([name, url, label]) => (
+                <a href={url} target="_blank" rel="noopener noreferrer" aria-label={label} data-magnetic>
+                  <Brand name={name} size={18} />
+                </a>
+              ))}
+            </div>
+          )
+        }
+      </div>
+
+      <div class="footer__cols">
+        {
+          columns.map((col) => (
+            <div class="footer__col">
+              <h2 class="mono">{col.title}</h2>
+              <ul>
+                {col.links.map((l) => (
+                  <li>
+                    <a {...linkAttrs(l.href)}>
+                      <span>{l.label}</span>
+                      <Icon name="arrow-up-right" size={14} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="footer__word" aria-hidden="true" data-footer-word>
+    <span>Elyra</span>
+  </div>
+
+  <div class="container">
+    <div class="footer__bottom">
+      <p>© {year} Elyra. Tous droits réservés.</p>
+      <p class="footer__legal">
+        Projet communautaire indépendant, sans lien avec Rockstar Games, Take-Two Interactive ni
+        Cfx.re. Grand Theft Auto est une marque de ses propriétaires respectifs.
+      </p>
+      <nav class="footer__links" aria-label="Liens légaux">
+        <a href="/mentions-legales">Mentions légales</a>
+        <a href="/mentions-legales#confidentialite">Confidentialité</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    position: relative;
+    z-index: 1;
+    margin-top: clamp(30px, 5vw, 70px);
+    padding-top: clamp(60px, 8vw, 110px);
+    border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(10, 10, 21, 0.3), rgba(10, 10, 21, 0.9));
+    overflow: hidden;
+  }
+  .footer__top {
+    display: grid;
+    gap: 56px;
+  }
+  @media (min-width: 900px) {
+    .footer__top {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+      gap: 80px;
+    }
+  }
+  .footer__brand {
+    display: grid;
+    gap: 22px;
+    align-content: start;
+    max-width: 380px;
+  }
+  .footer__brand p {
+    color: var(--muted);
+  }
+  .footer__socials {
+    display: flex;
+    gap: 10px;
+  }
+  .footer__socials a {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--line-2);
+    color: var(--muted);
+    transition:
+      color 0.3s,
+      border-color 0.3s,
+      background-color 0.3s;
+  }
+  .footer__socials a:hover {
+    color: #0b0614;
+    background: var(--text);
+    border-color: var(--text);
+  }
+  .footer__cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 40px 24px;
+  }
+  @media (min-width: 620px) {
+    .footer__cols {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .footer__col h2 {
+    color: var(--dim);
+    margin-bottom: 20px;
+    font-weight: 500;
+  }
+  .footer__col ul {
+    display: grid;
+    gap: 12px;
+  }
+  .footer__col a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-weight: 600;
+    transition: color 0.3s;
+  }
+  .footer__col a :global(svg) {
+    opacity: 0;
+    transform: translate(-6px, 6px);
+    transition:
+      opacity 0.3s,
+      transform 0.4s var(--ease-out);
+  }
+  .footer__col a:hover {
+    color: var(--text);
+  }
+  .footer__col a:hover :global(svg) {
+    opacity: 1;
+    transform: none;
+    color: var(--a1);
+  }
+
+  /* Le grand mot en bas de page : contour, rempli par un halo qui suit le pointeur */
+  .footer__word {
+    position: relative;
+    margin-top: clamp(40px, 7vw, 90px);
+    display: flex;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-stretch: 125%;
+    font-weight: 900;
+    font-size: 20.4vw;
+    line-height: 0.76;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .footer__word span {
+    display: block;
+    padding-bottom: 0.02em;
+    background:
+      radial-gradient(
+        22vw circle at var(--wx, 50%) var(--wy, 120%),
+        #ffc56e 0%,
+        #ff4fa3 38%,
+        #8f6bff 68%,
+        transparent 100%
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.015));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.1);
+    transform: translateY(12%);
+  }
+
+  .footer__bottom {
+    position: relative;
+    display: grid;
+    gap: 14px;
+    padding-block: 26px 30px;
+    border-top: 1px solid var(--line);
+    font-size: 0.82rem;
+    color: var(--dim);
+    background: var(--bg);
+    box-shadow: 0 0 0 100vmax var(--bg);
+    clip-path: inset(0 -100vmax);
+  }
+  @media (min-width: 900px) {
+    .footer__bottom {
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 40px;
+    }
+    .footer__legal {
+      text-align: center;
+    }
+  }
+  .footer__links {
+    display: flex;
+    gap: 22px;
+  }
+  .footer__links a {
+    color: var(--muted);
+    transition: color 0.3s;
+  }
+  .footer__links a:hover {
+    color: var(--text);
+  }
+</style>

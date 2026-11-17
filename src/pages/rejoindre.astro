@@ -1,0 +1,442 @@
+---
+import Brand from '../components/Brand.astro';
+import Button from '../components/Button.astro';
+import Icon from '../components/Icon.astro';
+import PageHero from '../components/PageHero.astro';
+import { joinUrl, linkAttrs, playUrl, site } from '../config/site';
+import Base from '../layouts/Base.astro';
+
+const needs = [
+  { icon: 'monitor', title: 'GTA V sur PC', text: 'Une copie à jour du jeu, sur la plateforme de ton choix.' },
+  { icon: 'download', title: 'FiveM', text: 'Le client multijoueur, gratuit, à installer une fois.' },
+  { icon: 'mic', title: 'Un micro', text: 'Le roleplay se joue à la voix. Un son propre suffit.' },
+  { icon: 'badge-check', title: '16 ans', text: 'L’âge minimum pour jouer sur le serveur.' },
+];
+
+const steps = [
+  {
+    icon: 'download',
+    title: 'Installe FiveM',
+    text: 'Télécharge le client sur le site officiel de FiveM, lance-le une première fois et laisse-le localiser ton GTA V.',
+    link: { label: 'fivem.net', href: 'https://fivem.net' },
+  },
+  {
+    icon: 'message-circle',
+    title: 'Rejoins le Discord',
+    text: 'C’est le centre de la communauté : annonces, support, recrutements. Accepte le règlement pour débloquer les salons.',
+    link: site.links.discord ? { label: 'Ouvrir Discord', href: site.links.discord } : undefined,
+  },
+  {
+    icon: 'book-open',
+    title: 'Lis l’essentiel',
+    text: 'Le premier chapitre et le lexique du règlement global suffisent pour commencer. Dix minutes de lecture, des heures de tranquillité.',
+    link: { label: 'Règlement global', href: '/reglement/global' },
+  },
+  {
+    icon: 'plug',
+    title: 'Connecte-toi',
+    text: 'Depuis le bouton « Se connecter », ou en cherchant « Elyra » dans la liste des serveurs. Le premier chargement télécharge les ressources : laisse-lui quelques minutes.',
+    link: site.links.fivem ? { label: 'Se connecter', href: site.links.fivem } : undefined,
+  },
+  {
+    icon: 'user-plus',
+    title: 'Crée ton personnage',
+    text: 'Un prénom, un nom, une histoire crédible. Tu arrives en ville avec de quoi tenir tes premiers jours : à toi de trouver ta place.',
+  },
+];
+
+const tips = [
+  { icon: 'truck', title: 'Commence simple', text: 'Livraison, taxi, restauration : des métiers ouverts à tous, parfaits pour rencontrer du monde.' },
+  { icon: 'megaphone', title: 'Dis que tu débarques', text: 'Annoncer en jeu que ton personnage vient d’arriver ouvre toutes les portes. Personne n’attend un jeu parfait.' },
+  { icon: 'drama', title: 'Reste en personnage', text: 'Un doute sur une règle ? Joue la scène jusqu’au bout, puis pose ta question sur Discord.' },
+  { icon: 'video', title: 'Enregistre tes sessions', text: 'Un clip règle un litige en deux minutes. Active l’enregistrement en continu avant de jouer.' },
+];
+---
+
+<Base
+  title="Rejoindre"
+  theme="gold"
+  description="Comment rejoindre Elyra : installer FiveM, passer par le Discord, créer son personnage. Le guide d'arrivée en cinq étapes."
+>
+  <PageHero
+    kicker="Arriver en ville"
+    ghost="Rejoindre"
+    lead="De l’installation à ta première scène, compte un quart d’heure. Voici le chemin, étape par étape."
+  >
+    <Fragment slot="title">Ta première <em>nuit.</em></Fragment>
+    <Fragment slot="meta">
+      <span class="chip"><b>5</b> étapes</span>
+      <span class="chip"><b>15</b> minutes</span>
+      <span class="chip chip--accent"><b>0 €</b> à payer</span>
+    </Fragment>
+  </PageHero>
+
+  <section class="section section--tight">
+    <div class="container">
+      <p class="kicker" data-reveal>Avant de partir</p>
+      <div class="needs" data-stagger="80">
+        {
+          needs.map((n) => (
+            <article class="need card" data-reveal data-spot>
+              <span class="need__icon"><Icon name={n.icon} size={22} /></span>
+              <h2 class="h3">{n.title}</h2>
+              <p>{n.text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container path">
+      <header class="path__head">
+        <p class="kicker" data-reveal>Le parcours</p>
+        <h2 class="display h2" data-split>Cinq étapes,<br />dans l’ordre.</h2>
+        <p class="lead" data-reveal>Chaque étape tient en quelques minutes. Tu peux t’arrêter et reprendre quand tu veux.</p>
+        <div class="path__cta" data-reveal>
+          <Button href={joinUrl} label="Rejoindre le Discord" brand="discord" magnetic />
+        </div>
+      </header>
+
+      <ol class="timeline" data-timeline>
+        <span class="timeline__rail" aria-hidden="true"><span data-timeline-fill></span></span>
+        {
+          steps.map((s, i) => (
+            <li class="tstep" data-reveal="right" data-tstep>
+              <span class="tstep__dot"><Icon name={s.icon} size={20} /></span>
+              <div class="tstep__body">
+                <span class="mono tstep__num">Étape 0{i + 1}</span>
+                <h3 class="display tstep__title">{s.title}</h3>
+                <p>{s.text}</p>
+                {s.link && (
+                  <a class="link-arrow" {...linkAttrs(s.link.href)}>
+                    {s.link.label} <Icon name="arrow-up-right" size={17} />
+                  </a>
+                )}
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container">
+      <header class="section-head">
+        <p class="kicker" data-reveal>Tes premières heures</p>
+        <h2 class="display h2" data-split>Quatre conseils<br />d’anciens.</h2>
+      </header>
+      <div class="tips" data-stagger="80">
+        {
+          tips.map((t, i) => (
+            <article class="tip card" data-reveal="flip" data-spot>
+              <span class="tip__num display" aria-hidden="true">0{i + 1}</span>
+              <span class="tip__icon"><Icon name={t.icon} size={22} /></span>
+              <h3 class="h3">{t.title}</h3>
+              <p>{t.text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="ready card" data-reveal="scale">
+        <span class="corners" aria-hidden="true"></span>
+        <div>
+          <p class="kicker">Prêt ?</p>
+          <h2 class="display h2">La ville<br /><span class="accent-text">t’attend.</span></h2>
+        </div>
+        <div class="ready__links">
+          <a class="ready__link" {...linkAttrs(joinUrl)} data-spot>
+            <span class="ready__icon"><Brand name="discord" size={24} /></span>
+            <span><b>Discord</b><small>Accès, annonces et support</small></span>
+            <Icon name="arrow-up-right" size={20} />
+          </a>
+          <a class="ready__link" {...linkAttrs(playUrl)} data-spot>
+            <span class="ready__icon"><Brand name="fivem" size={24} /></span>
+            <span><b>Serveur FiveM</b><small>Connexion directe à la ville</small></span>
+            <Icon name="arrow-up-right" size={20} />
+          </a>
+          <a class="ready__link" href="/aide" data-spot>
+            <span class="ready__icon"><Icon name="life-buoy" size={24} /></span>
+            <span><b>Aide</b><small>Questions fréquentes</small></span>
+            <Icon name="arrow-up-right" size={20} />
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { gsap, onIntro, reduced } from '../scripts/app.ts';
+
+  // La ligne du parcours se remplit au fil du défilement.
+  onIntro(() => {
+    const timeline = document.querySelector<HTMLElement>('[data-timeline]');
+    const fill = timeline?.querySelector<HTMLElement>('[data-timeline-fill]');
+    if (!timeline || !fill) return;
+    if (reduced) {
+      fill.style.transform = 'none';
+      timeline.querySelectorAll('[data-tstep]').forEach((el) => el.classList.add('is-on'));
+      return;
+    }
+    gsap.fromTo(
+      fill,
+      { scaleY: 0 },
+      {
+        scaleY: 1,
+        ease: 'none',
+        scrollTrigger: { trigger: timeline, start: 'top 62%', end: 'bottom 62%', scrub: 0.5 },
+      },
+    );
+    timeline.querySelectorAll<HTMLElement>('[data-tstep]').forEach((step) => {
+      gsap.to(step, {
+        scrollTrigger: {
+          trigger: step,
+          start: 'top 62%',
+          onEnter: () => step.classList.add('is-on'),
+          onLeaveBack: () => step.classList.remove('is-on'),
+        },
+      });
+    });
+  });
+</script>
+
+<style>
+  .needs {
+    display: grid;
+    gap: 14px;
+    margin-top: 26px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  }
+  .need {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    padding: 24px;
+  }
+  .need__icon {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+    color: var(--a1);
+    background: color-mix(in srgb, var(--a1) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--a1) 34%, transparent);
+  }
+  .need p {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .path {
+    display: grid;
+    gap: 50px;
+  }
+  @media (min-width: 980px) {
+    .path {
+      grid-template-columns: minmax(0, 0.75fr) minmax(0, 1fr);
+      gap: 90px;
+      align-items: start;
+    }
+    .path__head {
+      position: sticky;
+      top: 140px;
+    }
+  }
+  .path__head {
+    display: grid;
+    gap: 22px;
+    justify-items: start;
+  }
+
+  .timeline {
+    position: relative;
+    display: grid;
+    gap: 18px;
+    padding-left: 76px;
+  }
+  .timeline__rail {
+    position: absolute;
+    left: 27px;
+    top: 28px;
+    bottom: 28px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--line-2);
+    overflow: hidden;
+  }
+  .timeline__rail span {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, var(--a1), var(--a2));
+    transform: scaleY(0);
+    transform-origin: 50% 0;
+  }
+  .tstep {
+    position: relative;
+  }
+  .tstep__dot {
+    position: absolute;
+    left: -76px;
+    top: 20px;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 1px solid var(--line-2);
+    background: var(--bg-2);
+    color: var(--muted);
+    transition:
+      color 0.5s,
+      background-color 0.5s,
+      border-color 0.5s,
+      box-shadow 0.5s,
+      transform 0.7s var(--ease-back);
+  }
+  .tstep.is-on .tstep__dot {
+    color: #06060c;
+    background: var(--a1);
+    border-color: var(--a1);
+    box-shadow: 0 0 34px -4px var(--a1);
+    transform: scale(1.08);
+  }
+  .tstep__body {
+    display: grid;
+    gap: 10px;
+    justify-items: start;
+    padding: 26px 28px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+    transition: border-color 0.5s;
+  }
+  .tstep.is-on .tstep__body {
+    border-color: color-mix(in srgb, var(--a1) 40%, transparent);
+  }
+  .tstep__num {
+    color: var(--a1);
+  }
+  .tstep__title {
+    font-size: clamp(1.5rem, 2.6vw, 2.2rem);
+  }
+  .tstep__body p {
+    color: var(--muted);
+    max-width: 56ch;
+  }
+
+  .tips {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  }
+  .tip {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    min-height: 250px;
+    padding: 26px;
+  }
+  .tip__num {
+    position: absolute;
+    right: 18px;
+    top: 10px;
+    font-size: 4.4rem;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.14);
+  }
+  .tip__icon {
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    margin-bottom: auto;
+    border-radius: 50%;
+    border: 1px solid var(--line-2);
+    color: var(--a1);
+  }
+  .tip h3 {
+    margin-top: 40px;
+  }
+  .tip p {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .ready {
+    display: grid;
+    gap: 34px 70px;
+    padding: clamp(30px, 5vw, 70px);
+    background:
+      radial-gradient(70% 120% at 0% 0%, color-mix(in srgb, var(--a1) 18%, transparent), transparent 60%),
+      radial-gradient(60% 100% at 100% 100%, color-mix(in srgb, var(--a2) 16%, transparent), transparent 60%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+  }
+  @media (min-width: 980px) {
+    .ready {
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+      align-items: center;
+    }
+  }
+  .ready > div:first-of-type {
+    display: grid;
+    gap: 20px;
+  }
+  .ready__links {
+    display: grid;
+    gap: 10px;
+  }
+  .ready__link {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px 16px 16px;
+    border-radius: 18px;
+    border: 1px solid var(--line-2);
+    background: rgba(5, 5, 11, 0.5);
+    overflow: hidden;
+    isolation: isolate;
+    transition:
+      transform 0.6s var(--ease-out),
+      border-color 0.4s;
+  }
+  .ready__link:hover {
+    transform: translateX(8px);
+    border-color: color-mix(in srgb, var(--a1) 55%, transparent);
+  }
+  .ready__icon {
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    color: #06060c;
+    background: var(--grad-accent);
+  }
+  .ready__link b {
+    display: block;
+    font-family: var(--font-display);
+    font-stretch: 110%;
+    font-size: 1.08rem;
+    line-height: 1.2;
+  }
+  .ready__link small {
+    color: var(--muted);
+    font-size: 0.86rem;
+  }
+  .ready__link > :global(svg:last-child) {
+    color: var(--muted);
+  }
+</style>

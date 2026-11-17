@@ -1,0 +1,138 @@
+---
+import PageHero from '../components/PageHero.astro';
+import { site } from '../config/site';
+import Base from '../layouts/Base.astro';
+
+const l = site.legal;
+const todo = 'À compléter';
+const rows = [
+  ['Éditeur du site', l.editeur],
+  ['Statut', l.statut],
+  ['Adresse', l.adresse],
+  ['Contact', l.contact],
+  ['Directeur de la publication', l.directeur],
+  ['Hébergeur', l.hebergeur],
+  ['Adresse de l’hébergeur', l.hebergeurAdresse],
+] as const;
+---
+
+<Base title="Mentions légales" description="Mentions légales et politique de confidentialité du site Elyra.">
+  <PageHero
+    kicker="Informations légales"
+    ghost="Légal"
+    lead="Qui édite ce site, qui l’héberge, et ce qu’il fait (ou plutôt ne fait pas) de tes données."
+  >
+    <Fragment slot="title">Mentions <em>légales.</em></Fragment>
+  </PageHero>
+
+  <section class="section section--tight">
+    <div class="container legal">
+      <article class="legal__block" data-reveal>
+        <h2 class="display legal__title">Éditeur &amp; hébergeur</h2>
+        <dl class="legal__table">
+          {
+            rows.map(([label, value]) => (
+              <div>
+                <dt class="mono">{label}</dt>
+                <dd class:list={{ 'is-todo': !value }}>{value || todo}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </article>
+
+      <article class="legal__block" data-reveal>
+        <h2 class="display legal__title">Propriété intellectuelle</h2>
+        <p>
+          Les textes, l’identité visuelle et le code de ce site appartiennent à Elyra. Toute
+          reproduction sans accord préalable est interdite.
+        </p>
+        <p>
+          Elyra est un projet communautaire indépendant. Il n’est ni affilié à Rockstar Games, à
+          Take-Two Interactive ou à Cfx.re, ni approuvé par eux. Grand Theft Auto, GTA et FiveM sont
+          des marques de leurs propriétaires respectifs.
+        </p>
+      </article>
+
+      <article class="legal__block" id="confidentialite" data-reveal>
+        <h2 class="display legal__title">Confidentialité</h2>
+        <p>
+          Ce site ne dépose aucun cookie de suivi, n’affiche aucune publicité et n’embarque aucun
+          outil de mesure d’audience. Les polices sont servies depuis le site lui-même.
+        </p>
+        <p>
+          Un seul élément est conservé dans ton navigateur, le temps de la session&nbsp;: un témoin
+          technique qui évite de rejouer l’animation de chargement à chaque page. Il ne contient
+          aucune donnée personnelle et disparaît à la fermeture de l’onglet.
+        </p>
+        {
+          site.cfxCode && (
+            <p>
+              Le nombre de joueurs connectés est demandé directement à l’interface publique de
+              FiveM depuis ton navigateur, qui reçoit donc ton adresse IP comme pour toute requête
+              web.
+            </p>
+          )
+        }
+        <p>
+          Les liens vers Discord, FiveM ou la boutique mènent à des services tiers, soumis à leurs
+          propres conditions et politiques de confidentialité.
+        </p>
+      </article>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .legal {
+    display: grid;
+    gap: 16px;
+    max-width: 980px;
+  }
+  .legal__block {
+    display: grid;
+    gap: 16px;
+    padding: clamp(24px, 3vw, 40px);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
+    scroll-margin-top: 130px;
+  }
+  .legal__title {
+    font-size: clamp(1.4rem, 2.4vw, 2rem);
+    margin-bottom: 6px;
+  }
+  .legal__block p {
+    color: #c9c5dc;
+    max-width: 72ch;
+  }
+  .legal__table {
+    display: grid;
+    margin: 0;
+  }
+  .legal__table div {
+    display: grid;
+    gap: 4px 30px;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+  }
+  @media (min-width: 700px) {
+    .legal__table div {
+      grid-template-columns: 260px 1fr;
+      align-items: baseline;
+    }
+  }
+  .legal__table dt {
+    color: var(--dim);
+    font-size: 0.68rem;
+  }
+  .legal__table dd {
+    margin: 0;
+    font-weight: 600;
+  }
+  .legal__table dd.is-todo {
+    color: var(--amber);
+    font-weight: 500;
+    font-style: italic;
+  }
+</style>
